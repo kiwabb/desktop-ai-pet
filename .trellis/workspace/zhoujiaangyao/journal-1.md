@@ -463,3 +463,37 @@
 ### Next Steps
 
 - 本次视觉变更已完成；原任务真实模型/完整服务验收仍独立保留。
+
+
+## Session 15: 补齐参考外壳猫脚印
+<!-- trellis-session: v=2 fp=a6346512ad901f22 -->
+
+**Date**: 2026-09-07
+**Task**: 补齐参考外壳猫脚印
+**Branch**: `main`
+
+### Summary
+
+补齐5枚侧边脚印与无footer展开页的2枚底部脚印，保留原徽章。
+
+### Main Changes
+
+- 独立四趾symbol、几何锚点和可见上方脚印；聊天5枚，设置7枚。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b4a5139` | fix: restore reference footprints on shared pet shell |
+
+### Testing
+
+- [OK] 构建、专项检查、只读审查及浏览器截图/原徽章坐标阴影对比通过；已打包并重启本地应用，原生本轮仅确认closed状态。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 原任务真实服务验收仍独立保留。
