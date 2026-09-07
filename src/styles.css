@@ -771,6 +771,96 @@ textarea:focus-visible {
 .quick-prompts button:nth-child(3) svg { color: #41ae78; }
 .quick-prompts button:nth-child(4) svg { color: #8d65dc; }
 
+/* Integrated compact content: one input capsule and a quiet 2 × 2 action
+ * group share the same inset. The frame owns row spacing and slot sizing. */
+.chat-panel.is-attached.is-integrated.is-compact .composer {
+  padding: 0 22px;
+}
+.chat-panel.is-attached.is-integrated.is-compact .composer-row {
+  min-height: 78px;
+  padding: 4px 10px 4px 17px;
+  background: rgba(255, 254, 251, 0.98);
+  border: 1px solid rgba(224, 184, 148, 0.66);
+  border-radius: 27px;
+  box-shadow: 0 3px 9px rgba(115, 72, 40, 0.045), inset 0 1px 0 #fff;
+}
+.chat-panel.is-attached.is-integrated.is-compact .composer-row:focus-within {
+  border-color: rgba(218, 143, 91, 0.8);
+  box-shadow: 0 0 0 2px rgba(225, 130, 76, 0.1), 0 3px 9px rgba(115, 72, 40, 0.045);
+}
+.chat-panel.is-attached.is-integrated.is-compact .composer textarea {
+  font-size: 14px;
+  color: #655044;
+}
+.chat-panel.is-attached.is-integrated.is-compact .composer textarea::placeholder { color: #ad9b8e; }
+.chat-panel.is-attached.is-integrated.is-compact .composer-tool { color: #a99585; }
+.chat-panel.is-attached.is-integrated.is-compact .composer-divider { background: rgba(172, 144, 122, 0.18); }
+.chat-panel.is-attached.is-integrated.is-compact .send-button {
+  width: 54px;
+  min-width: 54px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #f2a475, #e88a50);
+  box-shadow: 0 3px 7px rgba(213, 104, 44, 0.14);
+}
+.chat-panel.is-attached.is-integrated.is-compact .send-button:disabled {
+  box-shadow: 0 2px 5px rgba(213, 104, 44, 0.1);
+}
+.chat-panel.is-attached.is-integrated.is-compact .send-button .send-plane { width: 20px; height: 20px; }
+.chat-panel.is-attached.is-integrated.is-compact .quick-prompts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 32px;
+  gap: 8px;
+  padding: 0 22px;
+}
+.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button {
+  height: 32px;
+  min-height: 32px;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid rgba(205, 177, 128, 0.22);
+  border-radius: 11px;
+  background: #faf1de;
+  box-shadow: none;
+  color: #75603f;
+  font-size: 12px;
+  font-weight: 550;
+}
+.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:nth-child(2) {
+  color: #5b6d7e;
+  background: #edf2f5;
+  border-color: rgba(157, 178, 197, 0.22);
+}
+.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:nth-child(3) {
+  color: #5d7060;
+  background: #eef3e9;
+  border-color: rgba(166, 186, 154, 0.22);
+}
+.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:nth-child(4) {
+  color: #706278;
+  background: #f3eef5;
+  border-color: rgba(187, 164, 199, 0.22);
+}
+.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button svg {
+  width: 14px;
+  height: 14px;
+  color: currentColor;
+  stroke-width: 1.8;
+}
+.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:hover {
+  filter: brightness(0.975);
+  box-shadow: 0 2px 5px rgba(115, 72, 40, 0.07);
+}
+.chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) .composer-row {
+  min-height: 66px;
+}
+.chat-panel.is-attached.is-integrated.is-compact .inline-error.compact-error {
+  margin: 0 22px 6px;
+  padding: 2px 8px;
+}
+
 /* Expanded attached panel — host geometry plus the mode-specific content
  * styling (message list, composer, send button). Frame shell, header and
  * entrance motion for this mode live in ChatBubbleFrame.css. */

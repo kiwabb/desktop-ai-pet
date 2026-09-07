@@ -11,6 +11,33 @@
 
 ## Acceptance evidence
 
+### Compact composition refinement
+
+This replaces the spacing-only treatment below after the user rejected its
+overall appearance. The475×278 shell now has an88px header,429×78px input,
+14px group gap and a two-column/two-row action group (210.5×32px controls,
+8px gutters). Input and actions share22px inner insets; bottom clearance is
+25px to the outer frame. Softer fills and borders keep the send action primary.
+Final screenshot: `output/playwright/reference-v2/compact-polished.png`.
+
+Browser runtime used the existing unconfigured QA state without messages or
+fixtures. All four actions filled their original prompts; the unsent draft was
+cleared. Keyboard Tab reached the next action with a2px visible outline.
+Settings navigation/return, Escape hiding (`inert=true`) and reopening passed.
+Settings remains676×665 with seven prints. Compact keeps five prints and the
+exact baseline badge dimensions/offset/filter. Scoped CSS review found no
+expanded/standalone/legacy rule changes. The real single-line error budget is
+274.5px within276px according to source calculations, not a runtime failure
+reproduction. The four action text colors were darkened after contrast review
+to exceed4.5:1 against their respective fills.
+Focused static checks and `git diff --check` passed. Vite generated updated
+assets once, then Tauri packaged that dist without repeating the frontend build.
+The exact project app was restarted and confirmed at `tauri://localhost`.
+Native AX activation and keyboard activation did not open the compact frame;
+coordinate activation returned `noWindowsAvailable`. The closed pet remains
+visible. New open-frame visual/interaction evidence is browser-only this round;
+no real model invocation or service-settings mutation was performed.
+
 ### Compact bottom spacing follow-up
 
 The integrated compact shell remains475×278. Its header now takes remaining

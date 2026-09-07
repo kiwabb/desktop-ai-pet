@@ -15,6 +15,8 @@
 
 ## Requirements
 
+- R13 (compact composition refinement): The user rejected solving the empty lower area by only shifting controls downward. Rebalance the integrated compact header, composer and existing four quick actions as a whole; use a two-column action group, consistent insets and softer control styling. Preserve the approved cat, corner badge position/shadow, footprint inventory, shell/platform geometry and all business actions. Verify actual compact layout and navigation before delivery; do not introduce filler text, new actions or fabricated service data.
+
 - R12 (reference completeness correction): Include the approved HTML's decorative footprint trail: five side/lower shell prints and the two expanded footer prints. These are distinct from the preserved top-left paw badge. Use the reference four-toe silhouette and geometry-relative anchors, retain decoration-only semantics, and keep the badge's placement/shadow unchanged.
 
 - R10 (latest approved HTML): `references/preview-v2-approved.html`, copied from Downloads/preview (2).html, supersedes earlier tail-only visual references. Migrate its parameterized continuous shell, warm layered border/background and integrated pet platform to the reusable component for compact/expanded attached frames; keep standalone usable. Preserve the existing paw artwork, frame-relative position, size and exact shadow. Preserve existing chat/settings/todo data and actions; reference demo adapters/replies, wallpaper and new controls are not product requirements.
@@ -34,6 +36,8 @@
 - R6：更新受迁移影响的校验脚本及组件规范，记录接口、样式归属、使用方式和验证证据。不得新增假消息、假模型、假连接或模拟服务来完成验收。
 
 ## Acceptance Criteria
+
+- [x] AC13 / R13: Browser verifies an88px header,78px input,14px group gap and aligned two-column quick-action group in the unchanged475×278 shell; all existing prompt actions, keyboard focus, settings return and hide/reopen pass. Preserved paw geometry/filter and five footprints verified; scoped review and static checks pass. Updated local package loads successfully; native open-frame automation remains unavailable. See reference-v2-verification.md for the evidence boundary.
 
 - [x] AC12 / R12: Integrated compact/expanded chat renders five reference footprints; expanded frames without a footer slot (settings/todos) render seven including the bottom prints. Browser screenshots confirm visible placement without content obstruction and unchanged top-left badge bounds/filter. Geometry/static checks and read-only review confirm dock-relative anchors, instance-scoped symbols, no pointer interception, and unchanged standalone/legacy behavior. See reference-v2-verification.md.
 

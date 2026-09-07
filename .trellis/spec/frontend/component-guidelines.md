@@ -212,6 +212,24 @@ scale the decoration. Do not use a centered `meet` viewport with proportional
 right offsets; a wide/short viewport would move the narrower drawn path off the
 frame. Keep the paw SVG's original aspect behavior unchanged.
 
+### Integrated compact content composition
+
+Keep slot sizing in `ChatBubbleFrame.css` and composer/action styling in
+`styles.css`, scoped to `.chat-panel.is-attached.is-integrated.is-compact`.
+The native475×278 shell joins the pet platform; its extra height must be planned
+as one content composition, not absorbed into a tall empty header. Use the
+existing four quick actions in two columns with consistent composer/action
+insets and restrained colors. Do not add filler copy or unrelated decorations.
+Preserve the approved badge geometry/filter, all five shell prints and the
+native frame/platform dimensions. Expanded and explicit legacy-tail layouts
+retain their own rules.
+
+The compact body uses `display: flow-root` so real error content contributes its
+natural height, including margins, to the outer grid. An empty body stays zero
+height. A nested `minmax(0, 1fr)` inside a `min-content` outer track cannot be
+relied on to reserve that height. Verify the entire height budget and control
+visibility; source-based error analysis is not runtime service verification.
+
 ## Accessibility
 
 - 可交互的非按钮元素用 `role="button"` + `tabIndex={0}` + `onKeyDown`

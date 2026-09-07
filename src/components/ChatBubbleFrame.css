@@ -419,20 +419,38 @@
   pointer-events: none;
 }
 .chat-panel.is-integrated > .chat-panel-surface { position: relative; z-index: 1; }
-.chat-panel.is-integrated.is-compact {
-  --chat-frame-rows: minmax(84px, 1fr) min-content auto;
+.chat-panel.is-attached.is-integrated.is-compact {
+  --chat-frame-rows: 88px min-content auto;
 }
-/* Balance the compact content within the integrated shell's taller body.
- * At native inner-height 276: header114 + composer110 + quick48 + padding4.
- * The 28px chips retain 24px below them; a real inline error can consume the
- * flexible header space down to 84px without pushing the chips out of frame. */
-.chat-panel.is-integrated.is-compact > .chat-panel-surface {
+/* Native inner-height 276: header88 + composer78 + gap14 + actions72 +
+ * bottom24. A populated body retains its natural height; the occupied-slot
+ * rules reclaim spacing without coupling the frame to an error component. */
+.chat-panel.is-attached.is-integrated.is-compact > .chat-panel-surface {
   align-content: start;
-  padding-bottom: 4px;
+  padding-bottom: 24px;
 }
 .chat-panel.is-attached.is-integrated.is-compact .chat-panel-body { display: flow-root; }
 .chat-panel.is-attached.is-integrated.is-compact .chat-panel-footer {
-  grid-template-rows: 110px 48px;
+  grid-template-rows: auto auto;
+  row-gap: 14px;
+}
+.chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) {
+  --chat-frame-rows: 84px min-content auto;
+}
+.chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) > .chat-panel-surface {
+  padding-bottom: 20px;
+}
+.chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) .chat-panel-footer {
+  row-gap: 8px;
+}
+.chat-panel.is-attached.is-integrated.is-compact .assistant-identity h1 {
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+.chat-panel.is-attached.is-integrated.is-compact .assistant-identity p {
+  margin-top: 5px;
+  font-size: 11px;
+  color: #a59182;
 }
 .chat-panel.is-integrated .chat-header {
   color: #5a2b16;
