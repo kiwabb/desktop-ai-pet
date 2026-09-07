@@ -15,6 +15,8 @@
 
 ## Requirements
 
+- R15 (settings reference fidelity): Rebuild the settings content to match the approved V2 HTML's left connection card and right status/guide/security stack, adapted to the current676×665 expanded frame. Use real AgentView state, saved endpoint and model information; preserve existing native save/credential semantics, reminder behavior and return flow. Include useful local help and credential visibility controls only if implemented; omit the reference's simulated test-connection action and false browser-session storage claims. Keep the shared paw, seven footprints, cat/platform and refined compact chat unchanged. Narrow layouts must retain access to every field and action.
+
 - R14 (restrained visual refinement): Refine the compact composition with unified warm-white surfaces, warm dark text, fine borders and consistent low-elevation shadows. Replace four colored action blocks with aligned secondary actions; retain orange for the send action and small accents. Keep the already verified dimensions, existing actions, original cat/badge, footprint inventory and shell/platform geometry. Preserve focus, readable text contrast and reduced-motion support.
 
 - R13 (compact composition refinement): The user rejected solving the empty lower area by only shifting controls downward. Rebalance the integrated compact header, composer and existing four quick actions as a whole; use a two-column action group, consistent insets and softer control styling. Preserve the approved cat, corner badge position/shadow, footprint inventory, shell/platform geometry and all business actions. Verify actual compact layout and navigation before delivery; do not introduce filler text, new actions or fabricated service data.
@@ -38,6 +40,8 @@
 - R6：更新受迁移影响的校验脚本及组件规范，记录接口、样式归属、使用方式和验证证据。不得新增假消息、假模型、假连接或模拟服务来完成验收。
 
 ## Acceptance Criteria
+
+- [x] AC15 / R15: Browser shows the reference-derived connection/status/guide/security layout with true unconfigured state; help, credential visibility, required validation,500px stacking and settings return/reopen pass. Shared badge geometry and seven prints are preserved. Source review confirms native save/credential contracts and QA submit protection; TypeScript/Vite build and local Tauri packaging pass. Native bundled-page loading was verified; actual settings save/model invocation was not exercised. See reference-v2-verification.md.
 
 - [x] AC14 / R14: Unified warm-white action surfaces and left-aligned labels are visible in the browser; text contrast, focus and reduced-motion checks pass. Frame/input dimensions, badge geometry/filter and footprint count remain unchanged. Scoped review and static checks pass; the local bundle was updated and restarted. Open-frame visual evidence remains browser-only; see reference-v2-verification.md.
 

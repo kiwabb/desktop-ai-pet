@@ -233,6 +233,37 @@ height. A nested `minmax(0, 1fr)` inside a `min-content` outer track cannot be
 relied on to reserve that height. Verify the entire height budget and control
 visibility; source-based error analysis is not runtime service verification.
 
+### Settings content and native state
+
+`AssistantSettings` owns settings presentation and local disclosure/credential
+visibility only. Its props are `status`, `baseUrl`, `credential`, `saving`,
+`error`, `onBaseUrlChange`, `onCredentialChange` and `onSubmit`. `ChatPanel`
+continues to own the edited values and native save operation. Editing the URL
+clears the entered credential; reusing a saved endpoint preserves the existing
+empty-credential semantics. Successful save clears the draft credential and
+returns to compact. Never turn a visual test-connection control into a save call.
+Synchronize the editable URL only when `status.endpoint` changes, clearing the
+credential on that endpoint change. Depending on the whole status object would
+overwrite a URL draft during connection/message updates while retaining a
+credential intended for a different server.
+
+Adapt the reference to a normal-flow connection card plus status/guide/security
+cards. Container queries collapse the cards at narrow widths; opened help and
+real errors must remain scrollable. Entering settings must start at its top;
+chat message auto-scroll must not scroll the settings content.
+
+Status details use saved `status.endpoint`, never the unsaved URL draft. Show
+model and device-registration state separately from assistant connectivity.
+`AgentView` does not expose a credential value/presence probe; use configuration
+wording, not a fabricated masked secret. Keep the actual native private-file
+storage explanation, not the reference demo's session-only claim. Reference
+demo adapters, fake connected state and test results are never imported.
+
+When form classes change, update `qa/chat-panel-preview.tsx`'s submit-capture
+guard so browser QA still cannot invoke native settings save. Browser layout,
+HTML validation and local visibility toggles do not establish native save or
+real model operation.
+
 ## Accessibility
 
 - 可交互的非按钮元素用 `role="button"` + `tabIndex={0}` + `onKeyDown`

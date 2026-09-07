@@ -1,4 +1,4 @@
-import { ArrowLeft, ClipboardList, BarChart3, CheckCheck, FileText, Lightbulb, LoaderCircle, Mic, Paperclip, Pin, Save, Send, Settings2, ShieldCheck, Sparkles, UserRound, X } from 'lucide-react'
+import { ArrowLeft, ClipboardList, BarChart3, CheckCheck, FileText, Lightbulb, LoaderCircle, Mic, Paperclip, Pin, Send, Settings2, Sparkles, UserRound, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 
@@ -6,6 +6,7 @@ import { connectionLabel, saveAgentSettings } from '../lib/agent'
 import type { AgentView, ToolCall } from '../lib/agent'
 import { todoToolEffectsFingerprint, todoToolPresentation } from '../lib/todo-tool-presentation'
 import { ChatBubbleFrame } from './ChatBubbleFrame'
+import { AssistantSettings } from './AssistantSettings'
 import type { ChatBubbleDockConfig, ChatBubbleTailConfig } from './ChatBubbleFrame'
 import { TodoList } from './TodoList'
 import { TodoReminders } from './TodoReminders'
@@ -55,6 +56,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   const [settingsError, setSettingsError] = useState<string | null>(null)
   const submittedDraftRef = useRef<{ content: string; requestId: string } | null>(null)
   const messageEndRef = useRef<HTMLDivElement>(null)
+  const messageListRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   // Model tools do not advance the native direct-write revision. Track their
   // confirmed effects separately, keeping streamed message updates inert here.
@@ -69,8 +71,13 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   }, [todoRefreshKey])
 
   useEffect(() => {
+    if (settingsOpen || todosOpen) return
     messageEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, settingsOpen, todosOpen])
+
+  useEffect(() => {
+    if (settingsOpen) messageListRef.current?.scrollTo({ top: 0, behavior: 'instant' })
+  }, [settingsOpen])
 
   useEffect(() => {
     const submitted = submittedDraftRef.current
@@ -117,9 +124,11 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   const configured = status?.configured === true
 
   useEffect(() => {
-    if (status?.endpoint)
+    if (status?.endpoint) {
       setBaseUrl(status.endpoint)
-  }, [status])
+      setApiKey('')
+    }
+  }, [status?.endpoint])
 
   async function submitSettings(event: FormEvent) {
     event.preventDefault()
@@ -276,36 +285,18 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
       {expanded && <div className="chat-content-with-reminders">
       <TodoReminders generation={status?.generation ?? 0} items={status?.reminders ?? []} error={status?.reminder_error ?? null} />
       {todosOpen && <TodoList key={status?.generation ?? 0} generation={status?.generation ?? 0} refreshVersion={todoRefreshVersion} />}
-      {expanded && !todosOpen && <div className={`message-list${settingsOpen ? ' is-settings' : ''}`} aria-live="polite">
+      {expanded && !todosOpen && <div ref={messageListRef} className={`message-list${settingsOpen ? ' is-settings' : ''}`} aria-live="polite">
         {settingsOpen && (
-          <form className="settings-form" onSubmit={submitSettings}>
-            <span className="settings-mark"><ShieldCheck aria-hidden="true" /></span>
-            <div>
-              <h2>连接助手服务</h2>
-              <p>填入助手服务地址和设备凭证。模型由服务端配置，设备凭证保存在本机私有文件中。</p>
-            </div>
-            <label>
-              服务地址
-              <input type="url" value={baseUrl} required placeholder="https://assistant.example.com" onChange={event => { setBaseUrl(event.target.value); setApiKey('') }} />
-            </label>
-            <label>
-              设备凭证
-              <input
-                type="password"
-                value={apiKey}
-                required={!configured || baseUrl.replace(/\/$/, '') !== status?.endpoint}
-                autoComplete="off"
-                placeholder={configured && baseUrl.replace(/\/$/, '') === status?.endpoint ? '留空继续使用当前设备凭证' : '输入该服务签发的设备凭证'}
-                onChange={event => setApiKey(event.target.value)}
-              />
-            </label>
-            <p>{connectionLabel(status)}{status?.model ? ` · ${status.model}` : ''}</p>
-            {settingsError && <div className="settings-error" role="alert">{settingsError}</div>}
-            <button className="save-settings-button" type="submit" disabled={savingSettings}>
-              {savingSettings ? <LoaderCircle className="spinner" aria-hidden="true" /> : <Save aria-hidden="true" />}
-              {savingSettings ? '正在保存' : '保存并连接'}
-            </button>
-          </form>
+          <AssistantSettings
+            status={status}
+            baseUrl={baseUrl}
+            credential={apiKey}
+            saving={savingSettings}
+            error={settingsError}
+            onBaseUrlChange={value => { setBaseUrl(value); setApiKey('') }}
+            onCredentialChange={setApiKey}
+            onSubmit={submitSettings}
+          />
         )}
 
         {!settingsOpen && messages.length === 0 && (

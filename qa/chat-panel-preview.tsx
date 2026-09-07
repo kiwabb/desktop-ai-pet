@@ -15,7 +15,7 @@ function Preview() {
   const [notice, setNotice] = useState<string | null>(null)
 
   function preventUnavailableSave(event: FormEvent) {
-    if (event.target instanceof HTMLFormElement && event.target.classList.contains('settings-form')) {
+    if (event.target instanceof HTMLFormElement && event.target.classList.contains('assistant-connection-card')) {
       event.preventDefault()
       event.stopPropagation()
       setNotice('浏览器预览没有原生配置通道，未保存设置或连接服务。请在桌面应用中配置。')

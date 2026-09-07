@@ -11,6 +11,42 @@
 
 ## Acceptance evidence
 
+### Settings reference content (R15)
+
+Implemented the approved reference's connection card plus status, guide and
+security cards, with a compact footer, in `AssistantSettings`. The shared frame,
+cat/platform, seven settings footprints and existing badge geometry/filter are
+preserved. The status card renders saved endpoint, model configuration and
+device registration separately using actual AgentView fields. There is no
+simulated test-connection action or copied demo state. Native save and return
+flow stay in ChatPanel; new controls only disclose help and toggle visibility
+of the in-memory credential entry.
+
+Browser QA uses the actual unconfigured state: no model, endpoint or credential
+is presented as connected. Full-width columns measured392.25/237.734px with a
+12px gap; list height595px and scrollHeight596px. Entering/reentering settings
+starts at scrollTop0. Screenshot: `output/playwright/reference-v2/settings-implemented.png`.
+The source screenshot `settings-source.png` contains the original HTML demo,
+and is design evidence only. Help disclosure and password/text toggle passed
+without entering any credential. Clicking Save with a required empty credential
+produced native browser validity.valueMissing=true, without a service request.
+At500px content width, cards stack into one500px column without horizontal
+overflow and the security card remains scroll-accessible. Returning to chat
+retains475×278; reopening settings resets scrolling to the top.
+
+Fixed two existing issues found during this work: chat auto-scroll could scroll
+settings to the bottom; and status snapshots could overwrite an edited URL
+while retaining the credential for a different server. Auto-scroll now excludes
+settings/todos, and URL synchronization depends only on endpoint changes, which
+also clear the credential. The latter is source-review evidence, not a fabricated
+status-update demo. The QA submit guard now recognizes the extracted form.
+Final read-only review passed. Existing lightweight checks, TSX syntax checks,
+and one full TypeScript/Vite build passed. Tauri packaged the existing dist;
+the exact project application was restarted and confirmed loading the bundled
+`tauri://localhost` page. New settings visual/interaction evidence remains the
+browser results above. No native connection setting was saved and no model was
+invoked during this work.
+
 ### Restrained surface refinement (R14)
 
 Unified the compact quick actions into warm-white surfaces with left-aligned
