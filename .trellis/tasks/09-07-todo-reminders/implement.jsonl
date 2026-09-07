@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/backend/server-agent.md", "reason": "Authentication persistence and evidence"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Projection generation and direct writes"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Preserve frame and checkbox UI"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Typed IPC contracts"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "New reminder path across layers"}
+{"file": ".trellis/spec/backend/todo-reminders.md", "reason": "Authoritative reminder contract and evidence boundaries"}

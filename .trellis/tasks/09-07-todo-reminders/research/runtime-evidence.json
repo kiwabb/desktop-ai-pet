@@ -1,0 +1,21 @@
+{
+  "evidence": "real migration and reminder HTTP reads/rejection checks",
+  "migration004_applied": true,
+  "existing_fields_preserved": true,
+  "reminders_initially_null": true,
+  "reads_and_rejections_unchanged": true,
+  "todo_count": 1,
+  "due_count": 0,
+  "status_codes": {
+    "unauthorized_due": 403,
+    "unauthorized_set": 403,
+    "naive_time": 400,
+    "missing_field": 400,
+    "missing_todo": 404
+  },
+  "runs_before": 12,
+  "runs_after": 12,
+  "model_called": false,
+  "successful_schedule_verified": false,
+  "native_timed_popup_verified": false
+}

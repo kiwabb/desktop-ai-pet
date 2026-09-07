@@ -1,0 +1,10 @@
+{
+  "evidence": "real_service_restart",
+  "session_id": "d24a882d-334a-467e-a285-681de2a33205",
+  "snapshot_equal": true,
+  "message_count": 2,
+  "tool_count": 1,
+  "todo_count": 0,
+  "desktop_disconnect_ui_observed": false,
+  "create_todo_verified": false
+}

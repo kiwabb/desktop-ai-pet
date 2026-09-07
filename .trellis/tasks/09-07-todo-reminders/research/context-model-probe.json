@@ -1,0 +1,18 @@
+{
+  "evidence": "real configured provider, actual historical model input with revised system prompt",
+  "model": "gpt-5.6-luna",
+  "message_count": 16,
+  "current_user_message": "创建代办",
+  "assistant_text": "",
+  "tool_choices": [
+    {
+      "name": "todo_create",
+      "args": {
+        "title": "15:15喝水"
+      }
+    }
+  ],
+  "tool_execution": false,
+  "database_writes": false,
+  "passed": true
+}

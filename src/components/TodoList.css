@@ -1,0 +1,155 @@
+.chat-panel .todo-list-view {
+  --todo-ink: #493b31;
+  --todo-muted: #79695c;
+  --todo-accent: #9d6e3f;
+  --todo-rule: rgba(135, 104, 77, 0.14);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 20px 28px;
+  background: #fffaf4;
+  scrollbar-color: rgba(102, 83, 70, 0.2) transparent;
+}
+.chat-panel .todo-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  margin: 0 4px 4px 12px;
+  border-bottom: 1px solid var(--todo-rule);
+}
+.chat-panel .todo-list-count {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 4px;
+  margin: 0;
+  color: var(--todo-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.chat-panel .todo-list-count strong { color: var(--todo-ink); font-weight: 650; }
+.chat-panel .todo-count-divider { width: 1px; height: 10px; background: var(--todo-rule); margin: 0 7px; }
+.chat-panel .todo-refresh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 6px;
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--todo-muted);
+  font-size: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.chat-panel .todo-refresh-button svg { width: 14px; height: 14px; }
+.chat-panel .todo-refresh-button:hover:not(:disabled) { color: var(--todo-ink); background: #f5ecdf; }
+.chat-panel .todo-refresh-button:disabled { opacity: 0.5; cursor: default; }
+.chat-panel .todo-list-items { list-style: none; margin: 0; padding: 0; }
+.chat-panel .todo-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  column-gap: 4px;
+  position: relative;
+  padding: 10px 8px 12px 0;
+  border-radius: 10px;
+  transition: background-color 160ms ease;
+}
+.chat-panel .todo-row + .todo-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 48px;
+  right: 8px;
+  height: 1px;
+  background: var(--todo-rule);
+}
+.chat-panel .todo-row:hover,
+.chat-panel .todo-row:focus-within { background: #fbf3e8; }
+.chat-panel .todo-row-content { min-width: 0; padding-top: 10px; }
+.chat-panel .todo-row-content h2 {
+  margin: 0;
+  color: var(--todo-ink);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+.chat-panel .todo-row-content time {
+  display: block;
+  margin-top: 3px;
+  color: var(--todo-muted);
+  font-size: 12px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.chat-panel .todo-row.is-completed h2 { color: var(--todo-muted); text-decoration: line-through; text-decoration-color: #b6a494; text-decoration-thickness: 1px; }
+.chat-panel .todo-complete-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+.chat-panel .todo-complete-control { cursor: pointer; touch-action: manipulation; }
+.chat-panel .todo-check-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  box-sizing: border-box;
+  border: 1.5px solid #95765c;
+  border-radius: 7px;
+  color: var(--todo-accent);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.chat-panel .todo-check-mark svg { width: 14px; height: 14px; stroke-width: 2; }
+.chat-panel .todo-complete-control:hover:not([aria-disabled='true']) .todo-check-mark { border-color: var(--todo-accent); background: #f1dfc7; }
+.chat-panel .todo-complete-control:active:not([aria-disabled='true']) .todo-check-mark { background: #e8c9a1; }
+.chat-panel .todo-complete-control[aria-disabled='true'] { cursor: default; }
+.chat-panel .todo-complete-control[aria-disabled='true']:not([aria-busy='true']) { opacity: 0.45; }
+.chat-panel .todo-complete-control[aria-checked='true'] .todo-check-mark { border-color: #a4784c; background: #a4784c; color: #fffaf4; }
+.chat-panel .todo-complete-control[aria-checked='true']:hover:not([aria-disabled='true']) .todo-check-mark { border-color: #94673e; background: #94673e; }
+.chat-panel .todo-complete-control[aria-checked='true']:active:not([aria-disabled='true']) .todo-check-mark { border-color: #835933; background: #835933; }
+.chat-panel .todo-complete-control:focus-visible,
+.chat-panel .todo-refresh-button:focus-visible { outline: 2px solid var(--todo-accent); outline-offset: 1px; }
+.chat-panel .todo-list-notice { display: flex; flex-direction: column; align-items: center; padding: 34px 16px; text-align: center; color: var(--todo-muted); }
+.chat-panel .todo-list-notice > svg { width: 20px; height: 20px; color: var(--todo-accent); }
+.chat-panel .todo-list-notice p { margin: 10px 0 6px; color: var(--todo-ink); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.chat-panel .todo-list-notice span { font-size: 12px; line-height: 1.7; }
+.chat-panel .todo-completion-error,
+.chat-panel .todo-list-notice.is-error p { color: #a14739; }
+.chat-panel .todo-completion-error { margin: 8px 0 0; font-size: 12px; line-height: 1.6; }
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel .todo-list-view *,
+  .chat-panel .todo-list-view *::before { transition: none; animation: none; }
+}
+.chat-panel .todo-reminder-trigger { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; max-width: 100%; margin: 0; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; color: var(--todo-muted); font-size: 12px; text-align: left; cursor: pointer; }
+.chat-panel .todo-reminder-trigger svg { width: 14px; height: 14px; flex-shrink: 0; }
+.chat-panel .todo-reminder-trigger:hover:not(:disabled) { color: var(--todo-ink); background: #f5ecdf; }
+.chat-panel .todo-reminder-editor { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; padding: 12px; border: 1px solid #deccb7; border-radius: 9px; background: #fffaf4; }
+.chat-panel .todo-reminder-editor label { color: var(--todo-ink); font-size: 12px; }
+.chat-panel .todo-reminder-editor input { min-width: 0; width: 100%; min-height: 44px; padding: 8px; border: 1px solid #ad9478; border-radius: 6px; background: white; color: var(--todo-ink); font: inherit; font-size: 13px; }
+.chat-panel .todo-reminder-editor p { margin: 0; font-size: 11px; line-height: 1.6; color: var(--todo-muted); overflow-wrap: anywhere; }
+.chat-panel .todo-reminder-editor p.todo-completion-error { color: #a14739; }
+.chat-panel .todo-reminder-editor-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.chat-panel .todo-reminder-editor-actions button { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 9px; border: 0; border-radius: 6px; background: #f3e6d4; color: var(--todo-ink); font-size: 12px; cursor: pointer; }
+.chat-panel .todo-reminder-editor-actions button svg { width: 14px; height: 14px; }
+.chat-panel .todo-reminder-editor-actions button:hover:not(:disabled) { background: #e8d4b7; }
+.chat-panel .todo-reminder-trigger:disabled,
+.chat-panel .todo-reminder-editor-actions button:disabled { opacity: 0.5; cursor: default; }
+.chat-panel .todo-reminder-trigger:focus-visible,
+.chat-panel .todo-reminder-editor :focus-visible { outline: 2px solid var(--todo-accent); outline-offset: 2px; }

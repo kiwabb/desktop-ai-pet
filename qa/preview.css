@@ -1,0 +1,24 @@
+/* QA page scaffolding only: never supplies a reset or internal frame styles. */
+html body {
+  margin: 0;
+  min-height: 100vh;
+  height: auto;
+  overflow: auto;
+  background: linear-gradient(160deg, #46536e, #1c2434 70%);
+  font-family: -apple-system, sans-serif;
+}
+body #root { height: auto; overflow: visible; }
+.qa-page { width: max-content; min-width: 540px; max-width: 100%; margin: 0 auto; padding: 28px 24px; }
+.qa-note { max-width: 900px; color: #e1e7ef; font-size: 13px; line-height: 1.6; }
+.qa-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0 28px; color: #fff; }
+.qa-controls label { display: flex; align-items: center; gap: 6px; }
+.qa-controls button, .qa-controls select, .qa-controls a { border: 1px solid #ffffff40; border-radius: 8px; padding: 8px 12px; color: white; background: #29364a; font: inherit; cursor: pointer; }
+.qa-controls input { accent-color: #ffb676; }
+.qa-frame-host { width: 540px; }
+.qa-slot { display: grid; align-content: center; gap: 10px; min-height: 56px; padding: 16px 24px; color: #8a7f78; font-size: 13px; }
+.qa-slot input { font: inherit; min-width: 0; }
+.qa-frame-action { display: grid; place-items: center; width: 32px; height: 32px; padding: 4px; border: 0; border-radius: 50%; background: transparent; color: #8a7f78; cursor: pointer; }
+.qa-frame-action svg { width: 18px; height: 18px; }
+.preview-wrap { position: relative; width: 713px; height: 401px; }
+.preview-wrap.preview-expanded { width: 940px; height: 760px; }
+.preview-wrap .desktop-pet-app { position: absolute; inset: 0; }

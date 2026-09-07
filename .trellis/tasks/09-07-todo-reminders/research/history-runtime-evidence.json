@@ -1,0 +1,66 @@
+[
+  {
+    "step": 1,
+    "source": "loop",
+    "message_count": 17,
+    "tail": [
+      {
+        "role": "human",
+        "content": "15.15提醒我去喝水"
+      },
+      {
+        "role": "ai",
+        "content": "暂不支持设置提醒。需要的话，我可以帮你创建待办“15:15喝水”。"
+      },
+      {
+        "role": "human",
+        "content": "创建代办"
+      },
+      {
+        "role": "ai",
+        "content": "请告诉我需要创建的待办事项内容。"
+      }
+    ],
+    "next_nodes": [
+      "steps",
+      "messages"
+    ]
+  },
+  {
+    "step": 0,
+    "source": "loop",
+    "message_count": 16,
+    "tail": [
+      {
+        "role": "ai",
+        "content": "目前只能创建和查询待办，暂不支持完成或删除待办。"
+      },
+      {
+        "role": "human",
+        "content": "15.15提醒我去喝水"
+      },
+      {
+        "role": "ai",
+        "content": "暂不支持设置提醒。需要的话，我可以帮你创建待办“15:15喝水”。"
+      },
+      {
+        "role": "human",
+        "content": "创建代办"
+      }
+    ],
+    "next_nodes": [
+      "steps",
+      "branch:to:model",
+      "messages"
+    ]
+  },
+  {
+    "step": -1,
+    "source": "input",
+    "message_count": 0,
+    "tail": [],
+    "next_nodes": [
+      "__start__"
+    ]
+  }
+]

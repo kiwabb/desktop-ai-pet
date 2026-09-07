@@ -1,0 +1,6 @@
+{"file":".trellis/spec/frontend/type-safety.md","reason":"Tauri IPC and UI boundary decoding conventions"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"Preserve UI state ownership and distinguish new server state from current in-memory chat"}
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"Protect concurrent chat bubble work and existing window behavior"}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"Evidence levels and no fake replies or frontend test scaffold"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Central protocol owner, event identity and snapshot consistency"}
+{"file":".trellis/tasks/09-07-server-agent-todo-mvp/research/current-state.md","reason":"Verified call chain, environment constraints and unchanged UI work"}

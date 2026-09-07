@@ -1,0 +1,15 @@
+{
+  "evidence": "real_direct_completion_rejection_boundaries",
+  "status_codes": {
+    "unauthorized": 403,
+    "malformed": 400,
+    "missing": 404
+  },
+  "todos_unchanged": true,
+  "todo_count": 1,
+  "runs_before": 12,
+  "runs_after": 12,
+  "model_called": false,
+  "successful_completion_verified": false,
+  "desktop_click_verified": false
+}

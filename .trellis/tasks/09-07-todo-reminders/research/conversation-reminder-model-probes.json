@@ -1,0 +1,55 @@
+{
+  "evidence": "real configured provider tool-selection checks; no tool executor",
+  "model": "gpt-5.6-luna",
+  "cases": [
+    {
+      "case": "historical_time_replay",
+      "clock": "2026-09-07T07:12:05.656864+00:00",
+      "input_source": "actual run13 checkpoint history",
+      "clock_source": "actual original request timestamp replay",
+      "message_count": 14,
+      "text": "",
+      "tool_choices": [
+        {
+          "name": "todo_create",
+          "args": {
+            "title": "去喝水",
+            "remind_at": "2026-09-07T15:15:00+08:00"
+          }
+        }
+      ],
+      "passed": true,
+      "tool_execution": false
+    },
+    {
+      "case": "past_time_now",
+      "clock": "2026-09-07T15:27:20.987029+08:00",
+      "input_source": "actual run13 checkpoint history",
+      "clock_source": "live current clock",
+      "message_count": 14,
+      "text": "",
+      "tool_choices": [
+        {
+          "name": "todo_create",
+          "args": {
+            "title": "去喝水",
+            "remind_at": "2026-09-07T15:15:00+08:00"
+          }
+        }
+      ],
+      "passed": false,
+      "tool_execution": false
+    },
+    {
+      "case": "past_time_after_context_fix",
+      "clock": "2026-09-07T15:29:32.660438+08:00",
+      "clock_source": "live current clock",
+      "text": "15:15 已经过去了。请提供一个未来的具体提醒时间（例如“今天16:00提醒我去喝水”）。",
+      "tool_choices": [],
+      "passed": true,
+      "tool_execution": false
+    }
+  ],
+  "database_writes": false,
+  "native_popup_verified": false
+}

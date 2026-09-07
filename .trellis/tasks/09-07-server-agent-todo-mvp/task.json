@@ -1,0 +1,48 @@
+{
+  "id": "server-agent-todo-mvp",
+  "name": "server-agent-todo-mvp",
+  "title": "桌面智能体架构方向与最小待办闭环",
+  "description": "记录已确认的服务端智能体与设备节点架构，规划远程聊天创建和查询待办的最小实现",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "zhoujiaangyao",
+  "assignee": "zhoujiaangyao",
+  "createdAt": "2026-09-07",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "09-07-agent-gateway-foundation",
+    "09-07-agent-runtime-todos",
+    "09-07-agent-desktop-client"
+  ],
+  "parent": null,
+  "relatedFiles": [
+    "docs/SERVER_AGENT_ARCHITECTURE.md",
+    "docs/ARCHITECTURE.md",
+    "src/App.tsx",
+    "src/components/ChatPanel.tsx",
+    "src-tauri/src/lib.rs",
+    "src/lib/agent.ts",
+    "src-tauri/src/agent_client.rs",
+    "server/app/main.py",
+    "server/app/agent_service.py",
+    "server/app/todo_tools.py"
+  ],
+  "notes": "三个子任务代码已落地；服务端只读、幂等与重连检查通过，创建与查询流程已由用户手动验收通过。完整桌面流式/恢复观察仍待补齐。",
+  "meta": {
+    "architecture_decisions_confirmed": true,
+    "mvp_plan_review": "approved",
+    "implementation_started": true,
+    "planning_checks": "Markdown links and fences, code anchors, requirement mappings, JSON context paths checked",
+    "parallel_split_approved": true,
+    "user_confirmed_todo_create_query": true
+  }
+}

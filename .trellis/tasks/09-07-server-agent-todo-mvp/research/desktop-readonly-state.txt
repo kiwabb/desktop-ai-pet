@@ -1,0 +1,32 @@
+The following is a diff from the previous accessibility tree for Window: "橘伴" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+~			12 container
+~				13 container 和橘伴聊天
++					14 container
++						15 heading 和橘伴聊天, Value: 1
++							16 text 和橘伴聊天
++						17 text 助手已连接
++						18 button 配置助手服务
++						19 image 桌宠已置顶
++						20 button 收起对话
++					21 container
++						22 text 你
++						23 text 请调用查询待办工具，告诉我目前有哪些待办。只查询，不创建或修改任何记录。
++						24 text 11:37
++						25 container 已发送
++							26 image
++							27 image
++						28 text 橘伴
++						29 text 目前没有待办。
++						30 container
++							31 text 查询待办  ·  已完成 当前没有待办事项。
++						32 text 11:37
++					33 container
++						34 text 发送给橘伴
++						35 text entry area (settable) 发送给橘伴, Placeholder: 说点什么…
++							36 text 说点什么…
++						37 button (disabled) 添加附件，暂未开放, Help: 附件功能即将支持
++						38 button (disabled) 语音输入，暂未开放, Help: 语音输入即将支持
++						39 button (disabled) 发送消息
++				40 container 白猫助手，陪着你
++					41 button 点击白猫打开对话, Help: 点击打开对话
+The focused UI element is 2 HTML content Description: 橘伴, URL: 127.0.0.1:1421/

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>聊天气泡预览</title>
+    <style>
+      body { margin: 0; min-height: 100vh; background: linear-gradient(160deg, #46536e, #1c2434 70%) !important; display: grid; place-items: center; font-family: -apple-system, sans-serif; }
+      .preview-wrap { position: relative; width: 713px; height: 401px; }
+      .preview-wrap.preview-expanded { width: 940px; height: 760px; }
+      .preview-wrap .desktop-pet-app { position: absolute; inset: 0; }
+      nav { position: absolute; bottom: -52px; left: 50%; display: flex; gap: 8px; transform: translateX(-50%); }
+      nav button { border: 1px solid #ffffff28; border-radius: 999px; padding: 8px 14px; color: white; background: #ffffff12; cursor: pointer; }
+      nav button:hover { background: #ffffff20; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/qa/chat-preview.tsx"></script>
+  </body>
+</html>

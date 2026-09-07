@@ -1,0 +1,11 @@
+{
+  "evidence": "real_service_boundary_checks",
+  "model_called": false,
+  "created_todos": false,
+  "invalid_http_token_rejected": 403,
+  "invalid_control_token_rejected": true,
+  "invalid_node_token_rejected": true,
+  "unsupported_device_capability_rejected": true,
+  "existing_desktop_lease_present": true,
+  "rejected_registration_preserved_existing_lease": true
+}

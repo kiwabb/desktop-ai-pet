@@ -1,0 +1,9 @@
+{
+  "source": "http://127.0.0.1:1421/src/components/TodoList.css",
+  "checks": {
+    "todo-complete-control": true,
+    "todo-check-mark": true,
+    "--todo-ink": true
+  },
+  "evidence": "real Vite response; does not establish native visual acceptance"
+}

@@ -1,0 +1,19 @@
+{
+  "evidence": "real_model_disconnect_during_run",
+  "created_todos": false,
+  "desktop_ui_verified": false,
+  "disconnected_after": [
+    "run.accepted",
+    "run.started"
+  ],
+  "session_id": "0b62bba7-45ff-4f88-a74e-f60c777b4da8",
+  "run_id": "4315072e-5753-4b78-8855-e5665f1dcf49",
+  "request_id": "9a903890-5da4-4099-a90f-28cc93f71037",
+  "completed_without_control_connection": true,
+  "successful_tool": "todo.list",
+  "reconnected_full_snapshot_equal": true,
+  "duplicate_submit_reused_run": true,
+  "run_count": 1,
+  "initial_todo_count": 0,
+  "final_todo_count": 0
+}

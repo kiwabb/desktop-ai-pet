@@ -1,0 +1,14 @@
+{
+  "evidence": "real_migration_and_direct_http_list",
+  "existing_items_preserved": true,
+  "todo_count": 1,
+  "statuses": [
+    "pending"
+  ],
+  "model_called": false,
+  "runs_before": 11,
+  "runs_after": 11,
+  "completed_state_constraint_present": true,
+  "tool_registered": "todo.complete",
+  "desktop_ui_verified": false
+}

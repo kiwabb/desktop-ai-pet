@@ -1,0 +1,92 @@
+# Quality Guidelines
+
+> Code quality standards for frontend development.
+
+---
+
+## Overview
+
+没有单元测试框架、没有 ESLint 配置。质量门槛是：**TypeScript 编译 +
+资源校验脚本 + 真实运行验收**。`docs/ARCHITECTURE.md` 的「验收边界」一节
+定义了每级验证能证明什么、不能证明什么——交付前按它对齐证据等级，
+不要把编译通过说成"功能可用"。
+
+---
+
+## Forbidden Patterns
+
+- **假数据 / 假回复**：接口失败就显示错误；未配置 AI 服务就禁用发送。
+  不生成模拟模型列表、模拟聊天回复（README 与 ARCHITECTURE 的硬性约束）
+- **emoji 当图标**：统一 `lucide-react`（用户全局规范，见 AGENTS.md 之外
+  的项目惯例：`ChatPanel.tsx:1` 的 import）
+- **API Key 进浏览器存储 / 日志**：只走 Rust 层本地文件（`0600`）
+- **旧的渲染依赖**：骨骼动画 / Atlas / 3D 运行时禁止进入运行边界，
+  `pnpm pet2d:validate` 会检查
+- 不要在 UI 文案里用英文——面向用户的中文文案（`petStateLabel`、
+  按钮 aria-label、占位符都是中文）
+
+## Required Patterns
+
+- 每个 `useEffect` 配完整 cleanup（监听器 unlisten、timer clear）
+- 异步回调里的 `invoke` 用 `void` 前缀标记有意不等待（`void invoke(...)`）
+- 错误信息进 state 显示给用户（`role="alert"`），同时 `console.error` 留上下文，
+  文案用中文：如 `console.error('重置桌宠位置失败', cause)`
+- 修改宠物动画资源后必须跑 `pnpm pet2d:validate`（校验三帧对齐）
+
+## Testing Requirements
+
+- 无自动化测试，不要新增测试脚手架（除非用户明确要求）
+- 验证命令（`README.md`）：
+
+  ```bash
+  pnpm pet2d:validate   # 图片尺寸 / 渲染入口 / 禁用依赖检查
+  pnpm build            # tsc -b && vite build，类型错误在此暴露
+  cargo check --manifest-path src-tauri/Cargo.toml   # Rust 侧
+  ```
+
+- 涉及桌面窗口行为的改动（拖拽、resize、置顶、跨 Space），编译通过**不算**
+  验证完成——需要 `pnpm tauri dev` 实际运行确认，并在交付说明里写明
+  验证到哪一级
+
+### Reusable frame regression checks
+
+- Verify the frame in an entry that does **not** import application CSS or
+  ChatPanel. Removing host ancestor classes alone does not establish isolation.
+- Measure compact header bounds against the body: a 48px grid row must not
+  contain a 58px content-box header. Also test a normal-flow frame inside a page
+  that imports application CSS to catch leaked desktop positioning.
+- Check both appearances with reduced motion enabled, and check a committed
+  `visible=true -> false -> true` sequence with `animateEntrance=true`: the
+  animation must restart after reopening and be disabled under reduced motion.
+- QA React callers must be included in TypeScript validation when public props
+  change. Use neutral frame slots or the actual unavailable/unconfigured state;
+  do not invent a connected AgentView or a successful send response.
+- Browser geometry and animation checks prove only browser behavior. Keep native
+  resize/focus and actual agent/model verification as separate evidence.
+- Compare paw bounds relative to the frame outer bounds across all four modes
+  and the settings surface; equal CSS literals alone do not prove equal rendered
+  placement. Disable entrance motion or wait for it to settle before measuring.
+  Inspect the corner-overlap screenshot and check title clearance/clipping.
+- Compare same-scale screenshots of the entire top-left corner, including the
+  arc/background under the badge. Identical badge bounds do not establish
+  identical placement relative to different 20/28/72px corner shapes. Include
+  short headers and painted child backgrounds in this comparison.
+- Also inspect the legal empty-body/no-footer case: a tall QA specimen can hide
+  radius normalization of a short frame. New clipping must not conceal existing
+  compact error or footer controls; check the header/body/footer height budget.
+- Tail configuration checks must inspect the SVG path bounds as well as its
+  viewport. Include width-only100px with default compact30px height and confirm
+  the path still overlaps the frame edge; test explicit right0 and mode changes.
+- For tail visual acceptance, inspect the frame/tail seam on both settings and
+  chat surfaces. Check painted outline endpoints, stroke weight/color and shadow
+  continuity; changing its position alone does not resolve a pasted-on shape.
+
+## Code Review Checklist
+
+- [ ] `pnpm build` 通过（类型零错误）
+- [ ] 新增 effect 有 cleanup；timer 用 `window.setTimeout` 且 id 存 ref
+- [ ] 新增 Tauri command 在 `src/lib/agent.ts` 有类型化包装
+- [ ] UI 无 emoji、无英文文案、图标有 `aria-hidden`
+- [ ] 无假数据路径：失败走错误提示
+- [ ] 改了 `public/pets/` 资源 → 跑过 `pnpm pet2d:validate`
+- [ ] 跨窗口状态变更 → 确认另一个窗口的 listen 端同步更新

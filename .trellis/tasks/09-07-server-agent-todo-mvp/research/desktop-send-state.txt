@@ -1,0 +1,5 @@
+The following is a diff from the previous accessibility tree for Window: "橘伴" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 14-23, 25-35
+~			12 container 白猫助手，思考中
+~				13 button 点击白猫打开对话, Help: 点击打开对话
+The focused UI element is 0 window 橘伴, Secondary Actions: Raise

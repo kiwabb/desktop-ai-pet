@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Current component conventions; design documents scoped stylesheet exception"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Preserve native resize timing and current state ownership"}

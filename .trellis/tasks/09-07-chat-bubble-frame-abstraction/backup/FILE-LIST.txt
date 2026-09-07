@@ -1,0 +1,9 @@
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/tools/verify-component-compact.mjs
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/tools/verify-closed-reference.mjs
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/qa/chat-preview.tsx
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/qa/chat-preview.html
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/FILE-LIST.txt
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/src/App.tsx
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/src/styles.css
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/src/components/ChatBubbleFrame.tsx
+.trellis/tasks/09-07-chat-bubble-frame-abstraction/backup/src/components/ChatPanel.tsx

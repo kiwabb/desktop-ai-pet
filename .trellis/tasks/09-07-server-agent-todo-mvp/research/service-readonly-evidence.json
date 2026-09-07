@@ -1,0 +1,53 @@
+{
+  "evidence": "real_service_and_real_model",
+  "created_demo_data": false,
+  "health": {
+    "status": "ok",
+    "database": true,
+    "redis": true,
+    "model_configured": true
+  },
+  "status": {
+    "account_id": "d6e897b2-b2be-47c3-bfe5-29206a943613",
+    "device_id": "90c6ef39-fc2e-48e4-86e5-f660f9bf6375",
+    "model": "gpt-5.6-luna",
+    "model_configured": true
+  },
+  "unauthenticated_rejected": true,
+  "initial_todo_count": 0,
+  "session_id": "d946f32f-6ea9-430a-8f78-d6753637893a",
+  "run_id": "0935db1e-6796-4c41-a501-93a779e4b89e",
+  "request_id": "946ee994-93c5-48a2-be4e-8603bd1393af",
+  "event_types": [
+    "run.accepted",
+    "run.started",
+    "tool.started",
+    "tool.finished",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "run.completed"
+  ],
+  "stream_delta_count": 5,
+  "tool_calls": [
+    {
+      "id": "9fee0bc6-dbed-504d-aa21-0bf6c26d2fd7",
+      "run_id": "0935db1e-6796-4c41-a501-93a779e4b89e",
+      "name": "todo.list",
+      "status": "completed",
+      "result": {
+        "items": []
+      },
+      "error": null
+    }
+  ],
+  "final_todo_count": 0,
+  "duplicate_submission_reused_run": true,
+  "reconnect_snapshot_matches": true,
+  "ordered_events_verified": true,
+  "completed_expected_tool": "todo.list",
+  "desktop_ui_verified": false,
+  "create_todo_verified": false
+}

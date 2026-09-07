@@ -1,0 +1,23 @@
+{
+  "evidence": "real registry and unchanged persisted records after API restart",
+  "registry": [
+    {
+      "name": "todo.create",
+      "version": "2",
+      "handler": "todo_create"
+    },
+    {
+      "name": "todo.reminder.set",
+      "version": "1",
+      "handler": "todo_reminder_set"
+    }
+  ],
+  "todos_unchanged": true,
+  "todo_count": 1,
+  "runs_before": 14,
+  "runs_after": 14,
+  "due_count": 0,
+  "default_timezone": "Asia/Shanghai",
+  "actual_conversation_write_verified": false,
+  "native_popup_verified": false
+}

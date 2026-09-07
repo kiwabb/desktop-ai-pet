@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/server-agent.md", "reason": "Authentication, durable tools, event ordering and evidence contract"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Native projection and persistent run state"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "Typed tool results and IPC boundaries"}
+{"file": ".trellis/tasks/09-07-todo-complete/research/todo-visual-direction.md", "reason": "User-rejected prior styling; researched visual direction and preservation constraints"}

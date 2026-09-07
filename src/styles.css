@@ -1,0 +1,1003 @@
+:root {
+  font-family: Nunito, ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #431407;
+  background: transparent;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --orange: #f97316;
+  --orange-deep: #9a3412;
+  --cream: #fff7ed;
+  --cream-strong: #ffedd5;
+  --border: #fed7aa;
+  --blue: #0f7d91;
+  --ink: #431407;
+  --muted: #7c4a37;
+  --danger: #b42318;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+button,
+textarea { font: inherit; }
+
+button { cursor: pointer; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+button:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(155, 94, 58, 0.28);
+  outline-offset: 2px;
+}
+
+.desktop-pet-app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  user-select: none;
+}
+
+.pet-stage {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 176px;
+  height: 208px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.pet-shell:not(.pet-chat-closed) .pet-stage { z-index: 3; }
+
+/* Host-side desktop anchoring for the attached bubble: position, size and
+ * stacking only. Everything visual (skin, radii, decorations, motion) lives
+ * with the component in src/components/ChatBubbleFrame.css. */
+.pet-shell .chat-panel.is-attached {
+  position: absolute;
+  top: 10px;
+  bottom: 152px;
+  z-index: 4;
+  right: 154px;
+  left: 8px;
+}
+
+.pet-stage:active { cursor: grabbing; }
+
+.pet-character-hitbox {
+  position: absolute;
+  inset: 26px 0 18px;
+  z-index: 1;
+  cursor: grab;
+}
+
+.pet-character-hitbox:active { cursor: grabbing; }
+
+.pet-shell.pet-chat-closed .pet-stage {
+  inset: 0;
+  width: 232px;
+  height: 380.9px;
+  pointer-events: none;
+}
+
+.closed-reference-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 232px;
+  height: 380.9px;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.pet-shell.pet-chat-closed .pet-character-hitbox {
+  top: 0;
+  right: 5px;
+  bottom: 50px;
+  left: 14px;
+  pointer-events: auto;
+}
+
+.pet-preview,
+.pet-render-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 88%;
+  pointer-events: none;
+}
+
+.pet-reply-bubble {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  display: -webkit-box;
+  width: 198px;
+  max-height: 98px;
+  padding: 10px 13px;
+  overflow: hidden;
+  color: var(--ink);
+  background: rgba(255, 250, 245, 0.97);
+  border: 1px solid var(--border);
+  border-radius: 15px 15px 4px 15px;
+  box-shadow: 0 10px 26px rgba(67, 20, 7, 0.2);
+  font-size: 12px;
+  line-height: 1.45;
+  user-select: text;
+  pointer-events: auto;
+  transform-origin: 100% 100%;
+  animation: reply-bubble-in 240ms cubic-bezier(0.2, 0.9, 0.3, 1.18) both;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.pet-preview {
+  object-fit: contain;
+  filter: drop-shadow(0 10px 9px rgba(67, 20, 7, 0.2));
+  animation: pet-breathe 3.2s ease-in-out infinite;
+  transition: opacity 180ms ease-out;
+}
+
+.pet-fallback.is-hidden { visibility: hidden; opacity: 0 !important; animation: none !important; }
+.pet-render-stage { opacity: 0; filter: drop-shadow(0 9px 8px rgba(67, 20, 7, 0.22)); transition: opacity 180ms ease-out; }
+.pet-render-stage.is-ready { opacity: 1; }
+.pet-3d-canvas { display: block; width: 100%; height: 100%; background: transparent; pointer-events: none; }
+
+.pet-2d-character {
+  --drag-tilt: 0deg;
+  --look-x: 0px;
+  --look-y: 0px;
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 88%;
+  animation: pet-breathe 3.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.pet-2d-character.is-dragging {
+  animation: none;
+  transform: translateY(-4px) rotate(var(--drag-tilt)) scale(1.015, 0.98);
+}
+
+.pet-2d-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 1;
+  transform: translate(var(--look-x), var(--look-y));
+  transition: transform 160ms ease-out;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pet-2d-talk,
+.pet-2d-blink { opacity: 0; }
+.pet-2d-talk { z-index: 1; }
+.pet-2d-blink { z-index: 2; }
+.pet-2d-character.is-blinking .pet-2d-blink,
+.pet-2d-character[data-state='sleeping'] .pet-2d-blink { opacity: 1; }
+.pet-2d-character.is-blinking .pet-2d-idle,
+.pet-2d-character.is-blinking .pet-2d-talk,
+.pet-2d-character[data-state='sleeping'] .pet-2d-idle,
+.pet-2d-character[data-state='sleeping'] .pet-2d-talk { opacity: 0; }
+.pet-2d-character[data-state='talking'] .pet-2d-talk { animation: pet-mouth-swap 360ms steps(1, end) infinite; }
+.pet-2d-character[data-state='thinking'] { animation: pet-think 1.15s ease-in-out infinite; }
+.pet-2d-character[data-state='happy'] { animation: pet-happy 0.5s ease-out 2; }
+.pet-2d-character[data-state='curious'] { animation: pet-curious 1.3s ease-in-out 1; }
+.pet-2d-character[data-state='sleeping'] { animation: pet-sleep 2.4s ease-in-out infinite; }
+
+.pet-state-thinking .pet-preview { animation: pet-think 1.15s ease-in-out infinite; }
+.pet-state-talking .pet-preview { animation: pet-talk 0.42s ease-in-out infinite alternate; }
+.pet-state-happy .pet-preview { animation: pet-happy 0.5s ease-out 2; }
+.pet-state-curious .pet-preview { animation: pet-curious 1.3s ease-in-out 1; }
+.pet-state-sleeping .pet-preview { animation: pet-sleep 2.4s ease-in-out infinite; }
+.pet-state-error .pet-preview,
+.pet-state-error .pet-render-stage { filter: grayscale(0.2) drop-shadow(0 10px 9px rgba(67, 20, 7, 0.18)); }
+
+.pet-status {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 5px 10px;
+  color: var(--ink);
+  background: rgba(255, 247, 237, 0.94);
+  border: 1px solid rgba(254, 215, 170, 0.94);
+  border-radius: 999px;
+  box-shadow: 0 5px 14px rgba(67, 20, 7, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+}
+
+.pet-status-copy { display: grid; line-height: 1.08; }
+.pet-status-copy strong { font-size: 12px; font-weight: 800; }
+.pet-status-copy small { margin-top: 3px; color: #8f7b70; font-size: 8px; font-weight: 620; }
+
+.pet-state-thinking .status-dot,
+.pet-state-talking .status-dot { background: var(--blue); box-shadow: 0 0 0 3px rgba(15, 125, 145, 0.14); }
+.pet-state-error .status-dot { background: var(--danger); box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12); }
+.pet-state-sleeping .status-dot { background: #a78bfa; box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.14); }
+
+.preview-label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  color: rgba(67, 20, 7, 0.7);
+  font-size: 9px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.icon-button,
+.send-button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+}
+
+/* The bubble frame (.chat-panel) shell — grid structure, skin, header, slots,
+ * badge/tail/paw-trail, entrance motion — is owned by the component itself in
+ * src/components/ChatBubbleFrame.css. Only host geometry stays here. */
+.chat-window-app .chat-panel {
+  position: absolute;
+  inset: 10px;
+}
+
+.chat-window-app.chat-compact .chat-panel { inset: 8px; }
+
+.presence-mark {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(181, 111, 70, 0.1);
+  border: 1px solid rgba(181, 111, 70, 0.14);
+  border-radius: 50%;
+}
+.presence-mark span { width: 8px; height: 8px; background: #45a76f; border-radius: 50%; box-shadow: 0 0 0 3px rgba(69, 167, 111, 0.12); }
+
+.icon-button {
+  color: #8a7f78;
+  background: transparent;
+  border-radius: 50%;
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+.icon-button:hover { color: #3b342f; background: rgba(98, 79, 67, 0.08); }
+.icon-button svg { width: 18px; height: 18px; }
+
+.chat-panel.is-compact .presence-mark { width: 24px; height: 24px; }
+.chat-panel.is-compact .presence-mark span { width: 7px; height: 7px; }
+
+.message-list {
+  min-height: 0;
+  padding: 14px 16px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(245, 242, 238, 0.5);
+  scrollbar-color: rgba(102, 83, 70, 0.2) transparent;
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 100%;
+  padding: 34px 30px;
+  text-align: center;
+}
+.empty-eyebrow { color: #a26342; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; }
+.empty-state h2 { margin: 10px 0 7px; color: #2f2925; font-size: 20px; font-weight: 680; letter-spacing: -0.025em; }
+.empty-state p { max-width: 268px; margin: 0; color: #7e746d; font-size: 13px; line-height: 1.65; }
+
+.configure-button,
+.save-settings-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 14px;
+  font-weight: 760;
+}
+.configure-button { margin-top: 18px; padding: 0 18px; color: white; background: #9a5d3b; box-shadow: 0 6px 14px rgba(118, 67, 39, 0.14); }
+
+.settings-form {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(108, 88, 74, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(55, 43, 35, 0.08);
+}
+.settings-mark { display: grid; place-items: center; width: 44px; height: 44px; color: #925938; background: #f3e8e0; border-radius: 14px; }
+.settings-mark svg { width: 21px; height: 21px; }
+.settings-form h2 { margin: 2px 0 4px; color: #332c28; font-size: 17px; }
+.settings-form p { margin: 0; color: #82776f; font-size: 10px; line-height: 1.5; }
+.settings-form > label,
+.settings-field { grid-column: 1 / -1; display: grid; gap: 6px; color: #766a62; font-size: 11px; font-weight: 750; }
+.field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.field-label-row label { color: #766a62; font-size: 11px; font-weight: 750; }
+.load-models-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 10px;
+  color: #8c5739;
+  background: #f4e9e2;
+  border: 0;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 760;
+}
+.load-models-button:disabled { cursor: not-allowed; opacity: 0.45; }
+.load-models-button svg { width: 13px; height: 13px; }
+.model-count { color: #8c5739; font-size: 9px; font-weight: 700; }
+.model-input-row { position: relative; }
+.model-input-row input { padding-right: 46px; }
+.toggle-models-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: #8c5739;
+  background: #f4e9e2;
+  border: 0;
+  border-radius: 10px;
+}
+.toggle-models-button svg { width: 17px; height: 17px; transition: transform 160ms ease-out; }
+.toggle-models-button svg.is-open { transform: rotate(180deg); }
+.model-options {
+  display: grid;
+  gap: 3px;
+  max-height: 190px;
+  padding: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: white;
+  border: 1px solid rgba(108, 88, 74, 0.14);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(55, 43, 35, 0.1);
+}
+.model-options button {
+  min-height: 34px;
+  padding: 7px 10px;
+  overflow: hidden;
+  color: #332c28;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+.model-options button:hover,
+.model-options button.is-selected { color: #815033; background: #f5ebe5; }
+.settings-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: #332c28;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(108, 88, 74, 0.18);
+  border-radius: 12px;
+  outline: none;
+}
+.settings-form input:focus { border-color: #a56a48; box-shadow: 0 0 0 3px rgba(165, 106, 72, 0.12); }
+.settings-error { grid-column: 1 / -1; padding: 9px 11px; color: var(--danger); background: #fff1f0; border-radius: 10px; font-size: 11px; }
+.save-settings-button { grid-column: 1 / -1; width: 100%; color: white; background: #955a39; }
+.save-settings-button:disabled { cursor: wait; opacity: 0.65; }
+.save-settings-button svg { width: 17px; height: 17px; }
+
+.message { display: grid; gap: 4px; margin-bottom: 13px; }
+.message-user { justify-items: end; }
+.message-author { color: #91867e; font-size: 9px; font-weight: 680; }
+.message-bubble {
+  max-width: 84%;
+  padding: 10px 13px;
+  color: #332d29;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(108, 88, 74, 0.09);
+  border-radius: 17px 17px 17px 6px;
+  box-shadow: 0 3px 10px rgba(55, 43, 35, 0.05);
+  font-size: 13px;
+  line-height: 1.58;
+  white-space: pre-wrap;
+  user-select: text;
+}
+.message-user .message-bubble { color: white; background: #6f5141; border-color: transparent; border-radius: 17px 17px 6px; box-shadow: 0 5px 14px rgba(78, 54, 42, 0.12); }
+
+.inline-error {
+  margin: 8px 14px 0;
+  padding: 9px 11px;
+  color: var(--danger);
+  background: #fff1f0;
+  border: 1px solid #fecaca;
+  border-radius: 11px;
+  font-size: 12px;
+}
+
+.inline-error.compact-error {
+  margin: 5px 10px 0;
+  padding: 5px 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer { padding: 10px 12px 12px; background: rgba(250, 248, 245, 0.86); }
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 4px 4px 4px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(108, 88, 74, 0.13);
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(55, 43, 35, 0.08);
+  transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+.composer-row:focus-within { border-color: rgba(155, 94, 58, 0.48); box-shadow: 0 0 0 3px rgba(155, 94, 58, 0.1), 0 8px 24px rgba(55, 43, 35, 0.08); }
+.composer textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 96px;
+  padding: 12px 4px 10px 0;
+  resize: none;
+  color: #302a26;
+  background: transparent;
+  border: 0;
+  outline: none;
+  line-height: 1.4;
+}
+.composer textarea:focus-visible { outline: none; }
+.composer textarea:disabled { cursor: not-allowed; opacity: 0.55; }
+.composer textarea::placeholder { color: #a59b94; }
+.send-button {
+  width: 44px;
+  height: 44px;
+  color: white;
+  background: #955a39;
+  border-radius: 14px;
+  box-shadow: 0 5px 12px rgba(115, 68, 42, 0.18);
+  transition: transform 160ms ease-out, opacity 160ms ease-out, background 160ms ease-out;
+}
+.send-button:hover:not(:disabled) { background: #824c2f; }
+.send-button:active:not(:disabled) { transform: scale(0.96); }
+.send-button:disabled { cursor: not-allowed; opacity: 0.3; box-shadow: none; }
+.send-button svg { width: 18px; height: 18px; }
+
+.chat-panel.is-compact .composer {
+  align-self: stretch;
+  padding: 8px 9px 9px;
+  background: rgba(250, 248, 245, 0.7);
+}
+.chat-panel.is-compact .composer-row {
+  padding-left: 11px;
+  border-radius: 16px;
+  box-shadow: 0 5px 16px rgba(55, 43, 35, 0.07);
+}
+.chat-panel.is-compact .composer textarea {
+  min-height: 42px;
+  padding-top: 11px;
+  padding-bottom: 9px;
+  font-size: 13px;
+}
+.chat-panel.is-compact .send-button {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 13px;
+}
+
+/* Compact attached panel: measured from the 1672×941 reference master.
+ * Host geometry lives in the pet-shell rules further down; the shell interior
+ * is owned by src/components/ChatBubbleFrame.css. */
+
+.send-button .send-plane { width: 32px; height: 32px; }
+.send-button .send-sparkles {
+  position: absolute;
+  top: -16px;
+  left: -24px;
+  width: 30px;
+  height: 30px;
+  color: #ffc98f;
+  filter: drop-shadow(0 2px 4px rgba(230, 126, 49, 0.18));
+}
+
+.chat-panel.is-attached.is-expanded .message { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
+.chat-panel.is-attached.is-expanded .message-user { justify-content: flex-end; }
+.chat-panel.is-attached.is-expanded .message-avatar { width: 54px; height: 54px; }
+.message-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #ffe1c4, #fff8ef);
+  border: 1px solid rgba(244, 168, 111, 0.42);
+  border-radius: 50%;
+}
+.assistant-message-avatar img { width: 50px; height: 50px; object-fit: contain; transform: translateY(3px); }
+.user-message-avatar { color: #ec8d51; background: #fff8f1; }
+.user-message-avatar svg { width: 22px; height: 22px; }
+.message-content { display: grid; min-width: 0; max-width: calc(100% - 54px); }
+.message-user .message-content { justify-items: end; }
+.chat-panel.is-attached.is-expanded .message-author { color: #d26d31; font-size: 10px; font-weight: 780; }
+.chat-panel.is-attached.is-expanded .message-bubble { max-width: 100%; margin-top: 5px; padding: 12px 15px; color: #51433a; background: rgba(255, 255, 255, 0.92); border-color: rgba(224, 173, 137, 0.18); border-radius: 20px 20px 20px 7px; box-shadow: 0 8px 20px rgba(92, 61, 41, 0.07); }
+.chat-panel.is-attached.is-expanded .message-user .message-bubble { color: white; background: linear-gradient(135deg, #ffb676, #f18a3d); border-radius: 20px 20px 7px 20px; box-shadow: 0 8px 20px rgba(224, 116, 42, 0.2); }
+.message-time { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; color: #aa9d95; font-size: 9px; }
+.message-time svg { width: 13px; height: 13px; }
+.chat-panel.is-attached.is-expanded .composer textarea { padding-left: 8px; }
+.chat-panel.is-attached.is-expanded .empty-state h2 { color: #5b4538; }
+.chat-panel.is-attached.is-expanded .empty-eyebrow { color: #e47731; }
+.empty-state-welcome { display: grid; align-content: start; justify-items: stretch; min-height: 100%; padding: 32px 26px; text-align: left; }
+.welcome-row { position: relative; display: flex; align-items: flex-start; gap: 11px; }
+.welcome-avatar img { width: 50px; height: 50px; object-fit: contain; transform: translateY(3px); }
+.welcome-content { display: grid; min-width: 0; }
+.welcome-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.welcome-name-row strong { color: #e8752c; font-size: 19px; }
+.welcome-name-row span { padding: 4px 9px; color: #a45d31; background: #ffead7; border-radius: 999px; font-size: 11px; font-weight: 760; }
+.welcome-bubble { padding: 16px 20px; color: #51433a; background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(224, 173, 137, 0.18); border-radius: 26px 26px 26px 9px; box-shadow: 0 10px 24px rgba(92, 61, 41, 0.08); font-size: 18px; }
+.welcome-content time { margin: 6px 0 0 11px; color: #aa9d95; font-size: 9px; }
+.welcome-paw { position: absolute; top: 50px; right: 16px; width: 30px; height: 30px; color: rgba(244, 157, 101, 0.52); }
+.empty-state-welcome > p { margin: 30px 0 0 54px; color: #8a786c; font-size: 12px; }
+@keyframes pet-chat-bloom { from { transform: translateX(24px) scale(0.88); } to { transform: translateX(0) scale(1); } }
+
+.spinner { width: 18px; height: 18px; animation: spin 0.85s linear infinite; }
+
+@keyframes pet-breathe { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.012); } }
+@keyframes reply-bubble-in { from { opacity: 0; transform: translateY(6px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pet-think { 0%, 100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg) translateY(-2px); } }
+@keyframes pet-talk { from { transform: translateY(0) scaleY(1); } to { transform: translateY(-2px) scaleY(1.012); } }
+@keyframes pet-happy { 0%, 100% { transform: translateY(0) rotate(0); } 45% { transform: translateY(-7px) rotate(1.8deg); } }
+@keyframes pet-curious { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(4deg) translateY(-2px); } }
+@keyframes pet-sleep { 0%, 100% { transform: translateY(0) scale(1); opacity: 1; } 50% { transform: translateY(3px) scale(0.985); opacity: 0.9; } }
+@keyframes pet-mouth-swap { 0%, 48% { opacity: 0; } 49%, 100% { opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Compact attached panel — host geometry, pixel-measured on the 1672×941
+ * reference master, CSS = master × 0.426435 (713×401 surface).
+ *
+ * The panel box, re-measured 2026-09-04. The right edge was previously assumed
+ * (the old comment guessed "right ~1270 master"); it is actually at master
+ * x=1178. Between x=1180 and x=1246 the master is TRANSPARENT (alpha 3-30) —
+ * that gap is what proves the panel ends there rather than continuing under the
+ * cat, which only starts at x=1246. So:
+ *   left   master   64 → 27.3    right  master 1178 → 502.3   width  475.0
+ *   top    master  159 → 67.8    bottom master  681 → 290.4   height 222.6
+ * The panel was 40px too wide, which stretched every interior row with it.
+ * The bulge in the right edge over master y 405-493 (out to x=1222) is the
+ * speech-bubble tail, not the panel, and is excluded from the box.
+ *
+ * Corner radii are per-corner (fits documented in ChatBubbleFrame.css).
+ * The cat overlaps the panel's right side: panel z-index below .pet-stage. */
+.pet-shell.pet-chat-compact .chat-panel.is-attached {
+  top: auto;
+  right: 210.7px;
+  bottom: 111px;
+  left: auto;
+  z-index: 2;
+  width: 475px;
+  height: 222px;
+}
+
+.pin-indicator {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: #8e7b70;
+  border-radius: 50%;
+}
+.pin-indicator svg { width: 18px; height: 18px; stroke-width: 2; }
+
+/* Composer capsule: reference master (102,355)-(1135,535) → CSS (43.5,151.4)-
+ * (484.2,228.2), 440.7×76.8 — left inset 16 from the panel, right inset 18,
+ * top flush with the row so the 13px gap to the chips lands below. */
+.chat-panel.is-attached.is-compact .composer {
+  position: static;
+  display: flex;
+  align-items: flex-start;
+  padding: 0 18px 0 16px;
+  background: transparent;
+}
+.chat-panel.is-attached.is-compact .composer-row {
+  flex: 1;
+  min-height: 77px;
+  align-items: center;
+  padding: 4px 11px 4px 19px;
+  background: #fff;
+  border: 1.5px solid rgba(242, 199, 158, 0.95);
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(96, 60, 38, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.chat-panel.is-attached.is-compact .composer-row:focus-within {
+  border-color: rgba(225, 130, 76, 0.72);
+  box-shadow: 0 0 0 2px rgba(225, 130, 76, 0.11), 0 4px 12px rgba(96, 60, 38, 0.08);
+}
+.chat-panel.is-attached.is-compact .composer-sparkle { width: 15px; height: 15px; margin-right: 7px; }
+.chat-panel.is-attached.is-compact .composer textarea {
+  min-height: 56px;
+  max-height: 56px;
+  padding: 19px 6px 12px 0;
+  color: #443a34;
+  font-size: 15px;
+  font-weight: 520;
+  line-height: 1.4;
+}
+.chat-panel.is-attached.is-compact .composer textarea::placeholder { color: #b0a199; }
+.chat-panel.is-attached.is-compact .composer-tool {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+}
+.chat-panel.is-attached.is-compact .composer-tool svg { width: 16px; height: 16px; }
+.chat-panel.is-attached.is-compact .composer-divider { height: 20px; }
+/* Send button is inscribed in the capsule: master (965,390)-(1110,505) → CSS
+ * 61.9×49.1, leaving an ~11px white margin to the capsule's right edge. */
+.chat-panel.is-attached.is-compact .send-button {
+  width: 62px;
+  height: 49px;
+  min-width: 62px;
+  min-height: 49px;
+  background: linear-gradient(145deg, #f4a16f, #e8793b);
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(213, 104, 44, 0.22);
+  touch-action: manipulation;
+}
+.chat-panel.is-attached.is-compact .send-button .send-plane { width: 22px; height: 22px; }
+.chat-panel.is-attached.is-compact .send-button:disabled {
+  opacity: 1;
+  box-shadow: 0 4px 10px rgba(213, 104, 44, 0.22);
+}
+
+.composer-tool {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #837b77;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+.composer-tool:disabled { color: #8e8783; cursor: default; opacity: 0.92; }
+.composer-tool svg { width: 22px; height: 22px; stroke-width: 2.15; }
+.composer-divider { flex: 0 0 auto; width: 1px; height: 24px; background: rgba(144, 130, 121, 0.2); }
+
+/* Quick-prompt chips: hug-content pills, reference CSS y=241 h=27.7, left
+ * inset 21.7 from the panel, gaps ≈12.7 — not equal-width stretched columns. */
+.quick-prompts {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 0 0 21px;
+}
+.quick-prompts button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 11px;
+  gap: 5px;
+  color: #655349;
+  background: rgba(255, 243, 205, 0.94);
+  border: 1.5px solid rgba(230, 190, 96, 0.78);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(93, 61, 39, 0.06);
+  font-size: 13px;
+  font-weight: 680;
+  white-space: nowrap;
+}
+.quick-prompts button:nth-child(2) { background: rgba(224, 238, 255, 0.94); border-color: rgba(150, 189, 240, 0.85); }
+.quick-prompts button:nth-child(3) { background: rgba(219, 245, 229, 0.94); border-color: rgba(133, 205, 163, 0.85); }
+.quick-prompts button:nth-child(4) { background: rgba(237, 227, 255, 0.94); border-color: rgba(188, 154, 239, 0.85); }
+.quick-prompts button:hover { filter: brightness(0.99) saturate(1.15); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(93, 61, 39, 0.11); }
+.quick-prompts button:active { transform: translateY(0); }
+.icon-button:focus-visible,
+.composer-tool:focus-visible,
+.send-button:focus-visible,
+.quick-prompts button:focus-visible {
+  outline: 2px solid rgba(232, 121, 59, 0.72);
+  outline-offset: 2px;
+}
+.quick-prompts button svg { width: 15px; height: 15px; stroke-width: 2.2; }
+.quick-prompts button:nth-child(1) svg { color: #e9a91a; }
+.quick-prompts button:nth-child(2) svg { color: #5794e8; }
+.quick-prompts button:nth-child(3) svg { color: #41ae78; }
+.quick-prompts button:nth-child(4) svg { color: #8d65dc; }
+
+/* Expanded attached panel — host geometry plus the mode-specific content
+ * styling (message list, composer, send button). Frame shell, header and
+ * entrance motion for this mode live in ChatBubbleFrame.css. */
+.pet-shell.pet-chat-expanded .chat-panel.is-attached {
+  top: 40px;
+  right: 224px;
+  bottom: 40px;
+  left: 40px;
+}
+.chat-panel.is-attached.is-expanded .message-list { padding: 20px 22px; background: rgba(255, 249, 243, 0.56); }
+.chat-panel.is-attached.is-expanded .message-list.is-settings { border-radius: 0 0 28px 28px; }
+.chat-panel.is-attached.is-expanded .composer {
+  padding: 12px 14px 14px;
+  background: rgba(255, 248, 240, 0.9);
+  border-radius: 0 0 28px 28px;
+}
+.chat-panel.is-attached.is-expanded .composer-row {
+  align-items: center;
+  min-height: 58px;
+  padding: 5px 5px 5px 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(218, 181, 154, 0.66);
+  border-radius: 20px;
+  box-shadow: 0 6px 18px rgba(77, 52, 37, 0.07);
+}
+.chat-panel.is-attached.is-expanded .send-button {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  background: linear-gradient(145deg, #ffb36f, #f28432);
+  border-radius: 16px;
+  box-shadow: 0 10px 22px rgba(232, 121, 45, 0.26);
+}
+
+.composer-sparkle {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  overflow: visible;
+  filter: drop-shadow(0 2px 3px rgba(232, 132, 41, 0.18));
+}
+.sparkle-halo { fill: #fff7de; }
+.sparkle-fill { fill: #ffad43; }
+
+.pet-status .status-heart {
+  margin-left: 2px;
+  color: #f06c70;
+  font-size: 13px;
+  line-height: 1;
+  text-shadow: 0 1px 0 white;
+}
+.pet-status {
+  min-height: 46px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 18px 18px 18px 6px;
+}
+.pet-shell.pet-chat-compact .pet-status { display: none; }
+.pet-status::after {
+  position: absolute;
+  bottom: -6px;
+  left: 34px;
+  width: 13px;
+  height: 13px;
+  content: '';
+  background: rgba(255, 247, 237, 0.97);
+  border-right: 1px solid rgba(254, 215, 170, 0.94);
+  border-bottom: 1px solid rgba(254, 215, 170, 0.94);
+  border-radius: 0 0 3px 0;
+  transform: rotate(45deg);
+}
+.pet-status .status-dot { width: 9px; height: 9px; }
+.pet-status-rays {
+  position: absolute;
+  top: -58px;
+  right: 9px;
+  z-index: 4;
+  width: 34px;
+  height: 30px;
+  overflow: visible;
+  fill: none;
+  stroke: #f39a57;
+  stroke-width: 4.2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1px #fff8ec) drop-shadow(0 2px 2px rgba(171, 83, 42, 0.15));
+  pointer-events: none;
+}
+.pet-side-sparkle {
+  position: absolute;
+  top: 66px;
+  right: -5px;
+  z-index: 4;
+  width: 31px;
+  height: 31px;
+  overflow: visible;
+  filter: drop-shadow(0 2px 3px rgba(207, 132, 30, 0.22));
+  pointer-events: none;
+}
+.pet-side-sparkle .sparkle-halo { fill: #fff5c4; }
+.pet-side-sparkle .sparkle-fill { fill: #ffc338; }
+.pet-heart-burst {
+  position: absolute;
+  top: 105px;
+  right: 10px;
+  z-index: 4;
+  width: 57px;
+  height: 52px;
+  overflow: visible;
+  filter: drop-shadow(0 3px 4px rgba(205, 77, 67, 0.18));
+  pointer-events: none;
+}
+.heart-burst-line {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  paint-order: stroke;
+}
+.heart-burst-line-top,
+.heart-burst-line-right-top,
+.heart-burst-line-right-bottom { stroke: #ff9f70; }
+.heart-burst-line-left,
+.heart-burst-line-bottom,
+.heart-burst-line-right { stroke: #ff7583; }
+.heart-halo {
+  fill: #fff6e8;
+  stroke: #fff6e8;
+  stroke-width: 8;
+  stroke-linejoin: round;
+}
+.heart-fill {
+  fill: #ff8492;
+  stroke: #f16f7f;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.heart-glint {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.82);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.chat-panel.is-attached.is-compact .composer-row { position: relative; z-index: 1; }
+.chat-panel.is-attached.is-expanded .composer-sparkle { width: 26px; height: 26px; }
+
+.pet-shell.pet-chat-compact .pet-stage {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 232px;
+  height: 380.9px;
+  pointer-events: none;
+}
+.pet-shell.pet-chat-expanded .pet-stage {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 232px;
+  height: 380.9px;
+  pointer-events: none;
+}
+.pet-shell.pet-chat-expanded .pet-character-hitbox {
+  top: 0;
+  right: 5px;
+  bottom: 50px;
+  left: 14px;
+  pointer-events: auto;
+}
+.pet-shell.pet-chat-compact .pet-character-hitbox {
+  top: 0;
+  right: 5px;
+  bottom: 50px;
+  left: 14px;
+  pointer-events: auto;
+}
+
+/*
+ * Native resize guard
+ * -------------------
+ * AppKit resizes the borderless panel asynchronously. During that short
+ * interval keep only the shared cat crop mounted at the bottom-right; App
+ * passes visible={false} to the chat panel for the same interval, so the
+ * bubble hides itself through its own is-hidden state. The new mode and chat
+ * panel are committed in one React flush after the native resize, eliminating
+ * the stretched/blank intermediate frame that reads as a click flicker.
+ */
+.pet-shell.pet-chat-resizing .pet-stage {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  z-index: 3;
+  width: 232px;
+  height: 380.9px;
+  pointer-events: none;
+}
+.pet-shell.pet-chat-resizing .pet-character-hitbox {
+  top: 0;
+  right: 5px;
+  bottom: 50px;
+  left: 14px;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+
+}
+
+.chat-panel .agent-tool-result {
+  margin-top: 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(143, 112, 89, 0.2);
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: rgba(255, 255, 255, 0.45);
+}
+.chat-panel .agent-tool-result p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 160px;
+  overflow-y: auto;
+  font: inherit;
+}

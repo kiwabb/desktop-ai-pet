@@ -1,0 +1,7 @@
+{
+  "evidence": "real service access log since owned API/client restart",
+  "successful_due_reads": 4,
+  "known_manual_reads": 1,
+  "native_background_reads": 3,
+  "native_ui_verified": false
+}

@@ -1,0 +1,40 @@
+{
+  "session_id": "d24a882d-334a-467e-a285-681de2a33205",
+  "seq": 10,
+  "messages": [
+    {
+      "id": "88bd5e84-2157-41ee-8a8e-5205efbd2c19",
+      "role": "user",
+      "content": "请调用查询待办工具，告诉我目前有哪些待办。只查询，不创建或修改任何记录。",
+      "created_at": "2026-09-07T03:37:39.918109+00:00",
+      "run_id": "f7137902-e386-49f5-b8b5-819185d04314"
+    },
+    {
+      "id": "ec446e90-7284-44ce-8c99-f7d030ba34d1",
+      "role": "assistant",
+      "content": "目前没有待办。",
+      "created_at": "2026-09-07T03:37:39.918109+00:00",
+      "run_id": "f7137902-e386-49f5-b8b5-819185d04314"
+    }
+  ],
+  "runs": [
+    {
+      "id": "f7137902-e386-49f5-b8b5-819185d04314",
+      "request_id": "0fc8edd9-3a67-4fac-912a-034a15f4425c",
+      "status": "completed",
+      "error": null
+    }
+  ],
+  "tool_calls": [
+    {
+      "id": "e8742377-3c19-5ed1-86a3-0300f906b4e2",
+      "run_id": "f7137902-e386-49f5-b8b5-819185d04314",
+      "name": "todo.list",
+      "status": "completed",
+      "result": {
+        "items": []
+      },
+      "error": null
+    }
+  ]
+}

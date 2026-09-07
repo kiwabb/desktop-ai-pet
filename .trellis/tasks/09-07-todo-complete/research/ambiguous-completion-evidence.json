@@ -1,0 +1,11 @@
+{
+  "evidence": "real_model_ambiguous_completion",
+  "session_id": "d7f1ac15-10e9-448b-822f-c30dc8d520d7",
+  "request_id": "72a67584-9481-439f-9326-a1c041e3e2df",
+  "prompt": "完成待办",
+  "assistant_reply": "请指定要完成的具体待办事项。",
+  "tool_names": [],
+  "todos_unchanged": true,
+  "completion_invoked": false,
+  "desktop_ui_verified": false
+}

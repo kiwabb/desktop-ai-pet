@@ -1,0 +1,30 @@
+{
+  "id": "agent-desktop-client",
+  "name": "agent-desktop-client",
+  "title": "桌面客户端远程智能体接入",
+  "description": "实现 Rust 网关连接与现有聊天设置、流式工具状态、重连恢复",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "zhoujiaangyao",
+  "assignee": "zhoujiaangyao",
+  "createdAt": "2026-09-07",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "09-07-server-agent-todo-mvp",
+  "relatedFiles": [],
+  "notes": "用户已批准最小方案及三项并行拆分；共享合同已固定，进入实现。",
+  "meta": {
+    "mvp_plan_review": "approved",
+    "parallel_split_approved": true,
+    "implementation_started": true
+  }
+}

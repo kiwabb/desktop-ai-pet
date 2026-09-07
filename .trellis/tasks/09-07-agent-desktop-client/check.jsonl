@@ -1,0 +1,5 @@
+{"file":".trellis/tasks/09-07-server-agent-todo-mvp/research/current-state.md","reason":"Verified current code and environment"}
+{"file":".trellis/tasks/09-07-server-agent-todo-mvp/research/parallel-contract.md","reason":"Fixed parallel interfaces and ownership"}
+{"file":".trellis/spec/frontend/type-safety.md","reason":"IPC boundary contracts"}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"No fake runtime evidence and risk matched verification"}
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"Preserve current UI changes"}
