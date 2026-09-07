@@ -599,3 +599,37 @@ Refined compact appearance with unified warm-white actions, left-aligned labels 
 ### Next Steps
 
 - 真实服务验收保留；原生展开视觉仍与浏览器证据分开。
+
+
+## Session 19: Reference settings card layout
+<!-- trellis-session: v=2 fp=313cc4cd84c7d417 -->
+
+**Date**: 2026-09-07
+**Task**: Reference settings card layout
+**Branch**: `main`
+
+### Summary
+
+Rebuilt settings as the approved connection/status/guide/security layout, preserving actual native settings flow.
+
+### Main Changes
+
+- Extracted presentation component; fixed settings auto-scroll and endpoint draft overwrite; kept true AgentView status and native credential handling; synced QA guard.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a73992b` | feat: match assistant settings to approved reference layout |
+
+### Testing
+
+- [OK] Browser normal/narrow layout, help, empty credential visibility, required validation and return/reopen passed; seven footprints/paw retained. Read-only review, focused checks, TypeScript/Vite and Tauri packaging passed. Native bundled loading confirmed; no actual save/model run.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 原任务真实服务与原生交互验收继续独立保留。
