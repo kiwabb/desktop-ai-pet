@@ -11,6 +11,26 @@
 
 ## Acceptance evidence
 
+### Compact bottom spacing follow-up
+
+The integrated compact shell remains475×278. Its header now takes remaining
+space (minimum84px), the footer uses110px/48px rows, and the surface reserves
+4px bottom padding. Browser measurements: header114px, composer77px,
+composer-to-chip gap33px, chip height28px, chip-to-outer-frame bottom25–26px
+(previously75px). Screenshot: `output/playwright/reference-v2/compact-spacing.png`.
+The badge retains the exact baseline bounds/filter and all five prints remain.
+Quick prompt filling, clearing the unsent draft, expanded settings navigation
+and return to compact passed in the existing browser QA's real unconfigured
+state. Expanded/settings remain676×665; settings retains seven prints.
+The compact body uses natural block formatting so its actual error content can
+contribute height; this correction is source/static evidence, not a reproduced
+service failure. No messages were sent and no fixture data was introduced.
+CSS-only verification uses the focused existing checks and visual measurement;
+Vite assets and the local Tauri bundle are regenerated for delivery without a
+redundant TypeScript check. The exact project app was restarted and confirmed
+loading `tauri://localhost` in its closed state. Native open-frame visual
+acceptance is not claimed for this spacing adjustment.
+
 ### Footprint completeness follow-up
 
 The user identified missing decorative prints. Added five four-toe reference

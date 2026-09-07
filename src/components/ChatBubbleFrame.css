@@ -420,9 +420,20 @@
 }
 .chat-panel.is-integrated > .chat-panel-surface { position: relative; z-index: 1; }
 .chat-panel.is-integrated.is-compact {
-  --chat-frame-rows: 84px min-content min-content;
+  --chat-frame-rows: minmax(84px, 1fr) min-content auto;
 }
-.chat-panel.is-integrated.is-compact > .chat-panel-surface { align-content: start; }
+/* Balance the compact content within the integrated shell's taller body.
+ * At native inner-height 276: header114 + composer110 + quick48 + padding4.
+ * The 28px chips retain 24px below them; a real inline error can consume the
+ * flexible header space down to 84px without pushing the chips out of frame. */
+.chat-panel.is-integrated.is-compact > .chat-panel-surface {
+  align-content: start;
+  padding-bottom: 4px;
+}
+.chat-panel.is-attached.is-integrated.is-compact .chat-panel-body { display: flow-root; }
+.chat-panel.is-attached.is-integrated.is-compact .chat-panel-footer {
+  grid-template-rows: 110px 48px;
+}
 .chat-panel.is-integrated .chat-header {
   color: #5a2b16;
   border-bottom-color: #ffe2ca;
