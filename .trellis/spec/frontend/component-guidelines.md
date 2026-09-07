@@ -195,6 +195,18 @@ Do not validate only a rounded rectangle plus an overlaid platform. Inspect the
 single full perimeter and the real cat layer together: the original PNG stays
 unchanged, and the attached host clips only its old disk front to avoid overlap.
 Closed mode keeps the original complete image. Native pet z3 stays above framez2.
+
+### Reference footprint decorations
+
+The continuous shell also owns the reference's five four-toe footprint motifs:
+shoulder, curved edge, lower edge, above the pet status bubble, and lower joint.
+Expanded frames without a footer slot add two bottom motifs (left and55% across);
+frames with a composer/footer keep five so no decoration is concealed by it.
+These prints use an independent instance-scoped SVG symbol, not the preserved
+corner badge. They are noninteractive. The floating print uses a dock-relative
+anchor `(width + 114*scale + offsetX, height - 568*scale + offsetY)` to stay visible
+above the existing pet status bubble in the native compact and expanded windows.
+The geometry module owns all positions, dimensions, rotations and fill colors.
 The tail SVG uses `preserveAspectRatio="none"`: width and height independently
 scale the decoration. Do not use a centered `meet` viewport with proportional
 right offsets; a wide/short viewport would move the narrower drawn path off the

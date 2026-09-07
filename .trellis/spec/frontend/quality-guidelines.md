@@ -80,6 +80,10 @@
 - For tail visual acceptance, inspect the frame/tail seam on both settings and
   chat surfaces. Check painted outline endpoints, stroke weight/color and shadow
   continuity; changing its position alone does not resolve a pasted-on shape.
+- When porting a supplied HTML reference, inventory its decorative elements as
+  well as the outer path. Verify footprint silhouette, count, scale and visible
+  placement; a print outside the native window or concealed by the composer does
+  not satisfy visual completeness. Keep the preserved corner badge separate.
 
 ## Code Review Checklist
 

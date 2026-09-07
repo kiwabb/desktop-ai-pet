@@ -243,6 +243,22 @@ const expandedShell = buildPetShellGeometry({ width: 676, height: 665 })
 if (compactShell.scale !== 0.6 || expandedShell.scale !== compactShell.scale)
   fail('native mode changes stretch the fixed-size platform artwork')
 const shellSource = readFileSync(resolve('src/components/ChatBubbleShell.tsx'), 'utf8')
+if (compactShell.sideFootprints.length !== 5 || expandedShell.footerFootprints.length !== 2)
+  fail('reference footprints require five side prints and two expanded footer prints')
+const footprintArt = shellSource.slice(shellSource.indexOf("<g id={id('footprint')}>"), shellSource.indexOf("<path id={id('outline')}"))
+if ((footprintArt.match(/<ellipse/g) ?? []).length !== 4 || !footprintArt.includes('M17 43c3-8 6-14 14-14'))
+  fail('side/footer footprints must use the reference four-toe artwork, not the corner badge')
+if (Math.abs(compactShell.sideFootprints[3].y + 68 - 5.2) > .001 || Math.abs(expandedShell.sideFootprints[3].y + 40 - 364.2) > .001)
+  fail('floating reference footprint must remain visible above the native cat status bubble')
+const movedFootprints = buildPetShellGeometry({ width: 475, height: 278 }, { offsetX: 12, offsetY: 18 }).sideFootprints
+for (let index = 0; index < 5; index++) {
+  const original = compactShell.sideFootprints[index], moved = movedFootprints[index]
+  const expectedX = index < 2 ? 0 : 12, expectedY = index < 2 ? 0 : 18
+  if (Math.abs(moved.x - original.x - expectedX) > .001 || Math.abs(moved.y - original.y - expectedY) > .001)
+    fail(`footprint ${original.name} does not follow its shoulder/platform anchor`)
+}
+if (!shellSource.includes("showFooterFootprints ? [...g.sideFootprints, ...g.footerFootprints] : g.sideFootprints") || !frame.includes("showFooterFootprints={variant === 'expanded' && footer == null}") || !frame.includes("attached && !integrated && variant === 'compact'"))
+  fail('integrated footprint counts or legacy-only mini trail regressed')
 if (!shellSource.includes('useId()') || !shellSource.includes('clipPath') || !frame.includes('observer.disconnect()'))
   fail('integrated shell lacks isolated SVG IDs, paint clipping or resize cleanup')
 if (!frame.includes('Object.values(tail).some(value => value !== undefined)') || !frame.includes('attached && explicitTail'))

@@ -15,6 +15,8 @@
 
 ## Requirements
 
+- R12 (reference completeness correction): Include the approved HTML's decorative footprint trail: five side/lower shell prints and the two expanded footer prints. These are distinct from the preserved top-left paw badge. Use the reference four-toe silhouette and geometry-relative anchors, retain decoration-only semantics, and keep the badge's placement/shadow unchanged.
+
 - R10 (latest approved HTML): `references/preview-v2-approved.html`, copied from Downloads/preview (2).html, supersedes earlier tail-only visual references. Migrate its parameterized continuous shell, warm layered border/background and integrated pet platform to the reusable component for compact/expanded attached frames; keep standalone usable. Preserve the existing paw artwork, frame-relative position, size and exact shadow. Preserve existing chat/settings/todo data and actions; reference demo adapters/replies, wallpaper and new controls are not product requirements.
 - R11 (rollback): User explicitly authorized local Git initialization and a baseline commit before visual edits. Completed on main as e773d91. This supersedes earlier instructions that reflected the absence of Git.
 
@@ -32,6 +34,8 @@
 - R6：更新受迁移影响的校验脚本及组件规范，记录接口、样式归属、使用方式和验证证据。不得新增假消息、假模型、假连接或模拟服务来完成验收。
 
 ## Acceptance Criteria
+
+- [x] AC12 / R12: Integrated compact/expanded chat renders five reference footprints; expanded frames without a footer slot (settings/todos) render seven including the bottom prints. Browser screenshots confirm visible placement without content obstruction and unchanged top-left badge bounds/filter. Geometry/static checks and read-only review confirm dock-relative anchors, instance-scoped symbols, no pointer interception, and unchanged standalone/legacy behavior. See reference-v2-verification.md.
 
 - [x] AC10 / R10: Compact chat, expanded chat/settings/todos share the reference's continuous frame/platform geometry. Four browser surfaces measured unchanged paw position/size/filter; neutral-host resize, unique SVG IDs, explicit decoration compatibility and hidden/standalone checks passed. Native navigation and the new packaged entry were verified. See reference-v2-verification.md for actual unavailable todo-preview state and native/service evidence boundaries.
 - [x] AC11 / R11: Initialized local Git and committed baseline e773d91 before modifying visual source. Private .env/runtime data, dependencies and verification artifacts are ignored. No remote publication requested.

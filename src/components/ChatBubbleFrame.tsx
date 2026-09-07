@@ -127,10 +127,10 @@ export function ChatBubbleFrame({
       inert={!visible}
     >
       <ReferencePawBadge className="assistant-paw-badge" />
-      {integrated && size.width > 0 && <ChatBubbleShell width={size.width} height={size.height} dock={dock} />}
+      {integrated && size.width > 0 && <ChatBubbleShell width={size.width} height={size.height} dock={dock} variant={variant} showFooterFootprints={variant === 'expanded' && footer == null} />}
       {attached && explicitTail && <ReferenceChatBubbleTail className="chat-bubble-tail" variant={variant} />}
 
-      {attached && variant === 'compact' && (
+      {attached && !integrated && variant === 'compact' && (
         <span className="compact-paw-trail" aria-hidden="true">
           <ReferenceMiniPaw />
           <ReferenceMiniPaw />

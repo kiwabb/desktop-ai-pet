@@ -11,6 +11,26 @@
 
 ## Acceptance evidence
 
+### Footprint completeness follow-up
+
+The user identified missing decorative prints. Added five four-toe reference
+motifs to integrated chat and two bottom motifs to expanded frames without a
+footer slot. Browser results: compact5, expanded chat5, settings7. Inspected
+`output/playwright/reference-v2/compact-footprints.png` and
+`output/playwright/reference-v2/settings-footprints.png`; shoulder/curve/lower
+prints, the faint upper print and the lower joint/footer prints are visible.
+The floating print is intentionally mapped to the existing pet's status bubble
+instead of being clipped outside the native compact window. Its rotated bounds
+start around4.33px from the compact window top and363.33px in expanded mode.
+All three modes retain the exact baseline badge bounds and filter recorded above.
+Reference shape, count conditions, SVG ID scoping and pointer isolation passed
+read-only review and focused static checks. One frontend build passed. No chat,
+service, settings or todo data/actions were introduced or changed.
+The updated frontend was packaged with Tauri using the existing dist, and the
+project app was restarted at `tauri://localhost`. Native automation confirmed
+the closed window but did not obtain a stable open-frame screenshot this round;
+the new footprint visibility evidence is the browser screenshots above.
+
 ### Browser runtime
 
 - Final screenshots: `output/playwright/reference-v2/compact.png`, `expanded.png`, `settings.png`, `todo.png`.

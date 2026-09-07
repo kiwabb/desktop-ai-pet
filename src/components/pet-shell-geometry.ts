@@ -38,7 +38,25 @@ export function buildPetShellGeometry({ width, height }: ShellSize, dock: ChatBu
   outline += `C${d(1140, 819)} ${d(1200, 818)} ${d(1250, 821)}C${d(1323, 823)} ${d(1390, 839)} ${d(1390, 868)}V${h - 36 * k + dy}`
   outline += `C${d(1390, 930)} ${d(1305, 948)} ${d(1230, 948)}C${d(1160, 948)} ${d(1115, 937)} ${d(1080, 937)}C${d(1060, 937)} ${d(1040, 940)} ${d(1018, 940)}`
   outline += `H28A28 28 0 0 1 ${p(0, h - 28)}V${r}A${r} ${r} 0 0 1 ${p(r, 0)}Z`
+  // The approved HTML's scene-top p4 is off-screen in the fixed native
+  // compact window. Anchor it to the retained cat/platform instead: at the
+  // native scale it sits about 40px above the status bubble (screen y≈5/364).
+  const upperPrintY = h - 568 * k
+  const footprint = (name: string, x: number, y: number, width: number, height: number, rotation: number, fill = '#ffc693', opacity = 1) =>
+    ({ name, x, y, width: width * k, height: height * k, rotation, fill, opacity })
+  const sideFootprints = [
+    footprint('shoulder', w - 6 * k, 166 * k, 29, 33, 15),
+    footprint('curve', w + 22 * k, s + 44 * k, 45, 51, -16),
+    footprint('lower-curve', w + k + dx, h - 216 * k + dy, 42, 44, -16, '#ffc693', .7),
+    footprint('floating', w + 114 * k + dx, upperPrintY + dy, 32, 35, 12, '#ffe9cb'),
+    footprint('saddle', w - 53 * k + dx, h - 45 * k + dy, 36, 36, -18, '#ffdfb9'),
+  ]
+  const footerFootprints = [
+    footprint('footer-left', 24 * k, h - 53 * k, 43, 43, -14, '#ffe7c6'),
+    footprint('footer-center', w * .55, h - 53 * k, 43, 43, -12, '#ffe7c6'),
+  ]
   return {
+    sideFootprints, footerFootprints,
     outline, scale: k, width: w, height: h,
     canvasWidth: Math.max(w, w + 344 * k + dx) + 8,
     canvasHeight: Math.max(h, h + 8 * k + dy) + 8,
