@@ -428,3 +428,38 @@
 ### Next Steps
 
 - 用户指定有效未来提醒后验收对话持久化与原生到点弹出。
+
+
+## Session 14: 按批准HTML迁移一体桌宠公共外壳
+<!-- trellis-session: v=2 fp=703304f017ab2b89 -->
+
+**Date**: 2026-09-07
+**Task**: 按批准HTML迁移一体桌宠公共外壳
+**Branch**: `main`
+
+### Summary
+
+先创建本地Git基线，再按preview (2).html实现连续外壳与底盘，保留猫爪位置尺寸阴影。
+
+### Main Changes
+
+- 公共SVG/几何、dock配置、尾巴兼容、宿主层级与底盘去重；原猫资产及业务流程保持。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e773d91` | chore: snapshot desktop pet before shared frame redesign |
+| `43b557b` | feat: match shared pet shell to approved HTML reference |
+
+### Testing
+
+- [OK] 一次前端构建、专项与几何边界检查、浏览器四页面及复用矩阵、原生导航、Tauri本地打包和重启均通过；未调用模型或改服务数据。
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 本次视觉变更已完成；原任务真实模型/完整服务验收仍独立保留。
