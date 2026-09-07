@@ -497,3 +497,37 @@
 ### Next Steps
 
 - 原任务真实服务验收仍独立保留。
+
+
+## Session 16: Compact chat bottom spacing
+<!-- trellis-session: v=2 fp=f1712f9043c5962e -->
+
+**Date**: 2026-09-07
+**Task**: Compact chat bottom spacing
+**Branch**: `main`
+
+### Summary
+
+Redistributed integrated compact content to reduce empty bottom strip while preserving shell and paw decorations.
+
+### Main Changes
+
+- Flexible header, taller composer row and natural compact error body sizing.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `85f004c` | fix: balance compact chat spacing in integrated shell |
+
+### Testing
+
+- [OK] Browser measured bottom gap25–26px; quick prompt and settings navigation passed. Focused static checks, Vite assets and Tauri bundle completed; exact local app restarted.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 原任务真实服务验收仍独立保留。
