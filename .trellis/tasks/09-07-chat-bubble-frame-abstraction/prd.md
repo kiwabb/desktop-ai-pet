@@ -15,6 +15,8 @@
 
 ## Requirements
 
+- R14 (restrained visual refinement): Refine the compact composition with unified warm-white surfaces, warm dark text, fine borders and consistent low-elevation shadows. Replace four colored action blocks with aligned secondary actions; retain orange for the send action and small accents. Keep the already verified dimensions, existing actions, original cat/badge, footprint inventory and shell/platform geometry. Preserve focus, readable text contrast and reduced-motion support.
+
 - R13 (compact composition refinement): The user rejected solving the empty lower area by only shifting controls downward. Rebalance the integrated compact header, composer and existing four quick actions as a whole; use a two-column action group, consistent insets and softer control styling. Preserve the approved cat, corner badge position/shadow, footprint inventory, shell/platform geometry and all business actions. Verify actual compact layout and navigation before delivery; do not introduce filler text, new actions or fabricated service data.
 
 - R12 (reference completeness correction): Include the approved HTML's decorative footprint trail: five side/lower shell prints and the two expanded footer prints. These are distinct from the preserved top-left paw badge. Use the reference four-toe silhouette and geometry-relative anchors, retain decoration-only semantics, and keep the badge's placement/shadow unchanged.
@@ -36,6 +38,8 @@
 - R6：更新受迁移影响的校验脚本及组件规范，记录接口、样式归属、使用方式和验证证据。不得新增假消息、假模型、假连接或模拟服务来完成验收。
 
 ## Acceptance Criteria
+
+- [x] AC14 / R14: Unified warm-white action surfaces and left-aligned labels are visible in the browser; text contrast, focus and reduced-motion checks pass. Frame/input dimensions, badge geometry/filter and footprint count remain unchanged. Scoped review and static checks pass; the local bundle was updated and restarted. Open-frame visual evidence remains browser-only; see reference-v2-verification.md.
 
 - [x] AC13 / R13: Browser verifies an88px header,78px input,14px group gap and aligned two-column quick-action group in the unchanged475×278 shell; all existing prompt actions, keyboard focus, settings return and hide/reopen pass. Preserved paw geometry/filter and five footprints verified; scoped review and static checks pass. Updated local package loads successfully; native open-frame automation remains unavailable. See reference-v2-verification.md for the evidence boundary.
 

@@ -779,33 +779,37 @@ textarea:focus-visible {
 .chat-panel.is-attached.is-integrated.is-compact .composer-row {
   min-height: 78px;
   padding: 4px 10px 4px 17px;
-  background: rgba(255, 254, 251, 0.98);
-  border: 1px solid rgba(224, 184, 148, 0.66);
+  background: linear-gradient(155deg, #fffefa, #fffaf3);
+  border: 1px solid rgba(194, 156, 121, 0.38);
   border-radius: 27px;
-  box-shadow: 0 3px 9px rgba(115, 72, 40, 0.045), inset 0 1px 0 #fff;
+  box-shadow: 0 5px 12px rgba(115, 72, 40, 0.035), 0 1px 2px rgba(115, 72, 40, 0.035), inset 0 1px 0 #fff, inset 0 -1px 0 rgba(223, 195, 169, 0.12);
 }
 .chat-panel.is-attached.is-integrated.is-compact .composer-row:focus-within {
-  border-color: rgba(218, 143, 91, 0.8);
-  box-shadow: 0 0 0 2px rgba(225, 130, 76, 0.1), 0 3px 9px rgba(115, 72, 40, 0.045);
+  border-color: rgba(195, 132, 86, 0.72);
+  box-shadow: 0 0 0 2px rgba(225, 130, 76, 0.09), 0 5px 12px rgba(115, 72, 40, 0.045), inset 0 1px 0 #fff;
 }
 .chat-panel.is-attached.is-integrated.is-compact .composer textarea {
   font-size: 14px;
-  color: #655044;
+  color: #624c3e;
 }
-.chat-panel.is-attached.is-integrated.is-compact .composer textarea::placeholder { color: #ad9b8e; }
-.chat-panel.is-attached.is-integrated.is-compact .composer-tool { color: #a99585; }
-.chat-panel.is-attached.is-integrated.is-compact .composer-divider { background: rgba(172, 144, 122, 0.18); }
+.chat-panel.is-attached.is-integrated.is-compact .composer textarea::placeholder { color: #806e5e; }
+.chat-panel.is-attached.is-integrated.is-compact .composer-tool { color: #967e6a; }
+.chat-panel.is-attached.is-integrated.is-compact .composer-divider { background: rgba(172, 144, 122, 0.15); }
 .chat-panel.is-attached.is-integrated.is-compact .send-button {
   width: 54px;
   min-width: 54px;
   height: 44px;
   min-height: 44px;
   border-radius: 19px;
-  background: linear-gradient(145deg, #f2a475, #e88a50);
-  box-shadow: 0 3px 7px rgba(213, 104, 44, 0.14);
+  background: linear-gradient(145deg, #eda171, #de8653);
+  border: 1px solid rgba(192, 108, 60, 0.22);
+  box-shadow: 0 3px 7px rgba(174, 91, 42, 0.14), inset 0 1px 0 rgba(255, 231, 208, 0.65), inset 0 -1px 0 rgba(165, 82, 40, 0.08);
 }
 .chat-panel.is-attached.is-integrated.is-compact .send-button:disabled {
-  box-shadow: 0 2px 5px rgba(213, 104, 44, 0.1);
+  box-shadow: 0 2px 5px rgba(174, 91, 42, 0.1), inset 0 1px 0 rgba(255, 231, 208, 0.65);
+}
+.chat-panel.is-attached.is-integrated.is-compact .send-button:hover:not(:disabled) {
+  background: linear-gradient(145deg, #e99967, #d97b47);
 }
 .chat-panel.is-attached.is-integrated.is-compact .send-button .send-plane { width: 20px; height: 20px; }
 .chat-panel.is-attached.is-integrated.is-compact .quick-prompts {
@@ -818,40 +822,28 @@ textarea:focus-visible {
 .chat-panel.is-attached.is-integrated.is-compact .quick-prompts button {
   height: 32px;
   min-height: 32px;
-  gap: 7px;
-  padding: 0 12px;
-  border: 1px solid rgba(205, 177, 128, 0.22);
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 0 14px;
+  border: 1px solid rgba(197, 171, 145, 0.3);
   border-radius: 11px;
-  background: #faf1de;
-  box-shadow: none;
-  color: #75603f;
+  background: linear-gradient(160deg, #fffdf8, #fcf7ef);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(115, 72, 40, 0.025);
+  color: #695345;
   font-size: 12px;
   font-weight: 550;
-}
-.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:nth-child(2) {
-  color: #5b6d7e;
-  background: #edf2f5;
-  border-color: rgba(157, 178, 197, 0.22);
-}
-.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:nth-child(3) {
-  color: #5d7060;
-  background: #eef3e9;
-  border-color: rgba(166, 186, 154, 0.22);
-}
-.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:nth-child(4) {
-  color: #706278;
-  background: #f3eef5;
-  border-color: rgba(187, 164, 199, 0.22);
 }
 .chat-panel.is-attached.is-integrated.is-compact .quick-prompts button svg {
   width: 14px;
   height: 14px;
-  color: currentColor;
+  color: #997345;
   stroke-width: 1.8;
 }
 .chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:hover {
-  filter: brightness(0.975);
-  box-shadow: 0 2px 5px rgba(115, 72, 40, 0.07);
+  filter: none;
+  border-color: rgba(181, 133, 92, 0.52);
+  background: linear-gradient(160deg, #fffaf1, #faf0e3);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 5px rgba(115, 72, 40, 0.055);
 }
 .chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) .composer-row {
   min-height: 66px;

@@ -222,7 +222,10 @@ existing four quick actions in two columns with consistent composer/action
 insets and restrained colors. Do not add filler copy or unrelated decorations.
 Preserve the approved badge geometry/filter, all five shell prints and the
 native frame/platform dimensions. Expanded and explicit legacy-tail layouts
-retain their own rules.
+retain their own rules. Compact actions use one warm-white surface and left-aligned
+icon/text, not four different color blocks. Use warm dark text with at least4.5:1
+contrast; keep orange emphasis on the send action. Fine borders, restrained
+inner highlights and consistent shadows should not change control dimensions.
 
 The compact body uses `display: flow-root` so real error content contributes its
 natural height, including margins, to the outer grid. An empty body stays zero

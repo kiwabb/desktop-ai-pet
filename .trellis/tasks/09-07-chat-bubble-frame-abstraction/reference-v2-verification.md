@@ -11,6 +11,28 @@
 
 ## Acceptance evidence
 
+### Restrained surface refinement (R14)
+
+Unified the compact quick actions into warm-white surfaces with left-aligned
+icons/text, lighter border/shadow treatment and a single orange send emphasis.
+Title weight is720; subtitle and input placeholder colors are more readable.
+Normal action text contrast exceeds6:1; subtitle and placeholder exceed4.5:1
+against the lightest/darkest relevant cream surfaces. No geometry, actions,
+native dimensions, images or decorations were changed.
+
+Browser runtime confirmed frame475×278, input429×78, the exact baseline badge
+offset/size/filter and five prints. Prompt fill/clear, keyboard focus outline
+and settings return passed in the actual unconfigured QA state. Under reduced
+motion, the hovered action measured an identity transform and0.00001s transition.
+Screenshot: `output/playwright/reference-v2/compact-refined.png`.
+Scoped review and existing lightweight static checks passed; error sizing
+remains source-based verification. No service/model data or fixtures were added.
+Vite assets and the local Tauri app bundle were regenerated. The exact project
+application was restarted and confirmed loading `tauri://localhost`; native
+closed-state loading is verified, while this round's open-frame visual evidence
+is the browser screenshot. The previously documented native opening-automation
+limitation was not re-investigated for these cosmetic changes.
+
 ### Compact composition refinement
 
 This replaces the spacing-only treatment below after the user rejected its
