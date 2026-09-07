@@ -565,3 +565,37 @@ Rebalanced integrated compact header, input and two-column quick actions while p
 ### Next Steps
 
 - 真实模型与服务验收仍独立保留；新版原生展开效果待用户查看。
+
+
+## Session 18: Refined warm compact surfaces
+<!-- trellis-session: v=2 fp=1261590920e7e40b -->
+
+**Date**: 2026-09-07
+**Task**: Refined warm compact surfaces
+**Branch**: `main`
+
+### Summary
+
+Refined compact appearance with unified warm-white actions, left-aligned labels and restrained highlights.
+
+### Main Changes
+
+- CSS-only typography, colors, borders and shadows; preserved all layout and approved artwork contracts.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8e9c88b` | style: refine compact chat with unified warm surfaces |
+
+### Testing
+
+- [OK] Browser geometry, prompt fill, focus, reduced motion and settings return verified; static and scoped review passed. Vite/Tauri package refreshed; native closed load confirmed.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 真实服务验收保留；原生展开视觉仍与浏览器证据分开。

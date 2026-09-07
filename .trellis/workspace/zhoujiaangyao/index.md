@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 17
+- **Total Sessions**: 18
 - **Last Active**: 2026-09-07
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~567 | Active |
+| `journal-1.md` | ~601 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 18 | 2026-09-07 | Refined warm compact surfaces | `8e9c88b` | `main` |
 | 17 | 2026-09-07 | Compact chat composition refinement | `6348073` | `main` |
 | 16 | 2026-09-07 | Compact chat bottom spacing | `85f004c` | `main` |
 | 15 | 2026-09-07 | 补齐参考外壳猫脚印 | `b4a5139` | `main` |
