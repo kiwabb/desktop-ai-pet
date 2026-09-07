@@ -6,7 +6,7 @@ import { connectionLabel, saveAgentSettings } from '../lib/agent'
 import type { AgentView, ToolCall } from '../lib/agent'
 import { todoToolEffectsFingerprint, todoToolPresentation } from '../lib/todo-tool-presentation'
 import { ChatBubbleFrame } from './ChatBubbleFrame'
-import type { ChatBubbleTailConfig } from './ChatBubbleFrame'
+import type { ChatBubbleDockConfig, ChatBubbleTailConfig } from './ChatBubbleFrame'
 import { TodoList } from './TodoList'
 import { TodoReminders } from './TodoReminders'
 import { ReferenceSparkle } from './ReferenceIllustrations'
@@ -33,6 +33,7 @@ interface ChatPanelProps {
   /** Replay the frame entrance motion; visibility is unaffected. */
   animateEntrance?: boolean
   tail?: ChatBubbleTailConfig
+  dock?: ChatBubbleDockConfig
   status: AgentView | null
   messages: UiMessage[]
   tools: ToolCall[]
@@ -44,7 +45,7 @@ interface ChatPanelProps {
   onSend: (content: string) => { requestId: string; accepted: Promise<void> }
 }
 
-export function ChatPanel({ attached = false, expanded, visible = true, animateEntrance = false, tail, status, messages, tools, streaming, error, onClose, onExpandedChange, acceptedRequestId, onSend }: ChatPanelProps) {
+export function ChatPanel({ attached = false, expanded, visible = true, animateEntrance = false, tail, dock, status, messages, tools, streaming, error, onClose, onExpandedChange, acceptedRequestId, onSend }: ChatPanelProps) {
   const [draft, setDraft] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [todosOpen, setTodosOpen] = useState(false)
@@ -197,6 +198,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
       visible={visible}
       animateEntrance={animateEntrance}
       tail={tail}
+      dock={dock ?? (attached && expanded ? { offsetX: 13.3 } : undefined)}
       draggable
       title={todosOpen ? '待办列表' : settingsOpen ? '助手连接设置' : expanded ? '和橘伴聊天' : '想聊点什么？'}
       subtitle={connectionLabel(status)}

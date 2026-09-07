@@ -15,6 +15,9 @@
 
 ## Requirements
 
+- R10 (latest approved HTML): `references/preview-v2-approved.html`, copied from Downloads/preview (2).html, supersedes earlier tail-only visual references. Migrate its parameterized continuous shell, warm layered border/background and integrated pet platform to the reusable component for compact/expanded attached frames; keep standalone usable. Preserve the existing paw artwork, frame-relative position, size and exact shadow. Preserve existing chat/settings/todo data and actions; reference demo adapters/replies, wallpaper and new controls are not product requirements.
+- R11 (rollback): User explicitly authorized local Git initialization and a baseline commit before visual edits. Completed on main as e773d91. This supersedes earlier instructions that reflected the absence of Git.
+
 - R9 (user-requested tail configuration): Move the default tail slightly down and make it smaller. Expose typed vertical/horizontal position and width/height configuration on the public frame, usable across compact and expanded modes. Preserve the shared paw/corner geometry and attached-only tail rendering.
 
 - R8 (latest user correction): Use references/paw-corner-approved-v2.png as the definitive visual reference. Unify the painted top-left corner arc and badge as one shared component contract. Matching badge box offsets while retaining different corner curves does not satisfy the request.
@@ -29,6 +32,9 @@
 - R6：更新受迁移影响的校验脚本及组件规范，记录接口、样式归属、使用方式和验证证据。不得新增假消息、假模型、假连接或模拟服务来完成验收。
 
 ## Acceptance Criteria
+
+- [x] AC10 / R10: Compact chat, expanded chat/settings/todos share the reference's continuous frame/platform geometry. Four browser surfaces measured unchanged paw position/size/filter; neutral-host resize, unique SVG IDs, explicit decoration compatibility and hidden/standalone checks passed. Native navigation and the new packaged entry were verified. See reference-v2-verification.md for actual unavailable todo-preview state and native/service evidence boundaries.
+- [x] AC11 / R11: Initialized local Git and committed baseline e773d91 before modifying visual source. Private .env/runtime data, dependencies and verification artifacts are ignored. No remote publication requested.
 
 - [x] AC9 / R9: Defaults render lower/smaller in compact and expanded; explicit tail top/right/width/height values override mode defaults and survive switching modes. Browser React controls demonstrate changing all four values and resetting defaults; tail/frame join and unchanged paw geometry verified. See tail-config-verification.md (browser and static evidence).
 
@@ -47,7 +53,7 @@
 
 - 新增聊天功能、持久化、工具调用、附件、语音、模态遮罩、点击外部关闭或新导航。
 - 修改 AI 协议、服务配置、Rust 窗口尺寸、宠物角色资源或扩大到通用组件库/新设计系统。
-- 将现有其他 Trellis 任务一起归档；本目录无 .git，不创建仓库或声称已提交推送。
+- 将现有其他 Trellis 任务一起归档或发布远端；用户已授权本地 Git，回退点为 e773d91。
 
 ## Current Status
 

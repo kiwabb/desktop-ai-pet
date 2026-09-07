@@ -83,6 +83,10 @@
 
 ## Configurable bubble tail
 
+The approved HTML migration changes the default attached appearance to the
+continuous shell described below. The tail configuration remains an explicit
+compatibility mode; an empty or all-undefined tail object uses the new shell.
+
 `ChatBubbleFrame` accepts optional `tail` position/size configuration. `top` is
 the tail's vertical center, with `translateY(-50%)` applied consistently in both
 variants. `top` and `right` accept CSS pixels as numbers or CSS length strings;
@@ -108,6 +112,89 @@ and omit a separate tail shadow. Compact retains its approved traced silhouette.
 Use actual React props to verify default/partial/full configuration and resetting
 to defaults. Resizing should keep the seam attached when horizontal position is
 left at its default; callers choosing an explicit right offset own that offset.
+
+## Continuous shell and platform contract
+
+### Scope and trigger
+
+`ChatBubbleFrame` owns the approved `preview (2).html` perimeter, cream fill,
+layered border and integrated pet platform. Compact and expanded attached views
+use the same geometry function; chat/settings/todo contents remain caller slots.
+The host owns desktop positioning and pet alignment. Reference demo behavior and
+its alternative cat/paw assets are not imported.
+
+### Signatures
+
+```ts
+interface ChatBubbleDockConfig {
+  scale?: number
+  offsetX?: number
+  offsetY?: number
+}
+// Optional props on ChatBubbleFrame and forwarded by ChatPanel:
+// dock?: ChatBubbleDockConfig
+// tail?: ChatBubbleTailConfig
+```
+
+### Contracts
+
+- Attached with absent/empty/all-undefined `tail`: render one `ChatBubbleShell`.
+- Attached with any defined `tail` field: use the previous configurable tail;
+  `dock` has no effect. Standalone renders neither decoration.
+- Dock offsets use CSS pixels. Default scale is0.6; effective scale decreases
+  when width/680 or height/440 is smaller. Panel size changes redraw the outline;
+  they do not stretch the platform artwork independently along each axis.
+- Native compact frame is475×278, bottom55px; expanded uses left40/right224,
+  top40/bottom55. Expanded ChatPanel supplies default offsetX13.3 for pet alignment.
+  A caller-supplied dock object replaces that host default.
+- Keep the paw SVG and its exact position/size/filter unchanged. The transparent
+  1px layout border preserves its padding-edge anchor even though SVG owns paint.
+- Keep actual root minima and geometry minima aligned at132px; larger minima from
+  corner/slot requirements still apply. Bottom-left corner28px and top-left72px
+  must agree with surface clipping.
+- Use per-instance `useId` for every SVG definition/reference. Disconnect
+  ResizeObserver on teardown. The decoration cannot intercept pointer events.
+
+### Validation and error matrix
+
+| Input | Behavior |
+| --- | --- |
+| No dock / omitted fields | scale0.6 and zero offsets in the shared frame |
+| Nonfinite offset | zero offset |
+| Nonfinite, zero or negative scale | default scale0.6 |
+| Excessive upward offsetY | clamp before the connection would fold backward |
+| Positive scale exceeding available panel room | proportionally reduce artwork |
+| `tail={{ right: 0 }}` | explicit legacy tail mode; zero remains valid |
+
+### Good, base and bad cases
+
+```tsx
+// Base: shared continuous frame/platform.
+<ChatBubbleFrame variant="expanded" appearance="attached" title="面板">
+  {content}
+</ChatBubbleFrame>
+// Host alignment without business knowledge in the frame.
+<ChatBubbleFrame variant="expanded" appearance="attached" title="面板"
+  dock={{ scale: 0.6, offsetX: 13.3, offsetY: 0 }}>
+  {content}
+</ChatBubbleFrame>
+// Do not layer a second triangle or a complete second disk over this shell.
+```
+
+### Required checks
+
+Verify compact, expanded chat/settings/todo, independent hosts and short content;
+measure unchanged paw bounds/filter. Test two React instances for unique SVG IDs,
+host resizing, dock offsets/scale, explicit tail then reset, standalone and inert
+visibility. Geometry checks must cross the short/tall branch boundary with
+nonzero offsetX: connection x stays stable and y follows the height delta.
+
+### Wrong versus correct
+
+Do not validate only a rounded rectangle plus an overlaid platform. Inspect the
+single full perimeter and the real cat layer together: the original PNG stays
+unchanged, and the attached host clips only its old disk front to avoid overlap.
+Closed mode keeps the original complete image. Native pet z3 stays above framez2.
 The tail SVG uses `preserveAspectRatio="none"`: width and height independently
 scale the decoration. Do not use a centered `meet` viewport with proportional
 right offsets; a wide/short viewport would move the narrower drawn path off the

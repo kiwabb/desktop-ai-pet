@@ -37,5 +37,12 @@
 
 - Record pass/fail/unverified against each AC, including real-model invocation and whether any existing fixture was viewed.
 - Revert only task-owned changes from recorded backup if regressions cannot be safely corrected, preserving concurrent edits.
-- No Git metadata exists here: report local edits and verification accurately; do not claim commit/push or create a repository.
+- User authorized local Git: baseline e773d91 created before the HTML-reference redesign. Commit only reviewed task changes locally; no remote publication requested.
 - Archive this task only when required implementation/verification is complete; report remaining environmental blockers honestly.
+
+## R10 HTML Reference Migration
+
+- Lock preview (2).html and record before/after paw bounds/filter.
+- Port continuous shell/dock geometry to the shared component; preserve business slots and actual state ownership.
+- Validate compact/expanded/settings/todo, independent-host dimensions, visibility, multiple SVG instances and working tail compatibility. Build once after coherent implementation and review source boundaries.
+- Record browser evidence separately from native/service evidence; commit scoped changes locally.

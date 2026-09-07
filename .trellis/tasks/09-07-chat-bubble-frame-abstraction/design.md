@@ -1,5 +1,13 @@
 # 气泡框完整抽象设计
 
+## Latest Reference Migration (R10)
+
+Source: `references/preview-v2-approved.html` (user selected Downloads/preview (2).html). The reference visual shell supersedes older separate-tail defaults. Keep the existing root paw geometry/shadow, title/actions/body/footer slots and behavior boundaries. Move a parameterized continuous outline, right-side contour and pet platform into the shared component, sized from its actual container; the host supplies desktop placement and pet alignment. Use unique SVG IDs per mounted instance. Standalone has no pet dock. Preserve explicit legacy tail configuration through a documented working compatibility path.
+
+Expected source scope: ChatBubbleFrame and owned shell/geometry module; host style alignment; minimal PetStage presentation only if needed to avoid duplicate base; ChatPanel prop forwarding and existing QA/static checks. No model/config protocol, Rust resize timing, reference demo replies, wallpaper or new settings features. Preserve the existing white cat asset.
+
+Baseline rollback: local main commit `e773d91`, created before source changes at user request. New changes are reviewed against this commit.
+
 ## Architecture
 
 App（窗口、位置、请求状态）→ ChatPanel（聊天/设置业务与插槽内容）→ ChatBubbleFrame（可复用视觉容器）。PetStage 与气泡框保持同级，由宿主协调位置；气泡框不拥有宠物状态或原生 resize。
@@ -43,4 +51,4 @@ ChatPanel 继续持有 draft/settingsOpen，App 继续持有 messages/streaming�
 - 迁移全部当前调用方（App、ChatPanel、qa/chat-preview）和源码字符串校验，不保留无消费者的旧 entering/contentKind 接口。
 - 独立窗口和贴宠物窗口都在验收范围。现有 fixture 预览只证明外观；普通容器检查复用现有 QA 入口且使用中性插槽，不新增模拟服务。
 - 真实模型验证使用已有配置；不打印 Key、不改地址、不为验证制造错误配置。没有可用服务时记录未验证范围。
-- 当前目录无 Git。实施前对本次涉及文件保存工作区内备份和路径清单用于定向回退；不覆盖用户后续修改，不初始化 Git。
+- User authorized Git initialization; baseline e773d91 replaces the earlier no-Git constraint. Preserve other work and use scoped commits; no remote publication requested.

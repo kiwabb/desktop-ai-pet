@@ -1,0 +1,31 @@
+# Approved HTML shell migration — 2026-09-07
+
+## Baseline and scope
+
+- Local Git initialized on `main`; baseline `e773d91` committed before any visual source edits. Runtime secrets, `.env`, dependencies and verification output were excluded.
+- Final user reference: `references/preview-v2-approved.html`, copied byte-for-byte from `/Users/zhoujiaangyao/Downloads/preview (2).html`; SHA256 `12986e7ed4e101228ef120ab51efa0af20e350effeb05b8f12310bb2aad536b4`.
+- Reference browser screenshots: `output/playwright/reference-v2.png` (chat) and `output/playwright/reference-v2-settings.png` (settings). These show the user-provided HTML's labeled **demo state**, not project service/model evidence.
+- Existing paw measurement after entrance: x5.109375/y-4 relative to the outer frame, size53.296875×59.265625 CSS px; filter `drop-shadow(rgba(191, 103, 47, 0.3) 0px 5px 6px) drop-shadow(rgba(191, 103, 47, 0.2) 0px 1px 2px)`.
+- Browser QA uses the existing Vite server at127.0.0.1:1421, neutral frame slots and actual ChatPanel with explicit unconfigured state. No generated conversation or service configuration is needed for visual acceptance.
+- Initial process path was `src-tauri/target/debug/bundle/macos/橘伴.app`. CUA selection by display name resolved an older Desktop copy; that extra copy was closed. Selecting the exact project bundle path confirmed the active native window loads `127.0.0.1:1421/`, with a closed pet button. Process/bundle path alone did not establish packaged-asset loading.
+
+## Acceptance evidence
+
+### Browser runtime
+
+- Final screenshots: `output/playwright/reference-v2/compact.png`, `expanded.png`, `settings.png`, `todo.png`.
+- Compact measured475×278; expanded/settings/todo measured676×665. All four measured the exact baseline paw bounds and filter above, one continuous shell and no legacy tail.
+- Independent frame entry imports only component/QA styles. Two React frames had18 unique SVG IDs without duplicates. Resizing the first host from540px to420px and frame height340px updated the viewBox. A short second frame retained normal layout.
+- Dock offsetX12/offsetY8/scale0.45 produced the expected translated scaled group. Explicit tail right0/width36 removed the new shell and rendered the configured legacy tail; reset restored the integrated shell. Hidden state was inert and visibility:hidden; standalone rendered neither shell nor tail.
+- Todo browser preview showed its actual unavailable-native-invoke error. This proves error-layout containment only, not successful todo fetching. No fixture records were supplied.
+- Review caught and fixed expanded frame z-index covering the cat, old content paint covering the new perimeter, geometry/root minimum mismatch, and missing horizontal offset in the tall geometry branch. Final short/tall boundary test uses407.9→408.1px height and offsetX13.3, checking stable connection x and y delta0.2.
+
+### Native runtime and package
+
+- In the exact project native window loading Vite, CUA verified compact opening, settings navigation, return to compact, quick prompt filling the composer, clearing that unsent draft, and Escape closing. Screenshots showed the complete cat above the integrated platform and retained paw corner/shadow.
+- Settings displayed the existing real connection and an existing reminder; no message was sent, no credential or setting saved, and no reminder/todo was changed. Real-model invocation was not part of this validation.
+- One `pnpm build` passed (TypeScript + Vite). Two focused checks passed, including approved PNG checksum/source-visible-pixel verification and geometry regression checks. Read-only review had no remaining findings.
+- `pnpm tauri build --debug --bundles app --config '{"build":{"beforeBuildCommand":null}}'` packaged the already-built frontend without repeating its build. Bundle: `src-tauri/target/debug/bundle/macos/橘伴.app`.
+- Restarted only the project application. CUA confirmed `tauri://localhost` and the compact chat controls in the newly packaged app, establishing bundled-asset loading. Later user UI activity was observed, so no further native actions were sent; current closed state was left intact.
+
+The reference HTML's demo functions are retained only in the locked design-source artifact. Application source has no reference demo adapter/reply imports. Existing service and business state paths remain unchanged.

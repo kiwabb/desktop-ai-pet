@@ -1,7 +1,12 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { ReferenceChatBubbleTail, ReferenceMiniPaw, ReferencePawBadge } from './ReferenceIllustrations'
+import { ChatBubbleShell } from './ChatBubbleShell'
+import type { ChatBubbleDockConfig } from './pet-shell-geometry'
 import './ChatBubbleFrame.css'
+
+export type { ChatBubbleDockConfig } from './pet-shell-geometry'
 
 export interface ChatBubbleTailConfig {
   /** Vertical center anchor from the frame padding edge; numbers use CSS px. */
@@ -34,8 +39,10 @@ interface ChatBubbleFrameProps {
   variant: 'compact' | 'expanded'
   /** attached = speech bubble next to the pet (tail, paw trail); standalone = plain window surface. */
   appearance?: 'attached' | 'standalone'
-  /** Attached-only decoration; omitted fields use the current variant defaults. */
+  /** Explicit tail fields opt into the legacy detached decoration; an empty object uses the integrated shell. */
   tail?: ChatBubbleTailConfig
+  /** Placement of the integrated platform; no effect in standalone or explicit-tail mode. */
+  dock?: ChatBubbleDockConfig
   /** false keeps the frame mounted and laid out but hidden, non-interactive and unfocusable. */
   visible?: boolean
   /** Plays on each visible entrance; hidden frames reset it, without unmounting content. */
@@ -68,6 +75,7 @@ export function ChatBubbleFrame({
   variant,
   appearance = 'standalone',
   tail,
+  dock,
   visible = true,
   animateEntrance = false,
   title,
@@ -80,7 +88,25 @@ export function ChatBubbleFrame({
   style,
   children,
 }: ChatBubbleFrameProps) {
+  const rootRef = useRef<HTMLElement>(null)
+  const [size, setSize] = useState({ width: 0, height: 0 })
   const attached = appearance === 'attached'
+  const explicitTail = tail != null && Object.values(tail).some(value => value !== undefined)
+  const integrated = attached && !explicitTail
+
+  useLayoutEffect(() => {
+    if (!integrated || !rootRef.current) return
+    const root = rootRef.current
+    const update = (width: number, height: number) => setSize(current =>
+      current.width === width && current.height === height ? current : { width, height })
+    update(root.offsetWidth, root.offsetHeight)
+    const observer = new ResizeObserver(entries => {
+      const box = entries[0]?.borderBoxSize[0]
+      update(box?.inlineSize ?? root.offsetWidth, box?.blockSize ?? root.offsetHeight)
+    })
+    observer.observe(root)
+    return () => observer.disconnect()
+  }, [integrated])
   const defaults = tailDefaults[variant]
   const tailWidth = tail?.width ?? defaults.width
   const frameStyle: FrameStyle = {
@@ -90,17 +116,19 @@ export function ChatBubbleFrame({
     '--chat-tail-width': `${tailWidth}px`,
     '--chat-tail-height': `${tail?.height ?? defaults.height}px`,
   }
-  const rootClass = `chat-panel is-${variant} is-${appearance}${visible ? '' : ' is-hidden'}${visible && animateEntrance ? ' is-entering' : ''}${className ? ` ${className}` : ''}`
+  const rootClass = `chat-panel is-${variant} is-${appearance}${integrated ? ' is-integrated' : ''}${visible ? '' : ' is-hidden'}${visible && animateEntrance ? ' is-entering' : ''}${className ? ` ${className}` : ''}`
 
   return (
     <section
+      ref={rootRef}
       className={rootClass}
       style={frameStyle}
       aria-label={ariaLabel ?? title}
       inert={!visible}
     >
       <ReferencePawBadge className="assistant-paw-badge" />
-      {attached && <ReferenceChatBubbleTail className="chat-bubble-tail" variant={variant} />}
+      {integrated && size.width > 0 && <ChatBubbleShell width={size.width} height={size.height} dock={dock} />}
+      {attached && explicitTail && <ReferenceChatBubbleTail className="chat-bubble-tail" variant={variant} />}
 
       {attached && variant === 'compact' && (
         <span className="compact-paw-trail" aria-hidden="true">

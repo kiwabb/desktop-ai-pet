@@ -197,4 +197,55 @@ const luma = hex => {
 if (luma(mainFill[1]) <= luma(toeFill[1]))
   fail(`main pad ${mainFill[1]} must be lighter than the toe pads ${toeFill[1]}, as in the reference`)
 
+// Exercise real shared geometry at native and small neutral-host sizes.
+const { buildPetShellGeometry } = await import('../src/components/pet-shell-geometry.ts')
+for (const [width, height] of [[475, 278], [676, 665], [132, 132], [200, 160], [1000, 900]]) {
+  for (const dock of [{}, { offsetX: 12, offsetY: 18 }, { offsetY: -200, scale: 0.8 }]) {
+    const geometry = buildPetShellGeometry({ width, height }, dock)
+    if (/NaN|Infinity/.test(geometry.outline) || !geometry.outline.startsWith('M72 0') || !geometry.outline.endsWith('Z') || (geometry.outline.match(/M/g) ?? []).length !== 1)
+      fail(`integrated shell is not one finite closed perimeter at ${width}x${height}`)
+    if (geometry.scale * 440 > geometry.height + 0.001 || geometry.scale * 680 > geometry.width + 0.001)
+      fail('small shell scales the fixed artwork beyond its available shoulder room')
+    if (geometry.canvasWidth <= width || geometry.canvasHeight <= height)
+      fail('integrated platform is outside the SVG canvas')
+  }
+}
+const integratedRule = frameCss.match(/\.chat-panel\.is-attached\.is-integrated \{([^}]+)\}/)
+const minimumShell = buildPetShellGeometry({ width: 1, height: 1 })
+for (const axis of ['width', 'height']) {
+  if (!integratedRule?.[1].includes(`min-${axis}: max(${minimumShell[axis]}px,`))
+    fail(`integrated CSS minimum ${axis} disagrees with the geometry minimum`)
+}
+// Follow the actual generated SVG commands up to the fixed platform curve.
+// Both short/tall branches must arrive at the same x when height crosses its
+// switch point, including when the caller offsets the platform horizontally.
+function platformJoin(width, height) {
+  const g = buildPetShellGeometry({ width, height }, { offsetX: 13.3 })
+  let x = 0, y = 0
+  const firstControl = [width + 94 * g.scale + 13.3, height - 121 * g.scale]
+  for (const command of g.outline.match(/[A-Za-z][^A-Za-z]*/g) ?? []) {
+    const kind = command[0]
+    const values = command.slice(1).trim().split(/[ ,]+/).map(Number)
+    if (kind === 'C' && Math.abs(values[0] - firstControl[0]) < .001 && Math.abs(values[1] - firstControl[1]) < .001) return { x, y }
+    if (kind === 'H') x = values[0]
+    else if (kind === 'V') y = values[0]
+    else if (kind !== 'Z') [x, y] = values.slice(-2)
+  }
+  fail('shared outline does not reach the platform curve')
+}
+const shortJoin = platformJoin(676, 407.9)
+const tallJoin = platformJoin(676, 408.1)
+if (Math.abs(shortJoin.x - tallJoin.x) > .001 || Math.abs(tallJoin.y - shortJoin.y - .2) > .001)
+  fail('platform offset jumps when switching between short and tall frame geometry')
+
+const compactShell = buildPetShellGeometry({ width: 475, height: 278 })
+const expandedShell = buildPetShellGeometry({ width: 676, height: 665 })
+if (compactShell.scale !== 0.6 || expandedShell.scale !== compactShell.scale)
+  fail('native mode changes stretch the fixed-size platform artwork')
+const shellSource = readFileSync(resolve('src/components/ChatBubbleShell.tsx'), 'utf8')
+if (!shellSource.includes('useId()') || !shellSource.includes('clipPath') || !frame.includes('observer.disconnect()'))
+  fail('integrated shell lacks isolated SVG IDs, paint clipping or resize cleanup')
+if (!frame.includes('Object.values(tail).some(value => value !== undefined)') || !frame.includes('attached && explicitTail'))
+  fail('explicit tail compatibility or default empty-tail integrated behavior regressed')
+
 console.log('component compact verification passed: locked visual reference, real DOM controls, shared corner paw-badge geometry, no runtime panel screenshot')

@@ -17,6 +17,10 @@ function FramePreview() {
   const [tailRight, setTailRight] = useState('')
   const [tailWidth, setTailWidth] = useState('')
   const [tailHeight, setTailHeight] = useState('')
+  const [dockOffsetX, setDockOffsetX] = useState('')
+  const [dockOffsetY, setDockOffsetY] = useState('')
+  const [dockScale, setDockScale] = useState('')
+  const [secondFrame, setSecondFrame] = useState(false)
 
   const position = (value: string) => !value.trim() ? undefined : Number.isFinite(Number(value)) ? Number(value) : value
   const tail: ChatBubbleTailConfig = {
@@ -50,6 +54,13 @@ function FramePreview() {
         <label>高度<input aria-label="尾巴高度" type="number" min="1" value={tailHeight} onChange={event => setTailHeight(event.target.value)} placeholder="默认" style={{ width: 70 }} /></label>
         <button type="button" onClick={resetTail}>恢复默认尾巴</button>
       </fieldset>
+      <fieldset className="qa-controls">
+        <legend>一体底盘（显式尾巴配置会切回旧尾巴；留空使用一体外壳）</legend>
+        <label>横移<input aria-label="底盘横移" type="number" value={dockOffsetX} onChange={event => setDockOffsetX(event.target.value)} style={{ width: 75 }} /></label>
+        <label>纵移<input aria-label="底盘纵移" type="number" value={dockOffsetY} onChange={event => setDockOffsetY(event.target.value)} style={{ width: 75 }} /></label>
+        <label>比例<input aria-label="底盘比例" type="number" min="0.1" step="0.1" value={dockScale} onChange={event => setDockScale(event.target.value)} style={{ width: 75 }} /></label>
+        <label><input type="checkbox" checked={secondFrame} onChange={event => setSecondFrame(event.target.checked)} />显示第二实例</label>
+      </fieldset>
       <div className="qa-frame-host">
         <ChatBubbleFrame
           variant={variant}
@@ -57,6 +68,7 @@ function FramePreview() {
           visible={visible}
           animateEntrance={animateEntrance}
           tail={tail}
+          dock={{ offsetX: dockOffsetX ? Number(dockOffsetX) : undefined, offsetY: dockOffsetY ? Number(dockOffsetY) : undefined, scale: dockScale ? Number(dockScale) : undefined }}
           title="气泡框独立预览"
           subtitle="中性插槽，无聊天数据"
           actions={<button className="qa-frame-action" type="button" aria-label="关闭预览" onClick={() => setVisible(false)}><X aria-hidden="true" /></button>}
@@ -66,6 +78,7 @@ function FramePreview() {
         </ChatBubbleFrame>
         <p className="qa-note">普通文档流中的后续内容，用于检查组件是否占据布局空间。</p>
       </div>
+      {secondFrame && <div className="qa-frame-host" style={{ marginTop: 100 }}><ChatBubbleFrame variant={variant} appearance={appearance} title="第二个独立实例"><div className="qa-slot">独立 SVG 定义，无业务数据</div></ChatBubbleFrame></div>}
     </main>
   )
 }
