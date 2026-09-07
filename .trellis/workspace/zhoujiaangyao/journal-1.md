@@ -531,3 +531,37 @@ Redistributed integrated compact content to reduce empty bottom strip while pres
 ### Next Steps
 
 - 原任务真实服务验收仍独立保留。
+
+
+## Session 17: Compact chat composition refinement
+<!-- trellis-session: v=2 fp=c42a963765fc382c -->
+
+**Date**: 2026-09-07
+**Task**: Compact chat composition refinement
+**Branch**: `main`
+
+### Summary
+
+Rebalanced integrated compact header, input and two-column quick actions while preserving approved cat and shell decorations.
+
+### Main Changes
+
+- Shared88px header,78px composer and14px group spacing; aligned2x2 actions with readable muted colors. Updated composition spec and task evidence.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6348073` | feat: refine compact chat composition and action styling |
+
+### Testing
+
+- [OK] Browser geometry, four prompt fills, keyboard focus, settings return and hide/reopen passed. Scoped review and focused checks passed. Vite assets and Tauri bundle rebuilt; native closed app confirmed, native open automation unavailable.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 真实模型与服务验收仍独立保留；新版原生展开效果待用户查看。
