@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 20
+- **Total Sessions**: 21
 - **Last Active**: 2026-09-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~669 | Active |
+| `journal-1.md` | ~695 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 21 | 2026-09-08 | 收尾归档 9 个已完成任务 | `5955bc8`, `391eda6`, `d22c6fd`, `a73992b`, `fdeb963` | `codex/desktop-pet-frontend-polish` |
 | 20 | 2026-09-08 | Desktop pet frontend polish implementation | `391eda6` | `codex/desktop-pet-frontend-polish` |
 | 19 | 2026-09-07 | Reference settings card layout | `a73992b` | `main` |
 | 18 | 2026-09-07 | Refined warm compact surfaces | `8e9c88b` | `main` |

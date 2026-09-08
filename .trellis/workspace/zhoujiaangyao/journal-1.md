@@ -667,3 +667,29 @@ Unified warm surfaces, safe Markdown, IME and reading continuity, single-consump
 ### Next Steps
 
 - Bring pet to current visible desktop; complete native send/stream/clipboard/IME/10-cycle acceptance, then final visual confirmation.
+
+
+## Session 21: 收尾归档 9 个已完成任务
+<!-- trellis-session: v=2 fp=9ecd5c55fb0f470b -->
+
+**Date**: 2026-09-08
+**Task**: 收尾归档 9 个已完成任务
+**Branch**: `codex/desktop-pet-frontend-polish`
+
+### Summary
+
+用户确认全部任务已完成，批量归档 9 个 in_progress 任务：compact-chat-reference-fidelity、agent-desktop-client、agent-gateway-foundation、agent-runtime-todos、chat-bubble-frame-abstraction、server-agent-todo-mvp、todo-complete、todo-reminders、desktop-pet-frontend-polish。工作区干净，无未提交代码。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5955bc8` | docs: record frontend polish verification and remaining native checks |
+| `391eda6` | feat: polish desktop pet surfaces and chat interactions |
+| `d22c6fd` | docs: record reference settings verification |
+| `a73992b` | feat: match assistant settings to approved reference layout |
+| `fdeb963` | docs: record warm surface refinement |
+
+### Status
+
+[OK] **Completed**
