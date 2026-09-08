@@ -77,3 +77,9 @@ The list's completion control invokes `completeTodo(todoId)` for pending items a
 ## Due reminders
 
 Reminder schedules and due status are server data, with native polling independent of TodoList/chat mounts. Follow [todo-reminders](../backend/todo-reminders.md) for new View fields, mutation fencing, occurrence deduplication and explicit snooze retry targets. `todo_revision` refreshes mounted lists after confirmed actions elsewhere; do not remount the entire ChatPanel or discard its draft. Preserve the single frame body slot when adding the notice and bound each scrolling region.
+
+## Composer acceptance and IME
+
+Preserve the original draft separately from trimmed submission text. Snapshot acknowledgement and the acceptance Promise must share one confirmation path that consumes the matching submission object only once. Late acknowledgements cannot consume a new submission or erase newly typed identical text. Acquire an immediate ref-based send lock before the request and release it when the Promise settles. Retain edited drafts and all failed submissions.
+
+Candidate-confirming Enter must be rejected during composition, for native isComposing/keyCode229, and during the short WebKit composition-end event burst. Shift+Enter remains a newline. Verify actual native IME independently from pure-event regressions.

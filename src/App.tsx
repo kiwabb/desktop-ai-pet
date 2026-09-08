@@ -9,6 +9,7 @@ import { ChatPanel, type UiMessage } from './components/ChatPanel'
 import { PetStage } from './components/PetStage'
 import { type AgentView, getAgentView, submitAgentRun } from './lib/agent'
 import type { PetState } from './lib/pet-state'
+import { getPetLiveStatus } from './lib/pet-live-status'
 
 type ChatMode = 'closed' | 'compact' | 'expanded'
 
@@ -437,6 +438,7 @@ function App() {
       )}
       <PetStage
         petState={petState}
+        liveStatus={getPetLiveStatus(status, petState)}
         reply={petReply}
         // Every window mode shares the approved reference cat. Expanding the
         // settings panel must change only the panel, never the pet artwork.

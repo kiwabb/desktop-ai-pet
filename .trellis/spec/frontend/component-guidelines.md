@@ -288,3 +288,11 @@ real model operation.
 ## Todo list presentation
 
 `TodoList.tsx` owns a scoped `TodoList.css`. Keep the task title primary and completion in a left-side control with at least a 44px hit area. Avoid repeating business status as both a pill and a prominent right-side CTA. Use quiet creation dates, retaining an exact localized timestamp for hover and assistive technology. A completed item keeps a clickable check and subtle strike-through; the same button requests restoration to pending, with an action-specific accessible label; a pending write shows progress inside the control and must await confirmed persistence. Preserve loading/error/empty states, keyboard focus, reduced motion and stale-response guards during styling changes. Changes to this list must preserve the existing cat artwork and shared bubble geometry.
+
+## Message content and reading continuity
+
+`MessageContent` renders Markdown through react-markdown and remark-gfm with raw HTML disabled. Preserve source text and message identity; allow explicit HTTP(S)/mailto links only and never automatically fetch model-provided images. Code copy must use the code content, report clipboard failures, and reset success feedback when streaming changes that content. Styles are scoped under `.chat-panel .message-markdown`.
+
+`useChatReading` scrolls only its own viewport, never `scrollIntoView` on an ancestor. Follow new content only near the bottom or after the user explicitly returns to latest; preserve the reading position across settings/todo navigation. Returning from secondary pages restores the initiating chat mode; successful settings save retains the compact-return contract.
+
+The approved pet PNG remains unchanged. `PetLiveStatus` overlays only the interior of its decorative speech bubble with actual AgentView-derived connection/model/device state. Do not punch a separately rasterized transparent mask beneath an opaque replacement: fractional edges can expose a visible seam. Keep pet pixels, original outline, and the independent open-state bottom clip untouched.

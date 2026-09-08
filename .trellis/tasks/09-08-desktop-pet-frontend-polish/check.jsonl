@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "Shared frame, settings ownership, credential and decoration contracts"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "Keep service/native state ownership and transition rules"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Evidence boundaries and risk-matched verification"}
+{"file": ".trellis/tasks/09-08-desktop-pet-frontend-polish/research/frontend-inventory.md", "reason": "Source-grounded view inventory, IME/scroll/navigation gaps and native unknowns"}
+{"file": ".trellis/tasks/09-07-chat-bubble-frame-abstraction/reference-v2-verification.md", "reason": "Baseline visual measurements and separate unverified native/service results"}

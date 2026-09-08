@@ -1,0 +1,27 @@
+.chat-panel .message-markdown { min-width: 0; color: inherit; white-space: normal; overflow-wrap: anywhere; font-size: 14px; line-height: 1.7; }
+.chat-panel .message-markdown > :first-child { margin-top: 0; }
+.chat-panel .message-markdown > :last-child { margin-bottom: 0; }
+.chat-panel .message-markdown p { margin: 0 0 10px; white-space: pre-wrap; }
+.chat-panel .message-markdown h1, .chat-panel .message-markdown h2, .chat-panel .message-markdown h3,
+.chat-panel .message-markdown h4, .chat-panel .message-markdown h5, .chat-panel .message-markdown h6 { margin: 16px 0 8px; font-size: 1.08em; line-height: 1.5; font-weight: 700; }
+.chat-panel .message-markdown ul, .chat-panel .message-markdown ol { margin: 8px 0 12px; padding-left: 22px; }
+.chat-panel .message-markdown li { margin: 4px 0; }
+.chat-panel .message-markdown li > p { margin-bottom: 4px; }
+.chat-panel .message-markdown blockquote { margin: 10px 0; padding: 4px 12px; border-left: 3px solid #cba783; background: rgba(151,112,76,.07); }
+.chat-panel .message-markdown a { color: #8b4c2d; text-decoration: underline; text-underline-offset: 3px; }
+.chat-panel .message-user .message-markdown a { color: inherit; }
+.chat-panel .message-markdown code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
+.chat-panel .message-markdown :not(pre) > code { padding: 2px 5px; border-radius: 4px; background: rgba(151,112,76,.09); }
+.chat-panel .message-code-block { max-width: 100%; margin: 10px 0; color: #493b31; border: 1px solid #eadfd4; border-radius: 10px; background: #fffdfa; overflow: hidden; }
+.chat-panel .message-code-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 8px 4px 12px; border-bottom: 1px solid #eadfd4; color: #796959; font-size: 12px; }
+.chat-panel .message-code-toolbar button { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 4px 7px; color: #795234; border: 0; border-radius: 6px; background: transparent; font-size: 12px; }
+.chat-panel .message-code-toolbar button:hover { background: #f6eadc; }
+.chat-panel .message-code-toolbar svg { width: 14px; height: 14px; }
+.chat-panel .message-markdown pre { max-width: 100%; margin: 0; padding: 12px; overflow-x: auto; white-space: pre; line-height: 1.6; scrollbar-width: thin; }
+.chat-panel .message-markdown pre code { padding: 0; background: transparent; }
+.chat-panel .message-markdown .message-copy-error { margin: 0; padding: 6px 12px 10px; color: #994437; font-size: 12px; }
+.chat-panel .message-markdown table { display: block; max-width: 100%; margin: 10px 0; overflow-x: auto; border-collapse: collapse; font-size: 12px; }
+.chat-panel .message-markdown th, .chat-panel .message-markdown td { padding: 6px 9px; border: 1px solid #d7c4b2; text-align: left; }
+.chat-panel .message-markdown hr { margin: 16px 0; border: 0; border-top: 1px solid #d7c4b2; }
+.chat-panel .message-image-description { font-size: 12px; font-style: italic; }
+.chat-panel .message-markdown a:focus-visible, .chat-panel .message-markdown button:focus-visible { outline: 2px solid #ac703b; outline-offset: 2px; }

@@ -1,0 +1,36 @@
+import type { AgentView } from './agent'
+import type { PetState } from './pet-state'
+
+export interface PetLiveStatus {
+  title: string
+  detail: string
+  tone: 'neutral' | 'pending' | 'ready' | 'error'
+  accessibleLabel: string
+}
+
+type ConnectionState = Pick<AgentView, 'configured' | 'connection' | 'model_configured' | 'node_connected' | 'node_error' | 'error'>
+
+export function getPetLiveStatus(view: ConnectionState | null, petState: PetState): PetLiveStatus {
+  const status = (detail: string, tone: PetLiveStatus['tone'], accessibleLabel: string, title = '陪着你'): PetLiveStatus => ({ title, detail, tone, accessibleLabel })
+  if (!view)
+    return status('正在读取状态', 'neutral', '正在读取助手连接状态')
+  if (!view.configured || view.connection === 'unconfigured')
+    return status('助手待配置', 'neutral', '助手服务未配置')
+  if (view.connection === 'connecting')
+    return status('正在连接', 'pending', '正在连接助手服务')
+  if (view.connection !== 'connected')
+    return status('连接已断开', 'error', '助手连接已断开，等待重新连接')
+  if (!view.model_configured)
+    return status('模型待配置', 'pending', '助手已连接，服务端模型未配置')
+  if (view.error)
+    return status('助手需要检查', 'error', '助手已连接，但服务报告错误，请打开对话查看')
+  if (!view.node_connected)
+    return view.node_error
+      ? status('聊天可用 · 设备离线', 'pending', '聊天已连接，设备暂时离线')
+      : status('聊天可用 · 登记中', 'pending', '聊天已连接，设备正在登记')
+  if (petState === 'thinking')
+    return status('正在整理思路', 'ready', '助手与设备已连接，正在思考', '思考中')
+  if (petState === 'talking')
+    return status('正在回复你', 'ready', '助手与设备已连接，正在回复', '回复中')
+  return status('在线待命', 'ready', '助手与设备已连接，模型已配置')
+}

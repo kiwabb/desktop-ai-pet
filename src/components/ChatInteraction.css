@@ -1,0 +1,22 @@
+.chat-panel .chat-reading-list { overflow-anchor: none; }
+.chat-panel .chat-reading-list:has(.empty-state) .chat-message-feed { height: 100%; }
+.chat-panel .chat-latest-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex: none;
+  gap: 6px;
+  min-height: 34px;
+  margin: 5px 12px;
+  padding: 6px 13px;
+  color: #795234;
+  background: #fff7e9;
+  border: 1px solid #dfc6aa;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(117, 79, 41, .06);
+  font-size: 12px;
+}
+.chat-panel .chat-latest-button svg { width: 15px; height: 15px; }
+.chat-panel .chat-latest-button:hover { background: #f9ecd9; }
+.chat-panel .chat-latest-button:focus-visible { outline: 2px solid #ac703b; outline-offset: 2px; }

@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { PetState } from '../lib/pet-state'
 import { petStateLabel } from '../lib/pet-state'
+import { getPetLiveStatus } from '../lib/pet-live-status'
+import type { PetLiveStatus as LiveStatus } from '../lib/pet-live-status'
 import type { PetRenderer } from '../lib/pet-2d-renderer'
+import { PetLiveStatus } from './PetLiveStatus'
 import { ReferenceHeartBurst, ReferenceSparkle, ReferenceStatusRays } from './ReferenceIllustrations'
 
 const petPreview = '/pets/white-cat-v2/idle.png'
@@ -17,12 +20,13 @@ interface PetStageProps {
   petState: PetState
   reply: string | null
   mode: PetStageMode
+  liveStatus?: LiveStatus
   onPetInteract: () => void
   onToggleChat: () => void
   onContextMenu: () => void
 }
 
-export function PetStage({ petState, reply, mode, onPetInteract, onToggleChat, onContextMenu }: PetStageProps) {
+export function PetStage({ petState, reply, mode, liveStatus = getPetLiveStatus(null, petState), onPetInteract, onToggleChat, onContextMenu }: PetStageProps) {
   const rendererHostRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<PetRenderer | null>(null)
   const windowPositionRef = useRef({ x: 0, y: 0 })
@@ -145,13 +149,15 @@ export function PetStage({ petState, reply, mode, onPetInteract, onToggleChat, o
       aria-label={`白猫助手，${petStateLabel[petState]}`}
     >
       {mode === 'reference-closed' && (
-        <img
-          className="closed-reference-art"
-          src={closedReference}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-        />
+        <PetLiveStatus status={liveStatus}>
+          <img
+            className="closed-reference-art"
+            src={closedReference}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+          />
+        </PetLiveStatus>
       )}
 
       {mode === 'animated' && reply && <div className="pet-reply-bubble" aria-live="polite">{reply}</div>}

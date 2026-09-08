@@ -2,14 +2,14 @@
 .chat-panel .chat-content-with-reminders { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .chat-panel .chat-content-with-reminders > .message-list,
 .chat-panel .chat-content-with-reminders > .todo-list-view { flex: 1; min-height: 0; }
-.chat-panel .todo-reminders { flex: 0 1 auto; max-height: 46%; overflow-y: auto; overscroll-behavior: contain; padding: 14px 22px; background: #f8efdf; border-bottom: 1px solid #dfcbb0; color: #493b31; }
-.chat-panel .todo-reminders h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #76583c; }
+.chat-panel .todo-reminders { flex: 0 1 auto; max-height: min(180px, 34%); overflow-y: auto; overscroll-behavior: contain; padding: 12px 22px; background: linear-gradient(120deg, #fcf2e4, #fff9ef); border-bottom: 1px solid var(--pet-rule); color: var(--pet-ink); scrollbar-color: #cdbba9 transparent; }
+.chat-panel .todo-reminders h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #795233; }
 .chat-panel .todo-reminders h2 > svg { width: 15px; height: 15px; }
-.chat-panel .todo-reminders h2 > span { margin-left: auto; font-size: 11px; font-weight: 400; }
+.chat-panel .todo-reminders h2 > span { margin-left: auto; font-size: 12px; font-weight: 400; }
 .chat-panel .todo-reminder-title { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
-.chat-panel .todo-reminder-card time { display: block; margin-top: 4px; color: #79634e; font-size: 12px; }
+.chat-panel .todo-reminder-card time { display: block; margin-top: 4px; color: var(--pet-muted); font-size: 12px; }
 .chat-panel .todo-reminder-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.chat-panel .todo-reminder-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 1px solid #c2a585; border-radius: 9px; background: #fffaf4; color: #624a34; font-size: 12px; cursor: pointer; }
+.chat-panel .todo-reminder-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 1px solid #d5bfa9; border-radius: 10px; background: var(--pet-surface); color: #624a34; font-size: 12px; cursor: pointer; }
 .chat-panel .todo-reminder-actions button svg { width: 15px; height: 15px; }
 .chat-panel .todo-reminder-actions button:hover:not(:disabled) { background: #edddc7; }
 .chat-panel .todo-reminder-actions button:focus-visible { outline: 2px solid #9d6e3f; outline-offset: 2px; }

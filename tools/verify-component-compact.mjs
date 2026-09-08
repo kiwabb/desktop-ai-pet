@@ -56,12 +56,27 @@ for (const required of [
   'className="quick-prompts"',
   '<textarea',
   '<Settings2',
-  '<Paperclip',
-  '<Mic',
   '<Send',
 ]) {
   if (!compactUi.includes(required))
     fail(`real compact component is missing ${required}`)
+}
+
+// The approved composer now contains working text/send controls only. Keep
+// verifying their real form wiring rather than requiring unavailable tools.
+const composer = component.match(/<form\b[^>]*className="composer"[\s\S]*?<\/form>/)?.[0]
+if (!composer || !composer.includes('onSubmit={submit}'))
+  fail('compact composer must retain the real submit form')
+if ((composer?.match(/<textarea\b/g) ?? []).length !== 1
+    || !composer?.includes('value={draft}')
+    || !composer?.includes('setDraft(event.target.value)'))
+  fail('compact composer must retain one editable controlled textarea')
+const sendControl = composer?.match(/<button\b[^>]*className="send-button"[\s\S]*?<\/button>/)?.[0]
+if (!sendControl?.includes('type="submit"') || !sendControl.includes('<Send'))
+  fail('compact composer must retain its real Send submit control')
+for (const unavailable of ['<Paperclip', '<Mic', 'className="composer-tool"', '附件功能即将支持', '语音输入即将支持']) {
+  if (composer?.includes(unavailable))
+    fail(`compact composer still renders the removed unavailable placeholder: ${unavailable}`)
 }
 
 if (compactUi.includes('contentKind'))

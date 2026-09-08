@@ -1,16 +1,20 @@
-import { ArrowLeft, ClipboardList, BarChart3, CheckCheck, FileText, Lightbulb, LoaderCircle, Mic, Paperclip, Pin, Send, Settings2, Sparkles, UserRound, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ClipboardList, BarChart3, CheckCheck, FileText, Lightbulb, LoaderCircle, Pin, Send, Settings2, Sparkles, UserRound, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import { connectionLabel, saveAgentSettings } from '../lib/agent'
 import type { AgentView, ToolCall } from '../lib/agent'
+import { shouldSubmitComposer } from '../lib/chat-interaction'
 import { todoToolEffectsFingerprint, todoToolPresentation } from '../lib/todo-tool-presentation'
+import { MessageContent } from './MessageContent'
+import { useChatReading } from './useChatReading'
 import { ChatBubbleFrame } from './ChatBubbleFrame'
 import { AssistantSettings } from './AssistantSettings'
 import type { ChatBubbleDockConfig, ChatBubbleTailConfig } from './ChatBubbleFrame'
 import { TodoList } from './TodoList'
 import { TodoReminders } from './TodoReminders'
 import { ReferenceSparkle } from './ReferenceIllustrations'
+import './ChatInteraction.css'
 const petPreview = '/pets/white-cat-v2/idle.png'
 
 export interface UiMessage {
@@ -55,8 +59,13 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
   const submittedDraftRef = useRef<{ content: string; requestId: string } | null>(null)
-  const messageEndRef = useRef<HTMLDivElement>(null)
-  const messageListRef = useRef<HTMLDivElement>(null)
+  const sendingRef = useRef(false)
+  const returnExpandedRef = useRef(expanded)
+  const compositionRef = useRef(false)
+  const compositionEndedAtRef = useRef(-Infinity)
+  const backButtonRef = useRef<HTMLButtonElement>(null)
+  const reading = useChatReading(expanded && visible && !settingsOpen && !todosOpen, messages, tools)
+  const messageListRef = reading.listRef
   const inputRef = useRef<HTMLTextAreaElement>(null)
   // Model tools do not advance the native direct-write revision. Track their
   // confirmed effects separately, keeping streamed message updates inert here.
@@ -71,55 +80,71 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   }, [todoRefreshKey])
 
   useEffect(() => {
-    if (settingsOpen || todosOpen) return
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, settingsOpen, todosOpen])
-
-  useEffect(() => {
     if (settingsOpen) messageListRef.current?.scrollTo({ top: 0, behavior: 'instant' })
   }, [settingsOpen])
 
   useEffect(() => {
+    if (settingsOpen || todosOpen || !visible) {
+      compositionRef.current = false
+      compositionEndedAtRef.current = -Infinity
+    }
+  }, [settingsOpen, todosOpen, visible])
+
+  useEffect(() => {
     const submitted = submittedDraftRef.current
     if (submitted && acceptedRequestId === submitted.requestId) {
-      setDraft(current => current === submitted.content ? '' : current)
-      submittedDraftRef.current = null
+      acknowledgeSubmission(submitted)
     }
   }, [acceptedRequestId])
 
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+  function acknowledgeSubmission(submitted: { content: string; requestId: string }) {
+    // Snapshot recovery and the invoke promise can both acknowledge one send.
+    // Consume its marker once so a late acknowledgement cannot clear a new draft.
+    if (submittedDraftRef.current !== submitted) return
+    submittedDraftRef.current = null
+    setDraft(current => current === submitted.content ? '' : current)
+  }
 
-  // The host pre-mounts the panel hidden (inert) while AppKit resizes the
-  // native surface, so the mount-time focus above is swallowed. Refocus the
-  // composer as soon as the frame becomes visible/interactive again.
+  function focusCurrentView() {
+    const target = settingsOpen
+      ? messageListRef.current?.querySelector<HTMLInputElement>('input')
+      : todosOpen ? backButtonRef.current : inputRef.current
+    target?.focus({ preventScroll: true })
+  }
+
+  // Refocus after a committed visible/view transition; do not steal focus
+  // from a settings editor when the native window merely regains focus.
   useEffect(() => {
-    if (visible)
-      window.requestAnimationFrame(() => inputRef.current?.focus())
-  }, [visible])
+    if (!visible) return
+    const frame = window.requestAnimationFrame(focusCurrentView)
+    return () => window.cancelAnimationFrame(frame)
+  }, [visible, settingsOpen, todosOpen, expanded])
 
   useEffect(() => {
     if (!expanded) {
       setSettingsOpen(false)
       setTodosOpen(false)
-      window.requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [expanded])
 
   useEffect(() => {
-    const focusComposer = () => window.requestAnimationFrame(() => inputRef.current?.focus())
+    let focusFrame: number | undefined
+    const recoverFocus = () => {
+      if (!visible || (document.activeElement instanceof HTMLElement && document.activeElement !== document.body)) return
+      focusFrame = window.requestAnimationFrame(focusCurrentView)
+    }
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape')
+      if (event.key === 'Escape' && !event.isComposing && event.keyCode !== 229 && !compositionRef.current)
         onClose()
     }
-    window.addEventListener('focus', focusComposer)
+    window.addEventListener('focus', recoverFocus)
     window.addEventListener('keydown', closeOnEscape)
     return () => {
-      window.removeEventListener('focus', focusComposer)
+      if (focusFrame !== undefined) window.cancelAnimationFrame(focusFrame)
+      window.removeEventListener('focus', recoverFocus)
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [onClose])
+  }, [onClose, visible, settingsOpen, todosOpen])
 
   const configured = status?.configured === true
 
@@ -151,7 +176,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   async function submit(event: FormEvent) {
     event.preventDefault()
     const content = draft.trim()
-    if (!content || streaming)
+    if (!content || streaming || sendingRef.current || compositionRef.current)
       return
 
     if (!configured) {
@@ -160,36 +185,50 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
     }
 
     if (status?.connection !== 'connected' || !status.model_configured) return
-    const request = onSend(content)
-    submittedDraftRef.current = { content, requestId: request.requestId }
+    sendingRef.current = true
     try {
+      const request = onSend(content)
+      const submitted = { content: draft, requestId: request.requestId }
+      submittedDraftRef.current = submitted
       await request.accepted
-      setDraft(current => current === content ? '' : current)
-      submittedDraftRef.current = null
+      acknowledgeSubmission(submitted)
       // Keep the existing conversation visible while the server accepts and streams.
       if (!expanded) onExpandedChange(true)
     }
     catch {
       // App owns the visible error. Preserve the draft for an idempotent retry.
     }
+    finally {
+      sendingRef.current = false
+    }
+  }
+
+  function returnToChat() {
+    setSettingsOpen(false)
+    setTodosOpen(false)
+    onExpandedChange(returnExpandedRef.current)
   }
 
   function openSettings() {
-    setTodosOpen(false)
     if (settingsOpen) {
-      setSettingsOpen(false)
-      onExpandedChange(false)
+      returnToChat()
       return
     }
-    if (!expanded)
-      onExpandedChange(true)
+    if (!todosOpen) returnExpandedRef.current = expanded
+    setTodosOpen(false)
     setSettingsOpen(true)
+    if (!expanded) onExpandedChange(true)
   }
 
   function toggleTodos() {
+    if (todosOpen) {
+      returnToChat()
+      return
+    }
+    if (!settingsOpen) returnExpandedRef.current = expanded
     setSettingsOpen(false)
+    setTodosOpen(true)
     if (!expanded) onExpandedChange(true)
-    setTodosOpen(current => !current)
   }
 
   function applyQuickPrompt(prompt: string) {
@@ -213,11 +252,11 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
       subtitle={connectionLabel(status)}
       actions={(
         <>
-          <button className={`icon-button${todosOpen ? ' is-active' : ''}`} type="button" aria-label={todosOpen ? '返回聊天' : '查看待办列表'} title={todosOpen ? '返回聊天' : '待办列表'} onClick={toggleTodos}>
+          <button ref={todosOpen ? backButtonRef : undefined} className={`icon-button${todosOpen ? ' is-active' : ''}`} type="button" aria-label={todosOpen ? '返回聊天' : '查看待办列表'} title={todosOpen ? '返回聊天' : '待办列表'} onClick={toggleTodos}>
             {todosOpen ? <ArrowLeft aria-hidden="true" /> : <ClipboardList aria-hidden="true" />}
           </button>
-          <button className={`icon-button${settingsOpen ? ' is-active' : ''}`} type="button" aria-label={settingsOpen ? '返回对话' : '配置助手服务'} onClick={openSettings}>
-            <Settings2 aria-hidden="true" />
+          <button ref={settingsOpen ? backButtonRef : undefined} className={`icon-button${settingsOpen ? ' is-active' : ''}`} type="button" aria-label={settingsOpen ? '返回聊天' : '配置助手服务'} onClick={openSettings}>
+            {settingsOpen ? <ArrowLeft aria-hidden="true" /> : <Settings2 aria-hidden="true" />}
           </button>
           {!settingsOpen && (
             <span className="pin-indicator" role="img" aria-label="桌宠已置顶" title="桌宠已置顶">
@@ -243,20 +282,15 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
                 placeholder="说点什么…"
                 disabled={streaming}
                 onChange={event => setDraft(event.target.value)}
+                onCompositionStart={() => { compositionRef.current = true }}
+                onCompositionEnd={event => { compositionRef.current = false; compositionEndedAtRef.current = event.timeStamp }}
                 onKeyDown={event => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
+                  if (shouldSubmitComposer({ key: event.key, shiftKey: event.shiftKey, isComposing: event.nativeEvent.isComposing, keyCode: event.nativeEvent.keyCode, compositionActive: compositionRef.current, timeStamp: event.timeStamp, compositionEndedAt: compositionEndedAtRef.current })) {
                     event.preventDefault()
                     event.currentTarget.form?.requestSubmit()
                   }
                 }}
               />
-              <button className="composer-tool" type="button" aria-label="添加附件，暂未开放" title="附件功能即将支持" disabled>
-                <Paperclip aria-hidden="true" />
-              </button>
-              <span className="composer-divider" aria-hidden="true" />
-              <button className="composer-tool" type="button" aria-label="语音输入，暂未开放" title="语音输入即将支持" disabled>
-                <Mic aria-hidden="true" />
-              </button>
               <button
                 className="send-button"
                 type="submit"
@@ -285,7 +319,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
       {expanded && <div className="chat-content-with-reminders">
       <TodoReminders generation={status?.generation ?? 0} items={status?.reminders ?? []} error={status?.reminder_error ?? null} />
       {todosOpen && <TodoList key={status?.generation ?? 0} generation={status?.generation ?? 0} refreshVersion={todoRefreshVersion} />}
-      {expanded && !todosOpen && <div ref={messageListRef} className={`message-list${settingsOpen ? ' is-settings' : ''}`} aria-live="polite">
+      {expanded && !todosOpen && <div ref={messageListRef} className={`message-list${settingsOpen ? ' is-settings' : ' chat-reading-list'}`} tabIndex={-1} onScroll={reading.onScroll} aria-live={settingsOpen ? undefined : 'polite'}>
         {settingsOpen && (
           <AssistantSettings
             status={status}
@@ -299,7 +333,8 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
           />
         )}
 
-        {!settingsOpen && messages.length === 0 && (
+        {!settingsOpen && <div ref={reading.contentRef} className="chat-message-feed">
+        {messages.length === 0 && (
           configured
             ? (
                 <div className="empty-state">
@@ -312,12 +347,12 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
                   <span className="empty-eyebrow">需要连接助手</span>
                   <h2>连接助手服务后开始对话</h2>
                   <p>连接后将恢复服务端会话；当前没有可显示的历史消息。</p>
-                  <button className="configure-button" type="button" onClick={() => setSettingsOpen(true)}>配置助手服务</button>
+                  <button className="configure-button" type="button" onClick={openSettings}>配置助手服务</button>
                 </div>
               )
         )}
 
-        {!settingsOpen && messages.map(message => (
+        {messages.map(message => (
           <article key={message.id} className={`message message-${message.role}`}>
             {message.role === 'assistant' && (
               <span className="message-avatar assistant-message-avatar" aria-hidden="true"><img src={petPreview} alt="" /></span>
@@ -325,7 +360,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
             <div className="message-content">
               <span className="message-author">{message.role === 'user' ? '你' : '橘伴'}</span>
               <div className="message-bubble">
-                {message.content || (message.pending && <LoaderCircle className="spinner" aria-label="正在生成回复" />)}
+                {message.content ? <MessageContent content={message.content} /> : (message.pending && <LoaderCircle className="spinner" aria-label="正在生成回复" />)}
               </div>
               {message.role === 'assistant' && tools.filter(tool => tool.run_id === message.runId).map(tool => {
                 const presentation = todoToolPresentation(tool)
@@ -345,8 +380,9 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
             {message.role === 'user' && <span className="message-avatar user-message-avatar" aria-hidden="true"><UserRound /></span>}
           </article>
         ))}
-        <div ref={messageEndRef} />
+        </div>}
       </div>}
+      {reading.showLatest && <button className="chat-latest-button" type="button" onClick={reading.returnToLatest}><ArrowDown aria-hidden="true" />回到最新</button>}
 
       </div>}
 
