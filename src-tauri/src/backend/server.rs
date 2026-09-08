@@ -1,91 +1,85 @@
-use crate::agent_protocol::{Envelope, Snapshot};
+use super::{
+    apply_reminder_poll, change, persist, AgentBackend, AgentState, Config, Inner, Mode,
+    ServerConfig, Todo, TodoStatus, View,
+};
+use crate::agent_protocol::Envelope;
 use futures_util::{SinkExt, StreamExt};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
-use std::{collections::HashMap, fs, io::Write, sync::Mutex, time::Duration};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message},
 };
 
-#[derive(Clone, Deserialize, Serialize)]
-struct Config {
-    base_url: String,
-    token: String,
-    session_id: Option<String>,
-}
-#[derive(Deserialize)]
-pub struct Settings {
-    pub base_url: String,
-    pub token: String,
-}
-#[derive(Clone, Default, Serialize)]
-pub struct View {
-    generation: u64,
-    revision: u64,
-    configured: bool,
-    endpoint: Option<String>,
-    connection: String,
-    node_connected: bool,
-    node_error: Option<String>,
-    model: Option<String>,
-    model_configured: bool,
-    error: Option<String>,
-    snapshot: Snapshot,
-    reminders: Vec<Todo>,
-    reminder_error: Option<String>,
-    todo_revision: u64,
-}
-#[derive(Default)]
-struct Inner {
-    config: Option<Config>,
-    view: View,
-    sender: Option<mpsc::Sender<Value>>,
-    task: Option<tauri::async_runtime::JoinHandle<()>>,
-    initialized: bool,
-    todo_mutation_epoch: u64,
-    todo_writes_in_flight: u64,
-    acknowledgements: HashMap<String, oneshot::Sender<Result<(), String>>>,
-}
-#[derive(Default)]
-pub struct AgentState(Mutex<Inner>);
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum TodoStatus {
-    Pending,
-    Completed,
-}
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-pub struct Todo {
-    id: String,
-    title: String,
-    status: TodoStatus,
-    created_at: String,
-    remind_at: Option<String>,
-}
-#[derive(Deserialize)]
-struct TodoResponse {
-    items: Vec<Todo>,
-}
-#[derive(Serialize)]
-pub struct TodoListView {
-    generation: u64,
-    items: Vec<Todo>,
-}
-#[derive(Deserialize)]
-struct TodoCompletionResponse {
-    item: Todo,
-}
-#[derive(Serialize)]
-pub struct TodoCompletionView {
-    generation: u64,
-    item: Todo,
+pub struct ServerBackend;
+
+impl AgentBackend for ServerBackend {
+    fn start(
+        app: &AppHandle,
+        inner: &mut Inner,
+        generation: u64,
+        config: &Config,
+    ) -> Option<tauri::async_runtime::JoinHandle<()>> {
+        inner.view = View {
+            generation,
+            mode: Mode::Server,
+            configured: true,
+            endpoint: Some(config.server.base_url.clone()),
+            connection: "connecting".into(),
+            ..Default::default()
+        };
+        let handle = app.clone();
+        let server = config.server.clone();
+        Some(tauri::async_runtime::spawn(async move {
+            // Role connections and reminder reads retry independently. Aborting this
+            // settings generation drops all sockets, HTTP reads and retry timers.
+            tokio::join!(
+                reconnect_control(&handle, generation, &server),
+                reconnect_node(&handle, generation, &server),
+                poll_reminders(&handle, generation, &server),
+            );
+        }))
+    }
+
+    async fn submit(app: &AppHandle, request_id: String, text: String) -> Result<(), String> {
+        let (ack_tx, ack_rx) = tokio::sync::oneshot::channel();
+        let (sender, session_id, generation) = {
+            let state = app.state::<AgentState>();
+            let mut inner = state.lock();
+            if inner.view.connection != "connected" || !inner.view.model_configured {
+                return Err("助手未连接或服务端模型尚未配置".into());
+            }
+            let sender = inner.sender.clone().ok_or("助手连接已断开")?;
+            inner.acknowledgements.insert(request_id.clone(), ack_tx);
+            (
+                sender,
+                inner.view.snapshot.session_id.clone(),
+                inner.view.generation,
+            )
+        };
+        let sent = sender.send(json!({"v":1,"type":"run.submit","request_id":request_id,"session_id":session_id,"payload":{"text":text}})).await;
+        let result = if sent.is_err() {
+            Err("助手连接已断开，消息尚未发送".into())
+        } else {
+            match tokio::time::timeout(Duration::from_secs(12), ack_rx).await {
+                Ok(Ok(result)) => result,
+                _ => Err("尚未确认消息是否已接收；请重连核对，重试同一内容不会重复提交".into()),
+            }
+        };
+        let state = app.state::<AgentState>();
+        let mut inner = state.lock();
+        if inner.view.generation == generation {
+            inner.acknowledgements.remove(&request_id);
+        }
+        result
+    }
 }
 
 #[derive(Clone, Copy)]
-enum TodoAction {
+pub enum TodoAction {
     Complete,
     Reopen,
 }
@@ -101,7 +95,16 @@ impl TodoAction {
     }
 }
 
-async fn update_todo_http(config: &Config, todo_id: &str, action: TodoAction) -> Result<Todo, String> {
+#[derive(Deserialize)]
+struct TodoResponse {
+    items: Vec<Todo>,
+}
+#[derive(Deserialize)]
+struct TodoCompletionResponse {
+    item: Todo,
+}
+
+pub async fn update_todo_http(config: &ServerConfig, todo_id: &str, action: TodoAction) -> Result<Todo, String> {
     let todo_id = uuid::Uuid::parse_str(todo_id)
         .map_err(|_| "待办标识不正确")?
         .to_string();
@@ -132,58 +135,7 @@ async fn update_todo_http(config: &Config, todo_id: &str, action: TodoAction) ->
     Ok(response.item)
 }
 
-#[tauri::command]
-pub async fn agent_complete_todo(
-    app: AppHandle,
-    todo_id: String,
-) -> Result<TodoCompletionView, String> {
-    update_todo(app, todo_id, TodoAction::Complete).await
-}
-
-#[tauri::command]
-pub async fn agent_reopen_todo(app: AppHandle, todo_id: String) -> Result<TodoCompletionView, String> {
-    update_todo(app, todo_id, TodoAction::Reopen).await
-}
-
-async fn update_todo(app: AppHandle, todo_id: String, action: TodoAction) -> Result<TodoCompletionView, String> {
-    let (config, generation) = begin_todo_write(&app)?;
-    let result = update_todo_http(&config, &todo_id, action).await;
-    finish_todo_write(&app, generation, result)
-}
-
-fn begin_todo_write(app: &AppHandle) -> Result<(Config, u64), String> {
-    let state = app.state::<AgentState>();
-    let mut inner = state.0.lock().unwrap();
-    let config = todo_config(&inner)?;
-    inner.todo_mutation_epoch += 1;
-    inner.todo_writes_in_flight += 1;
-    Ok(config)
-}
-
-fn apply_todo_write(inner: &mut Inner, generation: u64, result: Result<Todo, String>) -> Result<TodoCompletionView, String> {
-    if inner.view.generation != generation {
-        return Err("助手配置已更换，请重新查询待办".into());
-    }
-    inner.todo_mutation_epoch += 1;
-    inner.todo_writes_in_flight -= 1;
-    let item = result?;
-    inner.view.reminders.retain(|todo| todo.id != item.id);
-    inner.view.todo_revision += 1;
-    Ok(TodoCompletionView { generation, item })
-}
-
-fn finish_todo_write(app: &AppHandle, generation: u64, result: Result<Todo, String>) -> Result<TodoCompletionView, String> {
-    let state = app.state::<AgentState>();
-    let mut inner = state.0.lock().unwrap();
-    let result = apply_todo_write(&mut inner, generation, result);
-    if result.is_ok() {
-        inner.view.revision += 1;
-        let _ = app.emit("agent:view", &inner.view);
-    }
-    result
-}
-
-async fn set_reminder_http(config: &Config, todo_id: &str, remind_at: Option<&str>, expected_remind_at: Option<&str>) -> Result<Todo, String> {
+pub async fn set_reminder_http(config: &ServerConfig, todo_id: &str, remind_at: Option<&str>, expected_remind_at: Option<&str>) -> Result<Todo, String> {
     let todo_id = uuid::Uuid::parse_str(todo_id).map_err(|_| "待办标识不正确")?.to_string();
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
@@ -208,25 +160,11 @@ async fn set_reminder_http(config: &Config, todo_id: &str, remind_at: Option<&st
     Ok(response.item)
 }
 
-#[tauri::command]
-pub async fn agent_set_todo_reminder(app: AppHandle, todo_id: String, remind_at: Option<String>, expected_remind_at: Option<String>) -> Result<TodoCompletionView, String> {
-    let (config, generation) = begin_todo_write(&app)?;
-    let result = set_reminder_http(&config, &todo_id, remind_at.as_deref(), expected_remind_at.as_deref()).await;
-    finish_todo_write(&app, generation, result)
-}
-
-fn todo_config(inner: &Inner) -> Result<(Config, u64), String> {
-    Ok((
-        inner.config.clone().ok_or("请先配置助手服务")?,
-        inner.view.generation,
-    ))
-}
-
-async fn fetch_todos(config: &Config) -> Result<Vec<Todo>, String> {
+pub async fn fetch_todos(config: &ServerConfig) -> Result<Vec<Todo>, String> {
     fetch_todo_collection(config, false).await
 }
 
-async fn fetch_todo_collection(config: &Config, due_only: bool) -> Result<Vec<Todo>, String> {
+async fn fetch_todo_collection(config: &ServerConfig, due_only: bool) -> Result<Vec<Todo>, String> {
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(Duration::from_secs(15))
@@ -251,37 +189,18 @@ async fn fetch_todo_collection(config: &Config, due_only: bool) -> Result<Vec<To
     Ok(response.items)
 }
 
-fn apply_reminder_poll(inner: &mut Inner, generation: u64, epoch: u64, result: Result<Vec<Todo>, String>) -> bool {
-    if inner.view.generation != generation || inner.todo_mutation_epoch != epoch || inner.todo_writes_in_flight > 0 {
-        return false;
-    }
-    match result {
-        Ok(items) => {
-            let changed = inner.view.reminders != items || inner.view.reminder_error.is_some();
-            inner.view.reminders = items;
-            inner.view.reminder_error = None;
-            changed
-        }
-        Err(error) => {
-            let changed = inner.view.reminder_error.as_ref() != Some(&error);
-            inner.view.reminder_error = Some(error);
-            changed
-        }
-    }
-}
-
-async fn poll_reminders(app: &AppHandle, generation: u64, config: &Config) {
+async fn poll_reminders(app: &AppHandle, generation: u64, config: &ServerConfig) {
     loop {
         let epoch = {
             let state = app.state::<AgentState>();
-            let inner = state.0.lock().unwrap();
+            let inner = state.lock();
             if inner.view.generation != generation { return; }
             inner.todo_mutation_epoch
         };
         let result = fetch_todo_collection(config, true).await;
         {
             let state = app.state::<AgentState>();
-            let mut inner = state.0.lock().unwrap();
+            let mut inner = state.lock();
             if apply_reminder_poll(&mut inner, generation, epoch, result) {
                 inner.view.revision += 1;
                 let _ = app.emit("agent:view", &inner.view);
@@ -291,109 +210,7 @@ async fn poll_reminders(app: &AppHandle, generation: u64, config: &Config) {
     }
 }
 
-#[tauri::command]
-pub async fn agent_list_todos(app: AppHandle) -> Result<TodoListView, String> {
-    let (config, generation) = {
-        let state = app.state::<AgentState>();
-        let inner = state.0.lock().unwrap();
-        todo_config(&inner)?
-    };
-    let items = fetch_todos(&config).await?;
-    let state = app.state::<AgentState>();
-    let inner = state.0.lock().unwrap();
-    if inner.view.generation != generation {
-        return Err("助手配置已更换，请重新查询待办".into());
-    }
-    Ok(TodoListView { generation, items })
-}
-fn normalized_url(raw: &str) -> Result<String, String> {
-    let url = reqwest::Url::parse(raw.trim()).map_err(|_| "请输入有效的助手服务地址")?;
-    let local = matches!(
-        url.host_str(),
-        Some("localhost" | "127.0.0.1" | "[::1]" | "::1")
-    );
-    if (url.scheme() != "https" && !(url.scheme() == "http" && local))
-        || !url.username().is_empty()
-        || url.password().is_some()
-        || url.query().is_some()
-        || url.fragment().is_some()
-    {
-        return Err(
-            "远程服务必须使用 HTTPS；仅本机回环地址允许 HTTP，地址不能包含凭证或查询参数".into(),
-        );
-    }
-    Ok(url.as_str().trim_end_matches('/').into())
-}
-fn path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
-    Ok(app
-        .path()
-        .app_config_dir()
-        .map_err(|_| "无法访问助手配置目录")?
-        .join("agent-config.json"))
-}
-fn persist(app: &AppHandle, config: &Config) -> Result<(), String> {
-    let path = path(app)?;
-    fs::create_dir_all(path.parent().ok_or("配置目录不存在")?)
-        .map_err(|_| "无法创建助手配置目录")?;
-    let temp = path.with_extension("tmp");
-    let mut options = fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let mut file = options.open(&temp).map_err(|_| "无法保存助手配置")?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        file.set_permissions(fs::Permissions::from_mode(0o600))
-            .map_err(|_| "无法保护设备凭证")?;
-    }
-    file.write_all(&serde_json::to_vec(config).map_err(|_| "配置编码失败")?)
-        .map_err(|_| "配置写入失败")?;
-    file.sync_all().map_err(|_| "配置写入失败")?;
-    fs::rename(temp, path).map_err(|_| "配置保存失败".into())
-}
-fn change(app: &AppHandle, generation: u64, f: impl FnOnce(&mut Inner)) {
-    let state = app.state::<AgentState>();
-    let mut inner = state.0.lock().unwrap();
-    if inner.view.generation != generation {
-        return;
-    }
-    f(&mut inner);
-    inner.view.revision += 1;
-    let _ = app.emit("agent:view", &inner.view);
-}
-fn start(app: &AppHandle, inner: &mut Inner, config: Config) {
-    if let Some(task) = inner.task.take() {
-        task.abort();
-    }
-    let generation = inner.view.generation + 1;
-    inner.view = View {
-        generation,
-        configured: true,
-        endpoint: Some(config.base_url.clone()),
-        connection: "connecting".into(),
-        ..Default::default()
-    };
-    inner.config = Some(config.clone());
-    inner.sender = None;
-    inner.todo_mutation_epoch = 0;
-    inner.todo_writes_in_flight = 0;
-    inner.acknowledgements.clear();
-    let handle = app.clone();
-    inner.task = Some(tauri::async_runtime::spawn(async move {
-        // Role connections and reminder reads retry independently. Aborting this
-        // settings generation drops all sockets, HTTP reads and retry timers.
-        tokio::join!(
-            reconnect_control(&handle, generation, &config),
-            reconnect_node(&handle, generation, &config),
-            poll_reminders(&handle, generation, &config),
-        );
-    }));
-}
-async fn reconnect_control(app: &AppHandle, generation: u64, config: &Config) {
+async fn reconnect_control(app: &AppHandle, generation: u64, config: &ServerConfig) {
     let mut delay = 1;
     loop {
         change(app, generation, |i| i.view.connection = "connecting".into());
@@ -415,7 +232,7 @@ fn mark_node_disconnected(inner: &mut Inner, error: String) {
     inner.view.node_connected = false;
     inner.view.node_error = Some(error);
 }
-async fn reconnect_node(app: &AppHandle, generation: u64, config: &Config) {
+async fn reconnect_node(app: &AppHandle, generation: u64, config: &ServerConfig) {
     let mut delay = 1;
     loop {
         let result = node(app, generation, config).await;
@@ -432,93 +249,8 @@ async fn reconnect_node(app: &AppHandle, generation: u64, config: &Config) {
     }
 }
 
-#[tauri::command]
-pub fn agent_view(app: AppHandle) -> View {
-    let state = app.state::<AgentState>();
-    let mut inner = state.0.lock().unwrap();
-    if !inner.initialized {
-        inner.initialized = true;
-        let config = path(&app)
-            .ok()
-            .and_then(|p| fs::read(p).ok())
-            .and_then(|b| serde_json::from_slice::<Config>(&b).ok());
-        if let Some(config) =
-            config.filter(|c| normalized_url(&c.base_url).is_ok() && !c.token.is_empty())
-        {
-            start(&app, &mut inner, config);
-        } else {
-            inner.view.connection = "unconfigured".into();
-        }
-    }
-    inner.view.clone()
-}
-#[tauri::command]
-pub fn save_agent_settings(app: AppHandle, settings: Settings) -> Result<View, String> {
-    let base_url = normalized_url(&settings.base_url)?;
-    let state = app.state::<AgentState>();
-    let mut inner = state.0.lock().unwrap();
-    let same = inner.config.as_ref().filter(|c| c.base_url == base_url);
-    let token = if settings.token.trim().is_empty() {
-        same.map(|c| c.token.clone())
-            .ok_or("更换地址必须重新输入该服务的设备凭证")?
-    } else {
-        settings.token.trim().to_owned()
-    };
-    if token.chars().any(char::is_control) {
-        return Err("设备凭证格式不正确".into());
-    }
-    let session_id = same
-        .filter(|c| c.token == token)
-        .and_then(|c| c.session_id.clone());
-    let config = Config {
-        base_url,
-        token,
-        session_id,
-    };
-    persist(&app, &config)?;
-    inner.initialized = true;
-    start(&app, &mut inner, config);
-    let _ = app.emit("agent:view", &inner.view);
-    Ok(inner.view.clone())
-}
-#[tauri::command]
-pub async fn agent_submit(app: AppHandle, request_id: String, text: String) -> Result<(), String> {
-    if text.trim().is_empty() || text.len() > 32000 || uuid::Uuid::parse_str(&request_id).is_err() {
-        return Err("消息或请求标识不正确".into());
-    }
-    let (ack_tx, ack_rx) = oneshot::channel();
-    let (sender, session_id, generation) = {
-        let state = app.state::<AgentState>();
-        let mut inner = state.0.lock().unwrap();
-        if inner.view.connection != "connected" || !inner.view.model_configured {
-            return Err("助手未连接或服务端模型尚未配置".into());
-        }
-        let sender = inner.sender.clone().ok_or("助手连接已断开")?;
-        inner.acknowledgements.insert(request_id.clone(), ack_tx);
-        (
-            sender,
-            inner.view.snapshot.session_id.clone(),
-            inner.view.generation,
-        )
-    };
-    let sent = sender.send(json!({"v":1,"type":"run.submit","request_id":request_id,"session_id":session_id,"payload":{"text":text}})).await;
-    let result = if sent.is_err() {
-        Err("助手连接已断开，消息尚未发送".into())
-    } else {
-        match tokio::time::timeout(Duration::from_secs(12), ack_rx).await {
-            Ok(Ok(result)) => result,
-            _ => Err("尚未确认消息是否已接收；请重连核对，重试同一内容不会重复提交".into()),
-        }
-    };
-    let state = app.state::<AgentState>();
-    let mut inner = state.0.lock().unwrap();
-    if inner.view.generation == generation {
-        inner.acknowledgements.remove(&request_id);
-    }
-    result
-}
 async fn socket(
-    config: &Config,
+    config: &ServerConfig,
     role: &str,
 ) -> Result<
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
@@ -546,7 +278,7 @@ async fn socket(
         .map(|(s, _)| s)
         .map_err(|_| "无法连接助手：请检查地址、设备凭证及角色授权".into())
 }
-async fn control(app: &AppHandle, generation: u64, config: &Config) -> Result<(), String> {
+async fn control(app: &AppHandle, generation: u64, config: &ServerConfig) -> Result<(), String> {
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(Duration::from_secs(15))
@@ -577,8 +309,12 @@ async fn control(app: &AppHandle, generation: u64, config: &Config) -> Result<()
     let mut ws = socket(config, "control").await?;
     let session = {
         let state = app.state::<AgentState>();
-        let inner = state.0.lock().unwrap();
-        inner.config.as_ref().and_then(|c| c.session_id.clone())
+        let inner = state.lock();
+        inner
+            .config
+            .as_ref()
+            .filter(|c| c.mode == Mode::Server)
+            .and_then(|c| c.server.session_id.clone())
     };
     ws.send(Message::Text(
         json!({"v":1,"type":"session.open","payload":{"session_id":session}})
@@ -626,7 +362,7 @@ async fn control(app: &AppHandle, generation: u64, config: &Config) -> Result<()
                                 }
                                 if changed && event.kind == "session.snapshot" {
                                     if let Some(config) = &mut i.config {
-                                        config.session_id = Some(i.view.snapshot.session_id.clone());
+                                        config.server.session_id = Some(i.view.snapshot.session_id.clone());
                                         if let Err(error) = persist(app, config) { applied = Err(error); return; }
                                     }
                                     i.sender = Some(tx.clone()); i.view.connection = "connected".into(); i.view.error = None;
@@ -640,7 +376,7 @@ async fn control(app: &AppHandle, generation: u64, config: &Config) -> Result<()
         }
     }
 }
-async fn node(app: &AppHandle, generation: u64, config: &Config) -> Result<(), String> {
+async fn node(app: &AppHandle, generation: u64, config: &ServerConfig) -> Result<(), String> {
     let mut ws = socket(config, "node").await?;
     ws.send(Message::Text(
         json!({"v":1,"type":"node.register","payload":{"capabilities":[]}})
@@ -675,25 +411,11 @@ async fn node(app: &AppHandle, generation: u64, config: &Config) -> Result<(), S
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn todo_query_does_not_require_model_or_websockets() {
-        let mut inner = Inner::default();
-        assert!(todo_config(&inner).is_err());
-        inner.config = Some(Config {
-            base_url: "http://127.0.0.1:1".into(),
-            token: "unit-only".into(),
-            session_id: None,
-        });
-        inner.view.generation = 7;
-        let (_, generation) = todo_config(&inner).unwrap();
-        assert_eq!(generation, 7);
-        assert!(!inner.view.model_configured);
-        assert!(!inner.view.node_connected);
-        assert!(inner.sender.is_none());
-    }
+    use std::io::Write;
 
     // Isolated HTTP boundary doubles; no real service, model or business data.
     async fn todo_http_fixture(status: &str, body: &str) -> Result<Vec<Todo>, String> {
@@ -724,7 +446,7 @@ mod tests {
             assert!(request.contains("authorization: bearer unit-only"));
             socket.write_all(response.as_bytes()).unwrap();
         });
-        let config = Config {
+        let config = ServerConfig {
             base_url: format!("http://{address}"),
             token: "unit-only".into(),
             session_id: None,
@@ -774,7 +496,7 @@ mod tests {
                 assert!(error.contains(action.label()));
                 assert!(!error.contains("private"));
             }
-            let config = Config { base_url: "http://127.0.0.1:1".into(), token: "unit-only".into(), session_id: None };
+            let config = ServerConfig { base_url: "http://127.0.0.1:1".into(), token: "unit-only".into(), session_id: None };
             assert_eq!(update_todo_http(&config, "../invalid", action).await.unwrap_err(), "待办标识不正确");
             let error = update_todo_http(&config, "00000000-0000-0000-0000-000000000001", action).await.unwrap_err();
             assert!(error.contains("尚未确认"));
@@ -785,41 +507,6 @@ mod tests {
         Todo { id: "00000000-0000-0000-0000-000000000001".into(), title: "isolated".into(),
             status: TodoStatus::Pending, created_at: "2026-09-07T00:00:00Z".into(),
             remind_at: Some("2026-09-07T08:00:00Z".into()) }
-    }
-
-    #[test]
-    fn reminder_poll_preserves_failed_data_and_rejects_mutation_or_generation_races() {
-        let mut inner = Inner::default();
-        inner.view.generation = 4;
-        let due = vec![isolated_reminder()];
-        assert!(apply_reminder_poll(&mut inner, 4, 0, Ok(due.clone())));
-        assert!(!apply_reminder_poll(&mut inner, 4, 0, Ok(due.clone())));
-        assert!(apply_reminder_poll(&mut inner, 4, 0, Err("offline".into())));
-        assert_eq!(inner.view.reminders, due);
-        assert!(!apply_reminder_poll(&mut inner, 3, 0, Ok(vec![])));
-        assert_eq!(inner.view.reminders, due);
-        inner.todo_mutation_epoch = 1;
-        inner.todo_writes_in_flight = 1;
-        assert!(!apply_reminder_poll(&mut inner, 4, 0, Ok(vec![])));
-        assert!(!apply_reminder_poll(&mut inner, 4, 1, Ok(vec![])));
-        let mut completed = isolated_reminder();
-        completed.status = TodoStatus::Completed;
-        completed.remind_at = None;
-        apply_todo_write(&mut inner, 4, Ok(completed)).unwrap();
-        assert!(inner.view.reminders.is_empty());
-        assert_eq!(inner.view.todo_revision, 1);
-        assert_eq!(inner.todo_writes_in_flight, 0);
-        assert!(!apply_reminder_poll(&mut inner, 4, 1, Ok(due.clone())));
-        assert!(apply_reminder_poll(&mut inner, 4, 2, Ok(vec![]))); // clears error
-        inner.view.reminders = due.clone();
-        inner.todo_writes_in_flight = 1;
-        assert!(apply_todo_write(&mut inner, 4, Err("uncertain".into())).is_err());
-        assert_eq!(inner.view.reminders, due);
-        assert_eq!(inner.todo_writes_in_flight, 0);
-        assert_eq!(inner.view.todo_revision, 1);
-        let epoch = inner.todo_mutation_epoch;
-        assert!(apply_todo_write(&mut inner, 3, Ok(isolated_reminder())).is_err());
-        assert_eq!(inner.todo_mutation_epoch, epoch);
     }
 
     // Local test socket only: validates exact auth/method/body and typed responses.
@@ -851,7 +538,7 @@ mod tests {
             }
             socket.write_all(response.as_bytes()).unwrap();
         });
-        let config = Config { base_url: format!("http://{address}"), token: "unit-only".into(), session_id: None };
+        let config = ServerConfig { base_url: format!("http://{address}"), token: "unit-only".into(), session_id: None };
         let result = if write {
             set_reminder_http(&config, "00000000-0000-0000-0000-000000000001", target, None).await.map(|item| vec![item])
         } else { fetch_todo_collection(&config, true).await };
@@ -891,15 +578,17 @@ mod tests {
             let error = reminder_boundary_fixture(status, "secret upstream body", true, target).await.unwrap_err();
             assert!(!error.contains("secret"));
         }
-        let config = Config { base_url: "http://127.0.0.1:1".into(), token: "unit-only".into(), session_id: None };
+        let config = ServerConfig { base_url: "http://127.0.0.1:1".into(), token: "unit-only".into(), session_id: None };
         assert_eq!(set_reminder_http(&config, "../bad", target, None).await.unwrap_err(), "待办标识不正确");
         assert!(set_reminder_http(&config, &item.id, target, None).await.unwrap_err().contains("尚未确认"));
     }
     #[test]
     fn node_failure_preserves_control_connection_and_session() {
         let (sender, _rx) = mpsc::channel(1);
-        let mut inner = Inner::default();
-        inner.sender = Some(sender);
+        let mut inner = Inner {
+            sender: Some(sender),
+            ..Default::default()
+        };
         inner.view.connection = "connected".into();
         inner.view.node_connected = true;
         inner.view.snapshot.session_id = "current-session".into();
@@ -912,13 +601,5 @@ mod tests {
         assert!(inner.view.error.is_none());
         assert!(!inner.view.node_connected);
         assert!(inner.view.node_error.is_some());
-    }
-    #[test]
-    fn remote_credentials_require_tls_and_clean_origin() {
-        assert!(normalized_url("http://example.com").is_err());
-        assert!(normalized_url("https://secret@example.com").is_err());
-        assert!(normalized_url("https://example.com?token=secret").is_err());
-        assert!(normalized_url("http://127.0.0.1:8000").is_ok());
-        assert!(normalized_url("https://example.com/").is_ok());
     }
 }

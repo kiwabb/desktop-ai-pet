@@ -1,5 +1,7 @@
-mod agent_client;
 mod agent_protocol;
+mod backend;
+mod llm;
+mod local_agent;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition};
 
@@ -402,7 +404,7 @@ fn set_chat_window_expanded(app: AppHandle, expanded: bool) -> Result<(), String
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default().manage(agent_client::AgentState::default());
+    let builder = tauri::Builder::default().manage(backend::AgentState::default());
 
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
@@ -429,13 +431,14 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            agent_client::agent_view,
-            agent_client::save_agent_settings,
-            agent_client::agent_submit,
-            agent_client::agent_list_todos,
-            agent_client::agent_complete_todo,
-            agent_client::agent_reopen_todo,
-            agent_client::agent_set_todo_reminder,
+            backend::agent_view,
+            backend::save_agent_settings,
+            backend::agent_submit,
+            backend::agent_list_models,
+            backend::agent_list_todos,
+            backend::agent_complete_todo,
+            backend::agent_reopen_todo,
+            backend::agent_set_todo_reminder,
             save_pet_position,
             reset_pet_position,
             quit_app,

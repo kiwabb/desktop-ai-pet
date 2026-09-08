@@ -8,7 +8,7 @@ export interface PetLiveStatus {
   accessibleLabel: string
 }
 
-type ConnectionState = Pick<AgentView, 'configured' | 'connection' | 'model_configured' | 'node_connected' | 'node_error' | 'error'>
+type ConnectionState = Pick<AgentView, 'mode' | 'configured' | 'connection' | 'model_configured' | 'node_connected' | 'node_error' | 'error'>
 
 export function getPetLiveStatus(view: ConnectionState | null, petState: PetState): PetLiveStatus {
   const status = (detail: string, tone: PetLiveStatus['tone'], accessibleLabel: string, title = '陪着你'): PetLiveStatus => ({ title, detail, tone, accessibleLabel })
@@ -19,9 +19,11 @@ export function getPetLiveStatus(view: ConnectionState | null, petState: PetStat
   if (view.connection === 'connecting')
     return status('正在连接', 'pending', '正在连接助手服务')
   if (view.connection !== 'connected')
-    return status('连接已断开', 'error', '助手连接已断开，等待重新连接')
+    return view.mode === 'local'
+      ? status('本地运行不可用', 'error', '单机模式本地存储不可用，请打开设置重新保存配置')
+      : status('连接已断开', 'error', '助手连接已断开，等待重新连接')
   if (!view.model_configured)
-    return status('模型待配置', 'pending', '助手已连接，服务端模型未配置')
+    return status('模型待配置', 'pending', '助手已连接，模型未配置')
   if (view.error)
     return status('助手需要检查', 'error', '助手已连接，但服务报告错误，请打开对话查看')
   if (!view.node_connected)

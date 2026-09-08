@@ -9,6 +9,14 @@
 .assistant-settings h2 { display: flex; align-items: center; gap: 8px; color: #6c3f24; font-size: 15px; font-weight: 650; }
 .assistant-settings h2 svg, .assistant-settings h3 svg, .assistant-settings label svg { width: 16px; height: 16px; flex: none; color: #af7b48; stroke-width: 1.8; }
 .assistant-settings .assistant-connection-card { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+.assistant-settings-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid #ead9c6; border-radius: 12px; background: #faf1e4; }
+.assistant-settings-mode button { height: 36px; padding: 0 10px; color: #79624d; border: 0; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 650; }
+.assistant-settings-mode button.is-active { color: #6c3f24; background: linear-gradient(#fff, #fff8ee); box-shadow: 0 1px 3px rgba(128,70,34,.12); }
+.assistant-settings-models { position: relative; }
+.assistant-settings-models input { padding-right: 42px; }
+.assistant-settings-models>button { position: absolute; top: 1px; right: 1px; display: grid; place-items: center; height: 44px; width: 42px; padding: 0; color: #937a65; background: transparent; border: 0; border-radius: 9px; }
+.assistant-settings-models>button svg { width: 17px; height: 17px; }
+.assistant-settings-models>button:disabled { opacity: .6; cursor: wait; }
 .assistant-settings-intro { display: flex; align-items: center; gap: 12px; }
 .assistant-settings-intro h2 { font-size: 20px; letter-spacing: -.025em; }
 .assistant-settings-intro p { margin-top: 6px; color: #796959; font-size: 12px; }

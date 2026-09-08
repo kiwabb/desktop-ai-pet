@@ -52,9 +52,11 @@ export interface AgentRun {
   status: 'queued' | 'running' | 'completed' | 'failed' | 'interrupted'
   error: string | null
 }
+export type AgentMode = 'server' | 'local'
 export interface AgentView {
   generation: number
   revision: number
+  mode: AgentMode
   reminders: Todo[]
   reminder_error: string | null
   todo_revision: number
@@ -66,6 +68,11 @@ export interface AgentView {
   model: string | null
   model_configured: boolean
   error: string | null
+  server_endpoint: string | null
+  server_has_token: boolean
+  local_endpoint: string | null
+  local_model: string | null
+  local_has_key: boolean
   snapshot: {
     session_id: string
     seq: number
@@ -78,14 +85,25 @@ export const connectionLabel = (view: AgentView | null) => !view?.configured
   ? '助手服务未配置'
   : view.connection !== 'connected'
     ? view.connection === 'connecting' ? '正在连接助手' : '连接已断开，正在重连'
-    : !view.model_configured ? '已连接，服务端模型未配置'
+    : !view.model_configured ? '已连接，模型未配置'
       : !view.node_connected ? view.node_error ? '设备暂时离线，聊天可用' : '对话已连接，设备正在登记' : '助手已连接'
 
 export function getAgentView() {
   return invoke<AgentView>('agent_view')
 }
-export function saveAgentSettings(baseUrl: string, token: string) {
-  return invoke<AgentView>('save_agent_settings', { settings: { base_url: baseUrl, token } })
+export interface AgentSettings {
+  mode: AgentMode
+  base_url: string
+  token: string
+  local_base_url: string
+  local_api_key: string
+  local_model: string
+}
+export function saveAgentSettings(settings: AgentSettings) {
+  return invoke<AgentView>('save_agent_settings', { settings })
+}
+export function listAgentModels(baseUrl: string, apiKey: string) {
+  return invoke<string[]>('agent_list_models', { baseUrl, apiKey })
 }
 export function submitAgentRun(requestId: string, text: string) {
   return invoke<void>('agent_submit', { requestId, text })

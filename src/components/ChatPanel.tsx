@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import { connectionLabel, saveAgentSettings } from '../lib/agent'
-import type { AgentView, ToolCall } from '../lib/agent'
+import type { AgentMode, AgentView, ToolCall } from '../lib/agent'
 import { shouldSubmitComposer } from '../lib/chat-interaction'
 import { todoToolEffectsFingerprint, todoToolPresentation } from '../lib/todo-tool-presentation'
 import { MessageContent } from './MessageContent'
@@ -56,6 +56,10 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   const [todosOpen, setTodosOpen] = useState(false)
   const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:18081')
   const [apiKey, setApiKey] = useState('')
+  const [mode, setMode] = useState<AgentMode>('server')
+  const [localBaseUrl, setLocalBaseUrl] = useState('')
+  const [localApiKey, setLocalApiKey] = useState('')
+  const [localModel, setLocalModel] = useState('')
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
   const submittedDraftRef = useRef<{ content: string; requestId: string } | null>(null)
@@ -152,19 +156,32 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   const configured = status?.configured === true
 
   useEffect(() => {
-    if (status?.endpoint) {
-      setBaseUrl(status.endpoint)
-      setApiKey('')
-    }
-  }, [status?.endpoint])
+    if (!status) return
+    setMode(status.mode)
+    // Seed both mode forms from the stored configuration, not only the active
+    // mode's endpoint, so switching modes keeps saved values editable.
+    if (status.server_endpoint) setBaseUrl(status.server_endpoint)
+    if (status.local_endpoint) setLocalBaseUrl(status.local_endpoint)
+    if (status.local_model) setLocalModel(status.local_model)
+    setApiKey('')
+    setLocalApiKey('')
+  }, [status?.generation])
 
   async function submitSettings(event: FormEvent) {
     event.preventDefault()
     setSavingSettings(true)
     setSettingsError(null)
     try {
-      await saveAgentSettings(baseUrl, apiKey)
+      await saveAgentSettings({
+        mode,
+        base_url: baseUrl,
+        token: apiKey,
+        local_base_url: localBaseUrl,
+        local_api_key: localApiKey,
+        local_model: localModel,
+      })
       setApiKey('')
+      setLocalApiKey('')
       setSettingsOpen(false)
       await onExpandedChange(false)
     }
@@ -208,6 +225,8 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
 
   function closePanel() {
     pageIntentRef.current += 1
+    setSettingsOpen(false)
+    setTodosOpen(false)
     onClose()
   }
 
@@ -349,12 +368,20 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
         {settingsOpen && (
           <AssistantSettings
             status={status}
+            mode={mode}
             baseUrl={baseUrl}
             credential={apiKey}
+            localBaseUrl={localBaseUrl}
+            localApiKey={localApiKey}
+            localModel={localModel}
             saving={savingSettings}
             error={settingsError}
+            onModeChange={setMode}
             onBaseUrlChange={value => { setBaseUrl(value); setApiKey('') }}
             onCredentialChange={setApiKey}
+            onLocalBaseUrlChange={value => { setLocalBaseUrl(value); setLocalApiKey('') }}
+            onLocalApiKeyChange={setLocalApiKey}
+            onLocalModelChange={setLocalModel}
             onSubmit={submitSettings}
           />
         )}

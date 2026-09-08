@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Role {
     User,
     Assistant,
 }
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RunStatus {
     Queued,
@@ -16,7 +16,7 @@ pub enum RunStatus {
     Failed,
     Interrupted,
 }
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolStatus {
     Running,
@@ -57,13 +57,16 @@ pub struct Snapshot {
     pub tool_calls: Vec<ToolCall>,
     pub runs: Vec<Run>,
 }
-#[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct Envelope {
     pub v: u32,
     #[serde(rename = "type")]
     pub kind: String,
     pub session_id: Option<String>,
+    #[serde(default)]
     pub request_id: Option<String>,
+    #[serde(default)]
+    pub run_id: Option<String>,
     pub seq: Option<u64>,
     pub payload: Value,
 }
@@ -157,6 +160,7 @@ mod tests {
             kind: "message.delta".into(),
             session_id: Some("s".into()),
             request_id: None,
+            run_id: None,
             seq: Some(seq),
             payload: json!({"message_id":"missing", "text":"x"}),
         };
