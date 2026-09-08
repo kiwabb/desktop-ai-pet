@@ -784,3 +784,33 @@ Implemented the server admin control plane and independent React/Vite admin work
 ### Status
 
 [OK] **Completed**
+
+
+## Session 26: 后台与链路追踪修复，真实验收待授权
+<!-- trellis-session: v=2 fp=f68b357e88a2f119 -->
+
+**Date**: 2026-09-08
+**Task**: 后台与链路追踪修复，真实验收待授权
+**Branch**: `codex/pet-interaction-motion`
+
+### Summary
+
+修复 F1–F15 及独立复核追加问题。104 项服务端与 9 项前端隔离测试、管理端构建通过；真实旧服务管理接口仍为404。尚未迁移、重启、开通管理员或运行模型，任务保留进行中。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c140251` | fix: repair server admin and execution tracing |
+
+### Testing
+
+- [OK] server unittest 104 passed; admin node tests 9 passed; admin TypeScript and Vite build passed
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 等待真实迁移、重启和首次管理员开通授权，再做模型与已登录UI验收
