@@ -24,6 +24,6 @@
   "notes": "",
   "meta": {
     "implementation_approved": true,
-    "implementation_status": "implemented_packaged_native_acceptance_pending_unlock"
+    "implementation_status": "stutter_refinement_measuring_per_frame_work"
   }
 }

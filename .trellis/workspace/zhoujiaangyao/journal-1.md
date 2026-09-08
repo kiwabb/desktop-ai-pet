@@ -737,3 +737,28 @@ System reduceMotion=1 explained disabled animation path. Initial root no longer 
 ### Status
 
 [OK] **Completed**
+
+
+## Session 24: 桌面端双模式 LLM：单机直调 + 服务端模式切换
+<!-- trellis-session: v=2 fp=f2aed122dae5346d -->
+
+**Date**: 2026-09-08
+**Task**: 桌面端双模式 LLM：单机直调 + 服务端模式切换
+**Branch**: `codex/pet-interaction-motion`
+
+### Summary
+
+调研服务端 LLM 实现并设计/落地双模式架构：Rust 层 AgentBackend trait 按 mode 分发（server/local），单机模式以 reqwest+eventsource-stream 直连 OpenAI 兼容端点，SQLite 本地持久化复刻服务端 11 项行为契约（提示词/工具 schema/错误文案逐字一致），api_key 存 keyring 不落盘；前端零改动（agent:view 单出口），cargo 44 测试与三个验证脚本全绿。遗留：真实模型端点冒烟需手动执行。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `66a161d` | feat: add switchable local LLM mode with direct provider calls |
+| `3ede62c` | test: add local agent structural verification script |
+| `774b02a` | docs: rewrite architecture for dual-mode LLM |
+| `61a8dae` | chore(spec): add desktop dual-mode spec and refresh stale ai.ts reference |
+
+### Status
+
+[OK] **Completed**

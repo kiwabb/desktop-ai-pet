@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 23
+- **Total Sessions**: 24
 - **Last Active**: 2026-09-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~739 | Active |
+| `journal-1.md` | ~764 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 24 | 2026-09-08 | 桌面端双模式 LLM：单机直调 + 服务端模式切换 | `66a161d`, `3ede62c`, `774b02a`, `61a8dae` | `codex/pet-interaction-motion` |
 | 23 | 2026-09-08 | Initial open follow-up: stationary platform and reduced motion reveal | `c4284ff` | `codex/pet-interaction-motion` |
 | 22 | 2026-09-08 | Panel transition and motion implementation; native acceptance pending unlock | `4b3b88c` | `codex/pet-interaction-motion` |
 | 21 | 2026-09-08 | 收尾归档 9 个已完成任务 | `5955bc8`, `391eda6`, `d22c6fd`, `a73992b`, `fdeb963` | `codex/desktop-pet-frontend-polish` |

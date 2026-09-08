@@ -1,15 +1,27 @@
-# 技术设计
+# Technical design — corrected after onscreen A/B failures
 
-## 状态与窗口边界
-把页面意图、目标窗口尺寸、过渡阶段和首次入场触发分开管理。已打开的 compact/expanded 切换保留可见画面，不复用 closed→open 的隐藏预挂载流程。先记录实际原生过渡，再选择最小稳定的布局提交顺序；不能直接删掉保护后暴露旧 backing frame。
+## Evidence and boundary
+See research/native-cat-flash.md. Entire cat disappears for source video frames during native size changes; display:true and no-refocus isolated variants both fail repeated native capture. CSS-only fixes and viewport checks do not protect cat presentation.
 
-窗口尺寸变化与 React 布局提交由同一过渡协调器串行协调；快速输入保留最终目标，过期完成回调不得覆盖新意图。等待尺寸/绘制需要有界超时、失败恢复与 finally 清理；双 RAF 只能是绘制机会，不能充当原生绘制确认。仅在运行时证据指向原生接口时修改 Rust 窗口链路，维持右下锚点。
+## Fixed cat surface
+The main NSPanel remains232×380.9 for closed, compact and expanded. It renders exactly one original PetStage. Existing chat WebView renders attached/integrated ChatPanel with existing713×401 and940×760 scene coordinate system; no second cat. Align right/bottom native anchors. Keep chat visually below main without stealing composer focus. Manual acceptance rejected reliance on AppKit child linkage: explicitly synchronize both window positions during pointer-captured cat/header dragging, serialize/coalesce moves, and preserve the final release position. Preserve main saved-position/reset semantics.
 
-## 视觉契约
-猫底座裁剪跟随稳定的已打开状态，不跟随临时隐藏/过渡类。保留共享壳、猫爪、尾巴和目标尺寸。首次打开使用一次轻微弹性；页间内容使用约 140–180ms 的透明度与 4–8px 位移；面板过渡以约 180–240ms 为调优起点，实际以连贯呈现和快速响应为准。按钮按压约 0.97 倍，释放平滑；避免 layout 属性逐帧动画和无限装饰动画。减少动态效果下直接切换。
+## State and acknowledgement
+Chat owns mounted panel, draft, settings page, reading state and serialized page/mode commits. Main requests changes with IDs and awaits acknowledgement. Main crop and reminder suppression follow confirmed visibility/mode, not request timing. Initial chat opening sizes a hidden chat window, observes its viewport, then shows/focuses and reveals. Hiding keeps component mounted. Visible native chat resize exposed stale backing. A whole-shell fade/hide would violate R1/A1 and is rejected. Next implementation must preserve a continuously visible panel; evaluate a stable chat backing with explicit transparent-area hit testing so unused canvas does not intercept the desktop. Errors and stale replies must not commit a newer intention. Preserve actual agent data subscriptions and existing reminder/accepted-submit behavior.
 
-## 实测与风险
-原生 WKWebView 的窗口绘制与浏览器预览不等价。先在当前可见桌面采集小框→设置→返回的基线时序和录屏/逐帧证据。浏览器仅验证 DOM 状态、样式、焦点与可访问性。不得用构建成功替代原生流畅性验收。
+## Visual contracts
+Retain original white cat, corner paw placement/shadow, footprints, configurable tail and shell geometry. Main crop has explicit committed-chat-visible state because cross-window :has cannot apply. Normal entry fades bubble/paw with6px content movement; reduced entry opacity-only160ms. The SVG platform remains stationary. No new design assets or product controls.
 
-## 回滚
-分别隔离切换时序修复与动效样式。若新动效回归，移除动效仍保留状态一致性与有界等待修复。保持业务协议、持久化格式和原图不变。
+## Verification and residual risk
+Record actual onscreen cat region during open/close and10 settings/back cycles. Read native window frames to prove main size invariant; inspect keyboard, draft, stacking, native drag/reset and multi-display scope separately. Do not claim native rendering success from browser, AX, build or viewport alone. Temporary raw screen captures remain local temp and must not expose unrelated background. Review handshake timeout and IPC noncancellation explicitly.
+
+## Rollback
+Keep the failed A/B experiments uncommitted and replace them with fixed-surface architecture. Separate visual shell changes from window coordination. No business schema, service or credential changes.
+
+
+## Final correction being implemented
+Chat native backing remains940×760 for every open mode; compact uses a713×401 CSS scene anchored bottom-right. Page changes do not resize either visible native backing. Report actual interactive frame bounds to native hit testing; poll mouse location on the main thread only while chat is visible, and ignore mouse events outside content. During pointer capture keep drag delivery active. Hidden chat ignores events. Validate real desktop click-through and report the16ms boundary polling limitation accurately. No whole-shell fade-out for page switching.
+
+
+## User-requested expansion refinement
+The user accepted the native correction, but rejected compact-to-expanded visual quality. Keep native backing/layering/drag stable. Shared frame should interpolate actual old/new geometry on ordinary-motion mode, keep the dock's screen anchor fixed, and stage destination content opacity rather than exposing reflow. Reverse transitions should begin at current visible geometry. Under system reduced-motion, avoid geometry motion and use short content opacity unless the user explicitly requests an application-level exception. Do not change OS preferences. Ensure native click-through bounds track the animated frame and receive final bounds; do not flood IPC with unbounded per-frame requests.
