@@ -83,3 +83,26 @@ let stream = tokio::time::timeout(CHUNK_TIMEOUT, byte_stream.next()).await;
 > **Warning**: `run_task` JoinHandle 必须带 `(run_id, handle)` 标签，finish 只清自己的句柄——否则间隙中接受的下一个 run 无法被模式切换 abort。
 
 > **Warning**: 并行任务在同一工作区改 `lib.rs` 等共享文件时，check/验证前先 `git status` 圈定本任务文件面，不要把别人的在飞改动当成本任务问题修掉。
+
+## Native responsiveness: credential/config commands
+
+### Scope / Trigger
+Native sampling found the AppKit main thread blocked in `agent_view → credentials::hydrate → Keychain get_password → SecurityServer::decrypt`. UI responsiveness must not depend on credential service latency.
+
+### Signatures
+`async agent_view(AppHandle) -> Result<View, String>` and `async save_agent_settings(AppHandle, Settings) -> Result<View, String>` delegate the entire existing transaction to `blocking_config`, which uses `tauri::async_runtime::spawn_blocking`.
+
+### Contracts
+Do not acquire `AgentState` on the calling UI thread. Acquire its lock inside the blocking closure; retain serialization of initialization and save. Keep the initialized cache and Keychain-before-scrub migration ordering. Successful JS invoke payload remains `View`; never return credentials.
+
+### Validation / Error Matrix
+Credential/config business errors keep their existing handling. A blocking-task join failure rejects with the fixed message `助手配置操作中断，请重试`. Background execution does not make Keychain faster or bypass authorization.
+
+### Good / Base / Bad
+Good: initialize/save on blocking pool, then publish the existing View. Base: an initialized view skips hydration. Bad: `async fn` that directly performs synchronous Keychain calls, or a synchronous command holding the shared state lock while waiting on Keychain.
+
+### Required Tests
+A blocked worker must not stop a current-thread async executor timer; assert different thread identities. Preserve credentials/config migration tests. Native sampling must show that UI thread no longer waits in Keychain. This alone does not establish animation smoothness.
+
+### Wrong / Correct
+Wrong: `#[tauri::command] fn agent_view(...) { credentials::hydrate(...); ... }`. Correct: async command awaiting `spawn_blocking` around the original locked transaction.

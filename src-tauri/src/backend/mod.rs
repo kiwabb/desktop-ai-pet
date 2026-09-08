@@ -484,8 +484,20 @@ pub async fn agent_list_todos(app: AppHandle) -> Result<TodoListView, String> {
     Ok(TodoListView { generation, items })
 }
 
+// Keychain and config filesystem calls may wait on OS security services. Keep
+// the existing serialized transactions, but never run them on AppKit's thread
+// or hold an async executor worker while waiting for credential I/O.
+async fn blocking_config<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work).await
+        .map_err(|_| "助手配置操作中断，请重试".to_owned())
+}
+
 #[tauri::command]
-pub fn agent_view(app: AppHandle) -> View {
+pub async fn agent_view(app: AppHandle) -> Result<View, String> {
+    blocking_config(move || agent_view_blocking(app)).await
+}
+
+fn agent_view_blocking(app: AppHandle) -> View {
     let state = app.state::<AgentState>();
     let mut inner = state.lock();
     if !inner.initialized {
@@ -516,7 +528,11 @@ pub fn agent_view(app: AppHandle) -> View {
 }
 
 #[tauri::command]
-pub fn save_agent_settings(app: AppHandle, settings: Settings) -> Result<View, String> {
+pub async fn save_agent_settings(app: AppHandle, settings: Settings) -> Result<View, String> {
+    blocking_config(move || save_agent_settings_blocking(app, settings)).await?
+}
+
+fn save_agent_settings_blocking(app: AppHandle, settings: Settings) -> Result<View, String> {
     let state = app.state::<AgentState>();
     let mut inner = state.lock();
     let mut config = inner.config.clone().unwrap_or_default();
@@ -633,6 +649,23 @@ pub async fn agent_submit(app: AppHandle, request_id: String, text: String) -> R
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test(flavor = "current_thread")]
+    async fn credential_wait_does_not_block_the_async_executor() {
+        let caller = std::thread::current().id();
+        let (started, ready) = tokio::sync::oneshot::channel();
+        let (release, wait) = std::sync::mpsc::channel();
+        let task = tokio::spawn(super::blocking_config(move || {
+            let _ = started.send(std::thread::current().id());
+            wait.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
+            7
+        }));
+        let worker = tokio::time::timeout(std::time::Duration::from_millis(500), ready).await.unwrap().unwrap();
+        assert_ne!(worker, caller);
+        tokio::time::timeout(std::time::Duration::from_millis(500), tokio::time::sleep(std::time::Duration::from_millis(5))).await.unwrap();
+        release.send(()).unwrap();
+        assert_eq!(task.await.unwrap().unwrap(), 7);
+    }
+
     use super::*;
 
     #[test]
