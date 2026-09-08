@@ -46,6 +46,29 @@ uv run python -m app.cli revoke-device --device-id DEVICE_UUID
 
 完整线上协议见 [并行合同](../.trellis/tasks/09-07-server-agent-todo-mvp/research/parallel-contract.md)。
 
+## 内部管理后台
+
+`admin/` 是独立的 React/Vite 管理界面，开发时先启动服务端，再在项目根目录执行
+`pnpm --dir admin dev`，访问 `http://127.0.0.1:18181/admin/`。Vite 只代理
+`/admin/v1`，不会改变设备 `/v1` WebSocket 的 Origin 规则。
+
+管理账号不会自动创建。先设置 `PET_AGENT_ADMIN_ENCRYPTION_KEY`（它只用于 Fernet
+加密后台管理的模型 API Key），执行迁移后用服务端 CLI 建立账号：
+
+```bash
+uv run python -m app.cli create-admin --username YOUR_NAME --password 'USE_A_PRIVATE_PASSWORD'
+uv run python -m app.cli create-admin --username OBSERVER_NAME --password 'USE_A_PRIVATE_PASSWORD' --role observer
+```
+
+管理会话使用 HttpOnly、SameSite Cookie 和 CSRF Cookie；设备 bearer token 不被解释为
+管理身份。管理员发放设备时，明文凭证只在 `no-store` 响应中出现一次。模型配置保存为
+不可变版本，测试是管理员显式触发的真实流式请求，发布通过 revision CAS；新接收运行
+绑定发布时的版本，在途运行不会换配置。回滚先生成候选版本，必须重新测试再发布。
+
+服务端追踪保留运行、模型步骤、工具关联和有限的应用层请求/响应快照。快照默认 30 天，
+追踪元数据和审计默认 90 天；当前只提供受控单条读取，不提供批量导出。provider 未返回
+usage 时记录为未采集，追踪写入失败显示缺口且不重放模型或撤销业务工具结果。
+
 ## 待办完成与直接列表
 
 `todo.complete` 的模型调用名为 `todo_complete`，只接受 `todo_id`，由认证账号限定更新范围。迁移 `003_todo_complete.sql` 将业务状态扩展为 `pending/completed`，保留现有数据。重复完成返回同一事项的已完成状态。

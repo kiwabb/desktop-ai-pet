@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from .auth import Auth
+from .admin import install_admin_routes
 from .config import Settings
 from .contracts import Envelope, ReminderConflict, envelope, protocol_error, reminder_arguments, uuid_string
 from .coordination import Coordination
@@ -33,6 +34,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.db, app.state.coordination = db, coordination
             app.state.auth, app.state.registry = Auth(db), registry
             app.state.service = service
+            install_admin_routes(app, db, settings, coordination)
             await service.start()
             yield
         finally:
@@ -54,6 +56,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     async def principal(request: Request):
         return await app.state.auth.authenticate(request.headers.get("authorization"), "control")
+
+    async def effective_model_status():
+        state = await app.state.model_configs.public_state()
+        if state["management_enabled"]:
+            active = state["active"]
+            return (active["model_name"] if active else None, bool(active))
+        return settings.model_name or None, settings.model_configured
 
     @app.exception_handler(PermissionError)
     async def forbidden(request, exc):
@@ -79,14 +88,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/health")
     async def health():
         database, redis = await asyncio.gather(app.state.db.healthy(), app.state.coordination.healthy())
+        model_name, model_configured = (await effective_model_status()) if database else (None, None)
         return {"status": "ok" if database and redis else "degraded", "database": database,
-                "redis": redis, "model_configured": settings.model_configured}
+                "redis": redis, "model": model_name, "model_configured": model_configured}
 
     @app.get("/v1/status")
     async def status(request: Request):
         who = await principal(request)
+        model_name, model_configured = await effective_model_status()
         return {"account_id": who.account_id, "device_id": who.device_id,
-                "model": settings.model_name or None, "model_configured": settings.model_configured}
+                "model": model_name, "model_configured": model_configured}
 
     @app.post("/v1/sessions")
     async def create_session(request: Request):

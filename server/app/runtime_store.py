@@ -7,8 +7,9 @@ Worker leases fence writes; crashed running tasks are never automatically replay
 from __future__ import annotations
 
 import json
+import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4, uuid5
 
 from psycopg.types.json import Jsonb
@@ -57,8 +58,8 @@ def todo_view(row):
 class RuntimeStore:
     LEASE_SECONDS = 30
 
-    def __init__(self, db):
-        self.db = db
+    def __init__(self, db, model_configs=None, payload_retention_days=30):
+        self.db, self.model_configs, self.payload_retention_days = db, model_configs, payload_retention_days
 
     async def _session(self, conn, session_id, account_id=None):
         row = await (await conn.execute(
@@ -143,11 +144,16 @@ class RuntimeStore:
                     (existing['id'],),
                 )).fetchone()
                 return row['envelope']
+            config_version_id = await self.model_configs.bind_for_new_run(conn) if self.model_configs else None
             run = await (await conn.execute(
-                "INSERT INTO agent_runs(id,account_id,session_id,request_id,input_text,status) "
-                "VALUES (%s,%s,%s,%s,%s,'queued') RETURNING *",
-                (str(uuid4()), account_id, session_id, request_id, text),
+                "INSERT INTO agent_runs(id,account_id,session_id,request_id,input_text,status,model_config_version_id) "
+                "VALUES (%s,%s,%s,%s,%s,'queued',%s) RETURNING *",
+                (str(uuid4()), account_id, session_id, request_id, text, config_version_id),
             )).fetchone()
+            await conn.execute(
+                "INSERT INTO run_trace_states(run_id,session_id,account_id,integrity) VALUES (%s,%s,%s,'partial')",
+                (run['id'], run['session_id'], run['account_id']),
+            )
             messages = []
             for role, content in (('user', text), ('assistant', '')):
                 row = await (await conn.execute(
@@ -158,7 +164,96 @@ class RuntimeStore:
                 messages.append(message_view(row))
             return await self._event(conn, run, 'run.accepted',
                                      dict(run=run_view(run), user_message=messages[0],
-                                          assistant_message=messages[1]))
+                                         assistant_message=messages[1]))
+
+    @staticmethod
+    def _trace_body(value, limit=256 * 1024):
+        encoded = json.dumps(value, ensure_ascii=False, default=str)
+        raw = encoded.encode()
+        if len(raw) <= limit:
+            return json.loads(encoded), False, len(raw)
+        clipped = raw[:limit].decode('utf-8', errors='ignore')
+        return {'truncated_text': clipped, 'truncated': True}, True, len(raw)
+
+    async def start_model_trace(self, run, step_index, config, request_context):
+        call_id = str(uuid4())
+        body, truncated, original_bytes = self._trace_body(request_context)
+        now = datetime.now(timezone.utc)
+        async with self.db.pool.connection() as conn, conn.transaction():
+            await conn.execute(
+                "INSERT INTO model_call_traces(id,run_id,step_index,config_version_id,model_name,started_at,status) VALUES (%s,%s,%s,%s,%s,%s,'running')",
+                (call_id, run['id'], step_index, config.get('id'), config.get('model_name'), now),
+            )
+            await conn.execute(
+                "INSERT INTO trace_payloads(id,run_id,model_call_id,kind,body,truncated,original_bytes,expires_at) VALUES (%s,%s,%s,'application_request',%s,%s,%s,%s)",
+                (str(uuid4()), run['id'], call_id, Jsonb(body), truncated, original_bytes, now + timedelta(days=self.payload_retention_days)),
+            )
+        return call_id, now, time.monotonic()
+
+    async def finish_model_trace(self, run, call_id, started_at, *, started_clock=None, status, error_type=None,
+                                 response=None, first_response_at=None, first_visible_text_at=None,
+                                 usage=None, usage_source=None):
+        ended = datetime.now(timezone.utc)
+        body, truncated, original_bytes = self._trace_body(response if response is not None else {})
+        duration = max(0, int((time.monotonic() - started_clock) * 1000)) if started_clock is not None else max(0, int((ended - started_at).total_seconds() * 1000))
+        async with self.db.pool.connection() as conn, conn.transaction():
+            await conn.execute(
+                "UPDATE model_call_traces SET ended_at=%s,duration_ms=%s,first_response_at=%s,first_visible_text_at=%s,status=%s,error_type=%s,usage=%s,usage_source=%s WHERE id=%s AND run_id=%s",
+                (ended, duration, first_response_at, first_visible_text_at, status, error_type,
+                 Jsonb(usage) if usage is not None else None, usage_source, call_id, run['id']),
+            )
+            await conn.execute(
+                "INSERT INTO trace_payloads(id,run_id,model_call_id,kind,body,truncated,original_bytes,expires_at) VALUES (%s,%s,%s,'model_response',%s,%s,%s,%s)",
+                (str(uuid4()), run['id'], call_id, Jsonb(body), truncated, original_bytes, ended + timedelta(days=self.payload_retention_days)),
+            )
+            await conn.execute(
+                "UPDATE run_trace_states SET collected_steps=(SELECT count(*) FROM model_call_traces WHERE run_id=%s),updated_at=now(),integrity=%s WHERE run_id=%s",
+                (run['id'], 'complete' if status == 'succeeded' else 'incomplete', run['id']),
+            )
+
+    async def link_tool_trace(self, model_call_id, tool_call_id, step_index):
+        async with self.db.pool.connection() as conn:
+            await conn.execute(
+                "INSERT INTO tool_trace_links(model_call_id,tool_call_id,step_index) VALUES (%s,%s,%s) ON CONFLICT DO NOTHING",
+                (model_call_id, tool_call_id, step_index),
+            )
+
+    async def mark_trace_gap(self, run, reason):
+        async with self.db.pool.connection() as conn:
+            await conn.execute(
+                "UPDATE run_trace_states SET integrity='incomplete',gap_reason=%s,updated_at=now() WHERE run_id=%s",
+                (reason, run['id']),
+            )
+
+    async def cleanup_observability(self, payload_days=30, metadata_days=90):
+        async with self.db.pool.connection() as conn, conn.transaction():
+            await conn.execute(
+                "WITH doomed AS (SELECT id FROM trace_payloads WHERE expires_at<=now() LIMIT 500) "
+                "DELETE FROM trace_payloads WHERE id IN (SELECT id FROM doomed)"
+            )
+            await conn.execute(
+                "WITH doomed AS (SELECT id FROM model_call_traces WHERE ended_at IS NOT NULL "
+                "AND ended_at<=now()-make_interval(days => %s) LIMIT 500) "
+                "DELETE FROM trace_payloads WHERE model_call_id IN (SELECT id FROM doomed)", (metadata_days,)
+            )
+            await conn.execute(
+                "WITH doomed AS (SELECT id FROM model_call_traces WHERE ended_at IS NOT NULL "
+                "AND ended_at<=now()-make_interval(days => %s) LIMIT 500) "
+                "DELETE FROM tool_trace_links WHERE model_call_id IN (SELECT id FROM doomed)", (metadata_days,)
+            )
+            await conn.execute(
+                "WITH doomed AS (SELECT id FROM model_call_traces WHERE ended_at IS NOT NULL "
+                "AND ended_at<=now()-make_interval(days => %s) LIMIT 500) "
+                "DELETE FROM model_call_traces WHERE id IN (SELECT id FROM doomed)", (metadata_days,)
+            )
+            await conn.execute(
+                "DELETE FROM run_trace_states WHERE run_id NOT IN (SELECT id FROM agent_runs WHERE status IN ('queued','running')) "
+                "AND updated_at<=now()-make_interval(days => %s)", (metadata_days,)
+            )
+            await conn.execute(
+                "WITH doomed AS (SELECT id FROM admin_audit_events WHERE created_at<=now()-make_interval(days => %s) LIMIT 500) "
+                "DELETE FROM admin_audit_events WHERE id IN (SELECT id FROM doomed)", (metadata_days,)
+            )
 
     async def claim(self, owner):
         async with self.db.pool.connection() as conn, conn.transaction():

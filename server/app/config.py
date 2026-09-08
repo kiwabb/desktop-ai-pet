@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     gateway_id: str = Field(default_factory=lambda: str(uuid4()))
     worker_concurrency: int = Field(default=2, ge=1, le=16)
 
+    # Admin credentials are deliberately separate from device credentials.
+    admin_encryption_key: str = Field(default="", repr=False)
+    admin_session_ttl_seconds: int = Field(default=8 * 60 * 60, ge=900, le=7 * 24 * 60 * 60)
+    admin_cookie_secure: bool = False
+    trace_payload_retention_days: int = Field(default=30, ge=1, le=3650)
+    trace_metadata_retention_days: int = Field(default=90, ge=1, le=3650)
+
     default_timezone: str = "Asia/Shanghai"
 
     @field_validator("default_timezone")

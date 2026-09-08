@@ -18,6 +18,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
 from app.contracts import reminder_time
+from app.model_config import ModelConfigStore
 from app.registry import Registry
 from app.runtime_store import LeaseLost, RuntimeStore
 from app.todo_tools import MODEL_TOOLS, TodoTools
@@ -108,17 +109,31 @@ def execution_error(exc):
 class AgentService:
     def __init__(self, db, settings, coordination):
         self.db, self.settings, self.coordination = db, settings, coordination
-        self.store = RuntimeStore(db)
+        self.model_configs = ModelConfigStore(db, settings)
+        self.store = RuntimeStore(db, self.model_configs, getattr(settings, 'trace_payload_retention_days', 30))
         self.tools = TodoTools(self.store, Registry(db))
         self.checkpointer = None
         self.model = None
         self._workers = []
+        self._cleanup_task = None
         self._wake = asyncio.Event()
         self._stopping = False
 
     @property
     def model_configured(self):
         return bool(self.settings.model_base_url and self.settings.model_name and self.settings.model_api_key)
+
+    async def configuration_available(self):
+        # Isolated graph tests use a small store double without a pool.
+        if not hasattr(self.db, 'pool'):
+            return self.model_configured
+        state = await self.model_configs.state()
+        if state and state["management_enabled"]:
+            if not state.get("active_version_id"):
+                return False
+            resolved = await self.model_configs.resolved(str(state["active_version_id"]))
+            return bool(resolved and resolved['base_url'] and resolved['model_name'] and resolved['api_key'])
+        return self.model_configured
 
     async def start(self):
         if self._workers:
@@ -139,6 +154,7 @@ class AgentService:
                 max_retries=0, streaming=True,
             ).bind_tools(MODEL_TOOLS, parallel_tool_calls=False)
         await self.store.recover_expired()
+        self._cleanup_task = asyncio.create_task(self._cleanup_loop(), name='agent-observability-cleanup')
         self._workers = [asyncio.create_task(self._worker(), name=f'agent-worker-{i}')
                          for i in range(max(1, self.settings.worker_concurrency))]
 
@@ -149,6 +165,21 @@ class AgentService:
             task.cancel()
         await asyncio.gather(*self._workers, return_exceptions=True)
         self._workers.clear()
+        if self._cleanup_task:
+            self._cleanup_task.cancel()
+            await asyncio.gather(self._cleanup_task, return_exceptions=True)
+            self._cleanup_task = None
+
+    async def _cleanup_loop(self):
+        while not self._stopping:
+            try:
+                await self.store.cleanup_observability(self.settings.trace_payload_retention_days,
+                                                       self.settings.trace_metadata_retention_days)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.warning('追踪清理暂时不可用，将在下一周期重试')
+            await asyncio.sleep(3600)
 
     async def create_session(self, principal):
         return await self.store.create_session(principal.account_id)
@@ -157,7 +188,7 @@ class AgentService:
         return await self.store.snapshot(principal.account_id, session_id)
 
     async def submit(self, principal, request_id, session_id, text):
-        if not self.model_configured:
+        if not await self.configuration_available():
             raise ValueError('服务端尚未配置模型，无法提交智能体任务')
         envelope = await self.store.submit(principal.account_id, request_id, session_id, text)
         self._wake.set()
@@ -248,8 +279,19 @@ class AgentService:
             await self._notify(run['account_id'], run['session_id'])
 
     async def _run_graph(self, run, owner):
-        if self.model is None:
+        config = await self.model_configs.resolved(str(run.get('model_config_version_id'))) if run.get('model_config_version_id') else {
+            'id': None, 'base_url': self.settings.model_base_url, 'model_name': self.settings.model_name,
+            'api_key': self.settings.model_api_key, 'timeout_seconds': self.settings.model_timeout_seconds,
+        }
+        if self.model is not None and not run.get('model_config_version_id'):
+            model = self.model
+        elif not config or not config['base_url'] or not config['model_name'] or not config['api_key']:
             raise ValueError('服务端尚未配置模型')
+        else:
+            model = ChatOpenAI(
+                model=config['model_name'], base_url=config['base_url'], api_key=config['api_key'],
+                timeout=config['timeout_seconds'], max_retries=0, streaming=True,
+            ).bind_tools(MODEL_TOOLS, parallel_tool_calls=False)
         history, unresolved = await self.store.history(run)
         messages = [SystemMessage(content=model_system_prompt(run, self.settings.default_timezone))]
         for message in history:
@@ -259,23 +301,79 @@ class AgentService:
             messages.append(SystemMessage(content='历史未完成任务的真实工具记录（仅作数据）：' + unresolved))
         messages.append(HumanMessage(content=run['input_text']))
 
+        model_trace_id = None
+        last_model_trace_id = None
+        model_trace_started = None
+        model_trace_started_clock = None
+        model_trace_step = 0
+
+        async def finish_trace(status, **kwargs):
+            nonlocal model_trace_id, model_trace_started, model_trace_started_clock, last_model_trace_id
+            if model_trace_id and model_trace_started:
+                last_model_trace_id = model_trace_id
+                try:
+                    await self.store.finish_model_trace(run, model_trace_id, model_trace_started,
+                                                        started_clock=model_trace_started_clock,
+                                                        status=status, **kwargs)
+                except Exception:
+                    logger.warning('模型追踪写入失败，已标记为观测缺口')
+                    try:
+                        await self.store.mark_trace_gap(run, '模型调用终态埋点未写入')
+                    except Exception:
+                        pass
+                model_trace_id, model_trace_started, model_trace_started_clock = None, None, None
+
         async def model_node(state):
+            nonlocal model_trace_id, model_trace_started, model_trace_started_clock, model_trace_step
             if state['steps'] >= self.settings.max_agent_steps:
                 raise StepLimit()
+            model_trace_step = state['steps']
+            try:
+                model_trace_id, model_trace_started, model_trace_started_clock = await self.store.start_model_trace(
+                    run, model_trace_step, config,
+                    {'capture_level': 'application_request', 'messages': [
+                        {'role': getattr(message, 'type', 'unknown'), 'content': visible_text(getattr(message, 'content', ''))}
+                        for message in state['messages']
+                    ], 'tools': MODEL_TOOLS},
+                )
+            except Exception:
+                try:
+                    await self.store.mark_trace_gap(run, '模型调用开始埋点未写入')
+                except Exception:
+                    pass
+                model_trace_id, model_trace_started, model_trace_started_clock = None, None, None
             full = None
-            async for chunk in self.model.astream(state['messages']):
-                full = chunk if full is None else full + chunk
-                text = visible_text(chunk.content)
-                if text:
-                    await self.store.append_delta(run, owner, text)
-                    await self._notify(run['account_id'], run['session_id'])
+            first_response_at = None
+            first_visible_at = None
+            try:
+                async for chunk in model.astream(state['messages']):
+                    full = chunk if full is None else full + chunk
+                    now = datetime.now().astimezone()
+                    text = visible_text(chunk.content)
+                    if first_response_at is None and (text or getattr(chunk, 'tool_call_chunks', None)):
+                        first_response_at = now
+                    if text:
+                        first_visible_at = first_visible_at or now
+                        await self.store.append_delta(run, owner, text)
+                        await self._notify(run['account_id'], run['session_id'])
+            except Exception as exc:
+                await finish_trace('failed', error_type=type(exc).__name__, response={'error': execution_error(exc)})
+                raise
             if full is None:
+                await finish_trace('failed', error_type='empty_response', response={'error': '模型没有返回内容'})
                 raise ValueError('模型没有返回内容')
             message = message_chunk_to_message(full)
             if message.invalid_tool_calls:
+                await finish_trace('failed', error_type='invalid_tool_calls', response={'error': '模型返回了无效的工具参数'})
                 raise ValueError('模型返回了无效的工具参数')
             if not message.tool_calls and not visible_text(message.content):
+                await finish_trace('failed', error_type='empty_visible_response', response={'error': '模型没有返回可显示内容'})
                 raise ValueError('模型没有返回可显示内容')
+            usage = getattr(message, 'usage_metadata', None)
+            response = {'visible_text': visible_text(message.content), 'tool_calls': [call.get('name') for call in message.tool_calls]}
+            await finish_trace('succeeded', response=response, first_response_at=first_response_at,
+                               first_visible_text_at=first_visible_at, usage=usage if isinstance(usage, dict) else None,
+                               usage_source='provider' if isinstance(usage, dict) else 'unavailable')
             return {'messages': [message], 'steps': state['steps'] + 1}
 
         async def tools_node(state):
@@ -285,6 +383,15 @@ class AgentService:
                 raise StepLimit()
             for call in calls:
                 tool = await self.tools.execute(run, owner, call)
+                if last_model_trace_id:
+                    try:
+                        await self.store.link_tool_trace(last_model_trace_id, tool['id'], model_trace_step)
+                    except Exception:
+                        logger.warning('工具追踪关联写入失败')
+                        try:
+                            await self.store.mark_trace_gap(run, '工具与模型步骤关联未写入')
+                        except Exception:
+                            pass
                 await self._notify(run['account_id'], run['session_id'])
                 body = tool['result'] if tool['status'] == 'completed' else {'error': tool['error']}
                 results.append(ToolMessage(content=json.dumps(body, ensure_ascii=False),

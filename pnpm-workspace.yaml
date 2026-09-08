@@ -1,5 +1,6 @@
 packages:
   - .
+  - admin
 
 allowBuilds:
   esbuild: true

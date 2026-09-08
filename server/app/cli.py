@@ -7,6 +7,7 @@ import secrets
 from uuid import UUID, uuid4
 
 from .auth import token_hash
+from .admin import hash_password
 from .config import Settings
 from .db import Database
 
@@ -49,6 +50,15 @@ async def run(args):
                 if not row:
                     raise LookupError("设备不存在")
                 print("设备已撤销；存量连接将在下一次认证检查时关闭（最长约 1 秒，不含数据库故障等待）")
+            elif args.command == "create-admin":
+                role = args.role
+                password_hash = hash_password(args.password)
+                admin_id = str(uuid4())
+                await conn.execute(
+                    "INSERT INTO admin_users(id,username,password_hash,role) VALUES (%s,%s,%s,%s)",
+                    (admin_id, args.username, password_hash, role),
+                )
+                print(json.dumps({"admin_id": admin_id, "username": args.username, "role": role}, ensure_ascii=False))
     finally:
         await db.close()
 
@@ -69,6 +79,10 @@ def main():
     device.add_argument("--base-url", default="http://127.0.0.1:18081")
     revoke = commands.add_parser("revoke-device")
     revoke.add_argument("--device-id", required=True)
+    admin = commands.add_parser("create-admin")
+    admin.add_argument("--username", required=True)
+    admin.add_argument("--password", required=True)
+    admin.add_argument("--role", choices=["admin", "observer"], default="admin")
     args = parser.parse_args()
     try:
         asyncio.run(run(args))
