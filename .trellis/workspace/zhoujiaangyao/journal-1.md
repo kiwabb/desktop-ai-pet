@@ -633,3 +633,37 @@ Rebuilt settings as the approved connection/status/guide/security layout, preser
 ### Next Steps
 
 - 原任务真实服务与原生交互验收继续独立保留。
+
+
+## Session 20: Desktop pet frontend polish implementation
+<!-- trellis-session: v=2 fp=7c3b8318d29c7cd3 -->
+
+**Date**: 2026-09-08
+**Task**: Desktop pet frontend polish implementation
+**Branch**: `codex/desktop-pet-frontend-polish`
+
+### Summary
+
+Unified warm surfaces, safe Markdown, IME and reading continuity, single-consumption draft acceptance, and real pet status; packaged locally. Native full-flow acceptance remains open because the app was absent from current on-screen window enumeration.
+
+### Main Changes
+
+- Implemented approved front-end plan while preserving cat PNG, paw geometry and 5/7 footprint contract.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `391eda6` | feat: polish desktop pet surfaces and chat interactions |
+
+### Testing
+
+- [OK] Build, four focused scripts, pet2d validation, browser geometry and 10 navigation cycles passed; native compact/new status observed, real prompt initiated but completion not verified.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- Bring pet to current visible desktop; complete native send/stream/clipboard/IME/10-cycle acceptance, then final visual confirmation.

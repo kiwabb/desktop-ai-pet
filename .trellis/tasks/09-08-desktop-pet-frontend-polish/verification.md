@@ -2,7 +2,7 @@
 
 ## Version and scope
 
-- Source baseline: d22c6fd; branch codex/desktop-pet-frontend-polish.
+- Source baseline: d22c6fd; implementation commit391eda6; branch codex/desktop-pet-frontend-polish.
 - Product v0.1.0, final frontend assets index-Dr61Evd5.js and index-Dgfvj8Ip.css.
 - Bundle: src-tauri/target/debug/bundle/macos/橘伴.app; successful debug packaging.
 - No settings/credential writes, todo/reminder writes, seeded data or mock service.

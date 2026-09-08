@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 19
-- **Last Active**: 2026-09-07
+- **Total Sessions**: 20
+- **Last Active**: 2026-09-08
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~635 | Active |
+| `journal-1.md` | ~669 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 20 | 2026-09-08 | Desktop pet frontend polish implementation | `391eda6` | `codex/desktop-pet-frontend-polish` |
 | 19 | 2026-09-07 | Reference settings card layout | `a73992b` | `main` |
 | 18 | 2026-09-07 | Refined warm compact surfaces | `8e9c88b` | `main` |
 | 17 | 2026-09-07 | Compact chat composition refinement | `6348073` | `main` |
