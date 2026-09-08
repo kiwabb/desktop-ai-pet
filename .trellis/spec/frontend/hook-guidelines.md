@@ -24,10 +24,10 @@
 ## Data Fetching
 
 - 不用 React Query / SWR / fetch——前端**不直接发 HTTP**
-- 所有后端调用走 Tauri IPC：`src/lib/ai.ts` 里 `invoke<T>('command_name')`
-  的薄封装，组件 `await` 封装函数（如 `getAiStatus()`、`saveAiSettings()`）
-- 流式数据走 Tauri 事件：Rust 发 `'ai:stream'`，组件 `listen<AiStreamEvent>`
-  订阅，用 `requestId` 匹配归属（见 `src/App.tsx:53`）
+- 所有后端调用走 Tauri IPC：`src/lib/agent.ts` 里 `invoke<T>('command_name')`
+  的薄封装，组件 `await` 封装函数（如 `getAgentView()`、`saveAgentSettings()`）
+- 流式数据走 Tauri 事件：Rust 发 `'agent:view'`（唯一状态出口，含消息增量的
+  快照投影），组件 `listen<AgentView>` 订阅（见 `src/App.tsx`）
 
 ## useEffect 约定（重要，项目里最密集的模式）
 

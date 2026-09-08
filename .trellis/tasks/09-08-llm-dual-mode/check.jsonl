@@ -1,0 +1,7 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "后端层质量检查清单"}
+{"file": ".trellis/spec/backend/server-agent.md", "reason": "行为等价核对依据"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "前端质量检查清单"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端质量规范"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层一致性检查"}
+{"file": ".trellis/tasks/09-08-llm-dual-mode/research/desktop-architecture.md", "reason": "前端/验证脚本契约约束核对"}
+{"file": ".trellis/tasks/09-08-llm-dual-mode/research/server-llm-implementation.md", "reason": "11 项行为等价清单核对"}

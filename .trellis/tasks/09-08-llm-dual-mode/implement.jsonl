@@ -1,0 +1,9 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "后端层规范入口，Pre-Development Checklist"}
+{"file": ".trellis/spec/backend/server-agent.md", "reason": "服务端 agent 行为规格，单机模式复制的蓝本对照"}
+{"file": ".trellis/spec/backend/todo-reminders.md", "reason": "待办/提醒业务规则，M2 工具实现依据"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "前端层规范入口，设置 UI 改动需遵守"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "前端状态管理约定，设置表单扩展"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "跨层改动思考指南"}
+{"file": ".trellis/tasks/09-08-llm-dual-mode/research/server-llm-implementation.md", "reason": "服务端 LLM 实现全量蓝本与 11 项复制清单"}
+{"file": ".trellis/tasks/09-08-llm-dual-mode/research/desktop-architecture.md", "reason": "桌面端现状、模式切换落点、验证脚本契约假设"}
+{"file": ".trellis/tasks/09-08-llm-dual-mode/research/rust-llm-tech-options.md", "reason": "Rust 选型、SSE/Channel 代码草图、风险清单"}
