@@ -1,5 +1,7 @@
 # 服务端智能体与桌面设备节点：已确认方向
 
+> 2026-09-08：本文描述的是**服务端模式**的链路与决策。桌面端现为双模式架构（服务端 / 单机可切换，单机模式由 Rust 直调模型、SQLite 本地持久化、API Key 存 OS 凭据存储），双模式全景见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+
 更新日期：2026-09-07。状态：**架构方向已确认，三个子任务代码已落地；真实只读查询和服务重启检查已通过，创建与查询已由用户手动验收通过，完整桌面恢复仍待验收**。
 
 本文记录本轮逐项确认的决定。最小实现方案见[任务 PRD](../.trellis/tasks/09-07-server-agent-todo-mvp/prd.md)、[技术设计](../.trellis/tasks/09-07-server-agent-todo-mvp/design.md)和[实施计划](../.trellis/tasks/09-07-server-agent-todo-mvp/implement.md)。
@@ -14,11 +16,11 @@
 
 ## 当前实现与验证范围
 
-当前链路为 `src/App.tsx → src/lib/agent.ts → src-tauri/src/agent_client.rs → server/app/main.py → server/app/agent_service.py`。Rust 连接独立 Python 服务，LangGraph 调用模型及待办工具，PostgreSQL 保存会话、任务、工具结果和待办，Redis 保存节点租约。
+服务端模式的链路为 `src/App.tsx → src/lib/agent.ts → src-tauri/src/backend/server.rs → server/app/main.py → server/app/agent_service.py`。Rust 连接独立 Python 服务，LangGraph 调用模型及待办工具，PostgreSQL 保存会话、任务、工具结果和待办，Redis 保存节点租约。
 
 本机真实模型的待办查询、流式事件、重复请求幂等与协议重连已通过；桌面已显示发送记录、真实空结果和已完成工具。服务重启后同一会话快照保持一致。用户已手动确认创建待办并查询到记录；界面逐段流式和断线期间状态没有完整捕获。详见[验收记录](../.trellis/tasks/09-07-server-agent-todo-mvp/verification.md)。
 
-[原架构文档](ARCHITECTURE.md)保留早期桌面实现背景；当前服务接入以本文及[服务端说明](../server/README.md)为准。
+[双模式全景](ARCHITECTURE.md)记录桌面端当前运行状态；服务端接入以本文及[服务端说明](../server/README.md)为准。
 
 ## 已确认的决策
 
