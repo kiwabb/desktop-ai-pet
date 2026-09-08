@@ -715,3 +715,25 @@ Fixed open-panel hiding, entrance replay, crop instability, queued failure propa
 ### Status
 
 [OK] **Completed**
+
+
+## Session 23: Initial open follow-up: stationary platform and reduced motion reveal
+<!-- trellis-session: v=2 fp=84c45c351dd4335c -->
+
+**Date**: 2026-09-08
+**Task**: Initial open follow-up: stationary platform and reduced motion reveal
+**Branch**: `codex/pet-interaction-motion`
+
+### Summary
+
+System reduceMotion=1 explained disabled animation path. Initial root no longer moves dock; feathered shell mask synchronizes bubble/content/paw, with opacity-only reduced entry. CSS viewport gate and timeout recovery regression added. Build/package and focused checks passed; browser intermediate frames inspected. Native AX compact opens after restart; actual onscreen motion not verified because window unavailable to screen capture. Task remains in progress.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c4284ff` | fix: stabilize initial pet reveal and respect reduced motion |
+
+### Status
+
+[OK] **Completed**
