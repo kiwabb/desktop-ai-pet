@@ -693,3 +693,25 @@ Unified warm surfaces, safe Markdown, IME and reading continuity, single-consump
 ### Status
 
 [OK] **Completed**
+
+
+## Session 22: Panel transition and motion implementation; native acceptance pending unlock
+<!-- trellis-session: v=2 fp=a91207e7a45ea2df -->
+
+**Date**: 2026-09-08
+**Task**: Panel transition and motion implementation; native acceptance pending unlock
+**Branch**: `codex/pet-interaction-motion`
+
+### Summary
+
+Fixed open-panel hiding, entrance replay, crop instability, queued failure propagation and stale page callbacks; atomic layout/page commits and gentle motion. Build and focused checks passed; browser 10 cycles preserved draft, reduced-motion passed. Debug app packaged. Native baseline reproduced settings stall; new native acceptance interrupted by Mac lock. Task remains in_progress; no archive.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4b3b88c` | fix: stabilize pet panel transitions and add gentle motion |
+
+### Status
+
+[OK] **Completed**
