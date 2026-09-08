@@ -2,6 +2,8 @@
 import argparse
 import asyncio
 import json
+import getpass
+import stat
 import os
 import secrets
 from uuid import UUID, uuid4
@@ -10,6 +12,25 @@ from .auth import token_hash
 from .admin import hash_password
 from .config import Settings
 from .db import Database
+
+
+def admin_password(args):
+    if getattr(args, "password_file", None):
+        # O_NOFOLLOW and fstat bind permission validation to the descriptor being read.
+        descriptor = os.open(args.password_file, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(descriptor) as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o600 or info.st_uid != os.getuid():
+                raise ValueError("密码文件必须是当前用户拥有的 0600 普通文件")
+            if info.st_size > 1026:
+                raise ValueError("管理密码文件过大")
+            password = source.read(1026).rstrip("\r\n")
+            if len(password) > 1024:
+                raise ValueError("管理密码过长")
+            return password
+    if getattr(args, "password", None) is not None:
+        return args.password
+    return getpass.getpass("管理密码：")
 
 
 async def run(args):
@@ -52,7 +73,7 @@ async def run(args):
                 print("设备已撤销；存量连接将在下一次认证检查时关闭（最长约 1 秒，不含数据库故障等待）")
             elif args.command == "create-admin":
                 role = args.role
-                password_hash = hash_password(args.password)
+                password_hash = hash_password(admin_password(args))
                 admin_id = str(uuid4())
                 await conn.execute(
                     "INSERT INTO admin_users(id,username,password_hash,role) VALUES (%s,%s,%s,%s)",
@@ -81,7 +102,9 @@ def main():
     revoke.add_argument("--device-id", required=True)
     admin = commands.add_parser("create-admin")
     admin.add_argument("--username", required=True)
-    admin.add_argument("--password", required=True)
+    password_source = admin.add_mutually_exclusive_group()
+    password_source.add_argument("--password", help="兼容选项；优先使用密码文件或交互输入")
+    password_source.add_argument("--password-file", help="当前用户拥有的 0600 密码文件")
     admin.add_argument("--role", choices=["admin", "observer"], default="admin")
     args = parser.parse_args()
     try:

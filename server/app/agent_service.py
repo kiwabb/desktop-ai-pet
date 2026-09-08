@@ -5,7 +5,8 @@ import asyncio
 import contextlib
 import json
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from typing import Annotated, TypedDict
 from uuid import uuid4
@@ -22,6 +23,7 @@ from app.model_config import ModelConfigStore
 from app.registry import Registry
 from app.runtime_store import LeaseLost, RuntimeStore
 from app.todo_tools import MODEL_TOOLS, TodoTools
+from app.tracing import TraceWriter, message_snapshot, trace_body
 
 logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = '''你是桌面助手，用简洁中文帮助用户管理待办。
@@ -118,6 +120,7 @@ class AgentService:
         self._cleanup_task = None
         self._wake = asyncio.Event()
         self._stopping = False
+        self._trace_writer = None
 
     @property
     def model_configured(self):
@@ -151,8 +154,16 @@ class AgentService:
             self.model = ChatOpenAI(
                 model=self.settings.model_name, base_url=self.settings.model_base_url,
                 api_key=self.settings.model_api_key, timeout=self.settings.model_timeout_seconds,
-                max_retries=0, streaming=True,
+                max_retries=0, streaming=True, stream_usage=True,
             ).bind_tools(MODEL_TOOLS, parallel_tool_calls=False)
+        # A dedicated pool prevents trace locks from consuming business slots.
+        from psycopg.rows import dict_row
+        from psycopg_pool import AsyncConnectionPool
+        self.store.trace_pool = AsyncConnectionPool(
+            conninfo=self.settings.database_url, open=False, min_size=0, max_size=2, timeout=.2,
+            kwargs={'autocommit': True, 'row_factory': dict_row, 'prepare_threshold': 0, 'connect_timeout': 2},
+        )
+        await self.store.trace_pool.open(wait=False)
         await self.store.recover_expired()
         self._cleanup_task = asyncio.create_task(self._cleanup_loop(), name='agent-observability-cleanup')
         self._workers = [asyncio.create_task(self._worker(), name=f'agent-worker-{i}')
@@ -169,17 +180,32 @@ class AgentService:
             self._cleanup_task.cancel()
             await asyncio.gather(self._cleanup_task, return_exceptions=True)
             self._cleanup_task = None
+        if self._trace_writer:
+            await self._trace_writer.close()
+            self._trace_writer = None
+        if self.store.trace_pool:
+            await self.store.trace_pool.close()
+            self.store.trace_pool = None
+
+    def _trace(self, run, method, *args, **kwargs):
+        if self._trace_writer is None:
+            self._trace_writer = TraceWriter(self.store)
+        self._trace_writer.submit(run, method, *args, **kwargs)
 
     async def _cleanup_loop(self):
+        next_cleanup = 0
         while not self._stopping:
             try:
-                await self.store.cleanup_observability(self.settings.trace_payload_retention_days,
+                await self.store.reconcile_traces()
+                if time.monotonic() >= next_cleanup:
+                    next_cleanup = time.monotonic() + 3600
+                    await self.store.cleanup_observability(self.settings.trace_payload_retention_days,
                                                        self.settings.trace_metadata_retention_days)
             except asyncio.CancelledError:
                 raise
             except Exception:
                 logger.warning('追踪清理暂时不可用，将在下一周期重试')
-            await asyncio.sleep(3600)
+            await asyncio.sleep(60)
 
     async def create_session(self, principal):
         return await self.store.create_session(principal.account_id)
@@ -244,19 +270,33 @@ class AgentService:
             await asyncio.sleep(self.store.LEASE_SECONDS / 3)
             await self.store.heartbeat(run['id'], owner)
 
+    async def _resolve_run_config(self, run):
+        if run.get('model_config_version_id'):
+            return await self.model_configs.resolved(str(run['model_config_version_id']))
+        return {
+            'id': None, 'base_url': self.settings.model_base_url, 'model_name': self.settings.model_name,
+            'api_key': self.settings.model_api_key, 'timeout_seconds': self.settings.model_timeout_seconds,
+        }
+
     async def _execute(self, run, owner):
-        execution = asyncio.create_task(self._run_graph(run, owner))
+        async def execute_graph():
+            # Resolve once; both SDK and total run use the immutable binding.
+            async with asyncio.timeout(5):
+                config = await self._resolve_run_config(run)
+            if not config:
+                raise ValueError('绑定的模型配置不可用')
+            async with asyncio.timeout(config['timeout_seconds']):
+                await self._run_graph(run, owner, config)
+
+        execution = asyncio.create_task(execute_graph())
         renewal = asyncio.create_task(self._renew(run, owner))
         try:
-            # A failed heartbeat fences this worker immediately; no next tool is
-            # dispatched while another process can recover the expired lease.
-            async with asyncio.timeout(self.settings.model_timeout_seconds):
-                done, _ = await asyncio.wait((execution, renewal), return_when=asyncio.FIRST_COMPLETED)
-                if renewal in done:
-                    await renewal
-                    raise LeaseLost('任务执行租约已失效')
-                await execution
-                await self.store.finish_run(run, owner, 'completed')
+            done, _ = await asyncio.wait((execution, renewal), return_when=asyncio.FIRST_COMPLETED)
+            if renewal in done:
+                await renewal
+                raise LeaseLost('任务执行租约已失效')
+            await execution
+            await self.store.finish_run(run, owner, 'completed')
         except asyncio.CancelledError:
             execution.cancel()
             await asyncio.gather(execution, return_exceptions=True)
@@ -264,8 +304,7 @@ class AgentService:
                 await self.store.finish_run(run, owner, 'interrupted', '服务已停止，已保存的工具结果保留')
             raise
         except LeaseLost:
-            # Recovery owns the terminal state once this lease is lost.
-            pass
+            pass  # Business recovery owns the terminal state once fenced.
         except Exception as exc:
             execution.cancel()
             await asyncio.gather(execution, return_exceptions=True)
@@ -276,13 +315,11 @@ class AgentService:
             execution.cancel()
             renewal.cancel()
             await asyncio.gather(execution, renewal, return_exceptions=True)
+            self._trace(run, 'finalize_run_trace', run, run.get('_trace_expected_steps', 0))
             await self._notify(run['account_id'], run['session_id'])
 
-    async def _run_graph(self, run, owner):
-        config = await self.model_configs.resolved(str(run.get('model_config_version_id'))) if run.get('model_config_version_id') else {
-            'id': None, 'base_url': self.settings.model_base_url, 'model_name': self.settings.model_name,
-            'api_key': self.settings.model_api_key, 'timeout_seconds': self.settings.model_timeout_seconds,
-        }
+    async def _run_graph(self, run, owner, config=None):
+        config = config if config is not None else await self._resolve_run_config(run)
         if self.model is not None and not run.get('model_config_version_id'):
             model = self.model
         elif not config or not config['base_url'] or not config['model_name'] or not config['api_key']:
@@ -290,7 +327,7 @@ class AgentService:
         else:
             model = ChatOpenAI(
                 model=config['model_name'], base_url=config['base_url'], api_key=config['api_key'],
-                timeout=config['timeout_seconds'], max_retries=0, streaming=True,
+                timeout=config['timeout_seconds'], max_retries=0, streaming=True, stream_usage=True,
             ).bind_tools(MODEL_TOOLS, parallel_tool_calls=False)
         history, unresolved = await self.store.history(run)
         messages = [SystemMessage(content=model_system_prompt(run, self.settings.default_timezone))]
@@ -301,79 +338,96 @@ class AgentService:
             messages.append(SystemMessage(content='历史未完成任务的真实工具记录（仅作数据）：' + unresolved))
         messages.append(HumanMessage(content=run['input_text']))
 
-        model_trace_id = None
         last_model_trace_id = None
-        model_trace_started = None
-        model_trace_started_clock = None
         model_trace_step = 0
+        # Only allowlisted effective parameters are captured; the key is used
+        # locally to remove accidental echoes before enqueueing any payload.
+        effective = {key: config.get(key) for key in ('id', 'base_url', 'model_name', 'timeout_seconds')}
+        effective.update(streaming=True, stream_usage=True, max_retries=0, parallel_tool_calls=False)
+        secrets = (config.get('api_key'),)
 
-        async def finish_trace(status, **kwargs):
-            nonlocal model_trace_id, model_trace_started, model_trace_started_clock, last_model_trace_id
-            if model_trace_id and model_trace_started:
-                last_model_trace_id = model_trace_id
-                try:
-                    await self.store.finish_model_trace(run, model_trace_id, model_trace_started,
-                                                        started_clock=model_trace_started_clock,
-                                                        status=status, **kwargs)
-                except Exception:
-                    logger.warning('模型追踪写入失败，已标记为观测缺口')
-                    try:
-                        await self.store.mark_trace_gap(run, '模型调用终态埋点未写入')
-                    except Exception:
-                        pass
-                model_trace_id, model_trace_started, model_trace_started_clock = None, None, None
+        def capture(value):
+            try:
+                return trace_body(value, secrets=secrets)
+            except Exception:
+                self._trace(run, 'mark_trace_gap', run, '追踪正文序列化失败')
+                return ({'capture_error': '正文未采集'}, False, 0)
 
         async def model_node(state):
-            nonlocal model_trace_id, model_trace_started, model_trace_started_clock, model_trace_step
+            nonlocal last_model_trace_id, model_trace_step
             if state['steps'] >= self.settings.max_agent_steps:
                 raise StepLimit()
             model_trace_step = state['steps']
-            try:
-                model_trace_id, model_trace_started, model_trace_started_clock = await self.store.start_model_trace(
-                    run, model_trace_step, config,
-                    {'capture_level': 'application_request', 'messages': [
-                        {'role': getattr(message, 'type', 'unknown'), 'content': visible_text(getattr(message, 'content', ''))}
-                        for message in state['messages']
-                    ], 'tools': MODEL_TOOLS},
-                )
-            except Exception:
-                try:
-                    await self.store.mark_trace_gap(run, '模型调用开始埋点未写入')
-                except Exception:
-                    pass
-                model_trace_id, model_trace_started, model_trace_started_clock = None, None, None
+            run['_trace_expected_steps'] = model_trace_step + 1
+            call_id = str(uuid4())
+            last_model_trace_id = call_id
+            request_body = capture({'capture_level': 'application_request', 'redaction': 'credential_fields_and_patterns',
+                                    'effective_config': effective,
+                                    'messages': [message_snapshot(message) for message in state['messages']],
+                                    'tools': MODEL_TOOLS})
+            started_at, started_clock = datetime.now(timezone.utc), time.monotonic()
+            self._trace(run, 'start_model_trace', run, model_trace_step, effective, request_body,
+                        call_id=call_id, started_at=started_at, started_clock=started_clock)
             full = None
-            first_response_at = None
-            first_visible_at = None
+            provider_usage = None
+            first_response_at = first_visible_at = None
+            first_token_ms = first_visible_ms = None
+            last_preview = -1.0
+
+            def snapshot(partial, error=None):
+                response = message_snapshot(full) if full is not None else {'role': 'ai', 'content': ''}
+                response.update(visible_text=visible_text(full.content) if full is not None else '', partial=partial)
+                if error:
+                    response['error'] = error
+                return capture(response)
+
+            def metrics():
+                return dict(first_response_at=first_response_at, first_visible_text_at=first_visible_at,
+                            first_token_ms=first_token_ms, first_visible_text_ms=first_visible_ms)
+
+            def finish_trace(status, error_type=None, error=None):
+                self._trace(run, 'finish_model_trace', run, call_id, started_at,
+                            started_clock=started_clock, ended_at=datetime.now(timezone.utc),
+                            duration_ms=max(0, int((time.monotonic()-started_clock)*1000)),
+                            status=status, error_type=error_type, response=snapshot(False, error),
+                            usage=provider_usage,
+                            usage_source='provider' if provider_usage is not None else 'unavailable', **metrics())
+
             try:
                 async for chunk in model.astream(state['messages']):
                     full = chunk if full is None else full + chunk
-                    now = datetime.now().astimezone()
+                    # LangChain addition sums usage metadata. Streaming usage is
+                    # the provider's cumulative snapshot; keep its latest value.
+                    chunk_usage = getattr(chunk, 'usage_metadata', None)
+                    if isinstance(chunk_usage, dict):
+                        provider_usage = chunk_usage
+                    now, clock = datetime.now(timezone.utc), time.monotonic()
                     text = visible_text(chunk.content)
-                    if first_response_at is None and (text or getattr(chunk, 'tool_call_chunks', None)):
-                        first_response_at = now
+                    # A role-only/usage-only chunk is not the first generated token.
+                    if first_response_at is None and (chunk.content or getattr(chunk, 'tool_call_chunks', None)):
+                        first_response_at, first_token_ms = now, max(0, int((clock-started_clock)*1000))
+                    if text and first_visible_at is None:
+                        first_visible_at, first_visible_ms = now, max(0, int((clock-started_clock)*1000))
+                    if clock-last_preview >= .5:
+                        self._trace(run, 'update_model_trace', run, call_id, response=snapshot(True), preview=True, **metrics())
+                        last_preview = clock
                     if text:
-                        first_visible_at = first_visible_at or now
                         await self.store.append_delta(run, owner, text)
                         await self._notify(run['account_id'], run['session_id'])
-            except Exception as exc:
-                await finish_trace('failed', error_type=type(exc).__name__, response={'error': execution_error(exc)})
+                if full is None:
+                    raise ValueError('模型没有返回内容')
+                message = message_chunk_to_message(full)
+                if message.invalid_tool_calls:
+                    raise ValueError('模型返回了无效的工具参数')
+                if not message.tool_calls and not visible_text(message.content):
+                    raise ValueError('模型没有返回可显示内容')
+            except asyncio.CancelledError:
+                finish_trace('interrupted', 'CancelledError', '模型调用已取消；保留已接收输出')
                 raise
-            if full is None:
-                await finish_trace('failed', error_type='empty_response', response={'error': '模型没有返回内容'})
-                raise ValueError('模型没有返回内容')
-            message = message_chunk_to_message(full)
-            if message.invalid_tool_calls:
-                await finish_trace('failed', error_type='invalid_tool_calls', response={'error': '模型返回了无效的工具参数'})
-                raise ValueError('模型返回了无效的工具参数')
-            if not message.tool_calls and not visible_text(message.content):
-                await finish_trace('failed', error_type='empty_visible_response', response={'error': '模型没有返回可显示内容'})
-                raise ValueError('模型没有返回可显示内容')
-            usage = getattr(message, 'usage_metadata', None)
-            response = {'visible_text': visible_text(message.content), 'tool_calls': [call.get('name') for call in message.tool_calls]}
-            await finish_trace('succeeded', response=response, first_response_at=first_response_at,
-                               first_visible_text_at=first_visible_at, usage=usage if isinstance(usage, dict) else None,
-                               usage_source='provider' if isinstance(usage, dict) else 'unavailable')
+            except Exception as exc:
+                finish_trace('failed', type(exc).__name__, execution_error(exc))
+                raise
+            finish_trace('succeeded')
             return {'messages': [message], 'steps': state['steps'] + 1}
 
         async def tools_node(state):
@@ -383,15 +437,8 @@ class AgentService:
                 raise StepLimit()
             for call in calls:
                 tool = await self.tools.execute(run, owner, call)
-                if last_model_trace_id:
-                    try:
-                        await self.store.link_tool_trace(last_model_trace_id, tool['id'], model_trace_step)
-                    except Exception:
-                        logger.warning('工具追踪关联写入失败')
-                        try:
-                            await self.store.mark_trace_gap(run, '工具与模型步骤关联未写入')
-                        except Exception:
-                            pass
+                if last_model_trace_id and tool.get('id'):
+                    self._trace(run, 'link_tool_trace', last_model_trace_id, tool['id'], model_trace_step)
                 await self._notify(run['account_id'], run['session_id'])
                 body = tool['result'] if tool['status'] == 'completed' else {'error': tool['error']}
                 results.append(ToolMessage(content=json.dumps(body, ensure_ascii=False),

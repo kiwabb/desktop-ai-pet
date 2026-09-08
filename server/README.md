@@ -56,18 +56,31 @@ uv run python -m app.cli revoke-device --device-id DEVICE_UUID
 加密后台管理的模型 API Key），执行迁移后用服务端 CLI 建立账号：
 
 ```bash
-uv run python -m app.cli create-admin --username YOUR_NAME --password 'USE_A_PRIVATE_PASSWORD'
-uv run python -m app.cli create-admin --username OBSERVER_NAME --password 'USE_A_PRIVATE_PASSWORD' --role observer
+uv run python -m app.cli create-admin --username YOUR_NAME
+uv run python -m app.cli create-admin --username OBSERVER_NAME --role observer
 ```
+
+命令交互读取密码，不在进程参数中传递。自动化开通可使用
+`--password-file /private/path/admin-password`，文件必须属于当前用户、权限为 `0600`，且不能是符号链接。
+模型管理写入需要服务端加密主密钥；账号登录本身不依赖模型配置。
 
 管理会话使用 HttpOnly、SameSite Cookie 和 CSRF Cookie；设备 bearer token 不被解释为
 管理身份。管理员发放设备时，明文凭证只在 `no-store` 响应中出现一次。模型配置保存为
 不可变版本，测试是管理员显式触发的真实流式请求，发布通过 revision CAS；新接收运行
-绑定发布时的版本，在途运行不会换配置。回滚先生成候选版本，必须重新测试再发布。
+绑定接收时的版本，在途运行不会换配置，总超时也使用该绑定版本。回滚先选择沿用当前
+或历史 Key 并生成候选版本，重新测试后发布，保留回滚来源与审计记录。测试校验完整 SSE
+流，旧版仅检查字节的测试不再允许发布；最新有效测试须在 24 小时内，发布前再次检查 Key 可解密。
 
 服务端追踪保留运行、模型步骤、工具关联和有限的应用层请求/响应快照。快照默认 30 天，
 追踪元数据和审计默认 90 天；当前只提供受控单条读取，不提供批量导出。provider 未返回
-usage 时记录为未采集，追踪写入失败显示缺口且不重放模型或撤销业务工具结果。
+usage 时记录为未采集，追踪写入失败显示缺口且不重放模型或撤销业务工具结果。追踪采用
+独立连接池与有界异步队列；超时、取消、停止时保留已输出内容并结束模型步骤。管理端
+按实际模型/工具顺序展示，支持时间区间定位、受控正文检查、分页和刷新恢复。
+
+升级时应用新增 `006_admin_repair.sql`、`007_trace_repair.sql`，不要改写已执行的 005。
+首次启用数据库模型管理前需排空任务；启用后无法解密配置会明确拒绝新模型请求，不静默
+切回环境配置。管理员正文读取使用 POST、CSRF、审计和 `no-store`；设备发放要求幂等键，
+重试仅返回设备标识，不恢复原始明文凭证。
 
 ## 待办完成与直接列表
 

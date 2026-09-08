@@ -15,6 +15,7 @@ from uuid import UUID, uuid4, uuid5
 from psycopg.types.json import Jsonb
 
 from .contracts import ReminderConflict
+from .tracing import trace_body
 
 
 class LeaseLost(RuntimeError):
@@ -60,6 +61,7 @@ class RuntimeStore:
 
     def __init__(self, db, model_configs=None, payload_retention_days=30):
         self.db, self.model_configs, self.payload_retention_days = db, model_configs, payload_retention_days
+        self.trace_pool = None
 
     async def _session(self, conn, session_id, account_id=None):
         row = await (await conn.execute(
@@ -168,18 +170,25 @@ class RuntimeStore:
 
     @staticmethod
     def _trace_body(value, limit=256 * 1024):
-        encoded = json.dumps(value, ensure_ascii=False, default=str)
-        raw = encoded.encode()
-        if len(raw) <= limit:
-            return json.loads(encoded), False, len(raw)
-        clipped = raw[:limit].decode('utf-8', errors='ignore')
-        return {'truncated_text': clipped, 'truncated': True}, True, len(raw)
+        return trace_body(value, limit)
 
-    async def start_model_trace(self, run, step_index, config, request_context):
-        call_id = str(uuid4())
-        body, truncated, original_bytes = self._trace_body(request_context)
-        now = datetime.now(timezone.utc)
-        async with self.db.pool.connection() as conn, conn.transaction():
+    @asynccontextmanager
+    async def _trace_connection(self):
+        # Production tracing uses a separate small pool; no business connection
+        # can be consumed by a blocked observation. SQL bounds also apply server-side.
+        pool = self.trace_pool if self.trace_pool is not None else self.db.pool
+        async with pool.connection() as conn, conn.transaction():
+            await conn.execute("SET LOCAL lock_timeout = '100ms'")
+            await conn.execute("SET LOCAL statement_timeout = '200ms'")
+            yield conn
+
+    async def start_model_trace(self, run, step_index, config, request_context, *,
+                                call_id=None, started_at=None, started_clock=None):
+        call_id = call_id or str(uuid4())
+        # Queue callers pre-capture/cap/redact the body before enqueueing it.
+        body, truncated, original_bytes = request_context if isinstance(request_context, tuple) else self._trace_body(request_context)
+        now = started_at or datetime.now(timezone.utc)
+        async with self._trace_connection() as conn:
             await conn.execute(
                 "INSERT INTO model_call_traces(id,run_id,step_index,config_version_id,model_name,started_at,status) VALUES (%s,%s,%s,%s,%s,%s,'running')",
                 (call_id, run['id'], step_index, config.get('id'), config.get('model_name'), now),
@@ -188,67 +197,132 @@ class RuntimeStore:
                 "INSERT INTO trace_payloads(id,run_id,model_call_id,kind,body,truncated,original_bytes,expires_at) VALUES (%s,%s,%s,'application_request',%s,%s,%s,%s)",
                 (str(uuid4()), run['id'], call_id, Jsonb(body), truncated, original_bytes, now + timedelta(days=self.payload_retention_days)),
             )
-        return call_id, now, time.monotonic()
+        return call_id, now, started_clock if started_clock is not None else time.monotonic()
+
+    async def update_model_trace(self, run, call_id, *, response, first_response_at=None,
+                                 first_visible_text_at=None, first_token_ms=None, first_visible_text_ms=None):
+        async with self._trace_connection() as conn:
+            updated = await conn.execute(
+                "UPDATE model_call_traces SET first_response_at=%s,first_visible_text_at=%s,first_token_ms=%s,first_visible_text_ms=%s WHERE id=%s AND run_id=%s AND status='running'",
+                (first_response_at, first_visible_text_at, first_token_ms, first_visible_text_ms, call_id, run['id']),
+            )
+            if updated.rowcount:
+                await self._response_payload(conn, run, call_id, response)
+
+    async def _response_payload(self, conn, run, call_id, response):
+        body, truncated, original_bytes = response if isinstance(response, tuple) else self._trace_body(response or {})
+        await conn.execute(
+            "INSERT INTO trace_payloads(id,run_id,model_call_id,kind,body,truncated,original_bytes,expires_at) "
+            "VALUES (%s,%s,%s,'model_response',%s,%s,%s,%s) "
+            "ON CONFLICT (model_call_id,kind) DO UPDATE SET body=excluded.body,truncated=excluded.truncated,original_bytes=excluded.original_bytes",
+            (str(uuid4()), run['id'], call_id, Jsonb(body), truncated, original_bytes,
+             datetime.now(timezone.utc) + timedelta(days=self.payload_retention_days)),
+        )
 
     async def finish_model_trace(self, run, call_id, started_at, *, started_clock=None, status, error_type=None,
                                  response=None, first_response_at=None, first_visible_text_at=None,
+                                 first_token_ms=None, first_visible_text_ms=None, ended_at=None, duration_ms=None,
                                  usage=None, usage_source=None):
-        ended = datetime.now(timezone.utc)
-        body, truncated, original_bytes = self._trace_body(response if response is not None else {})
-        duration = max(0, int((time.monotonic() - started_clock) * 1000)) if started_clock is not None else max(0, int((ended - started_at).total_seconds() * 1000))
-        async with self.db.pool.connection() as conn, conn.transaction():
-            await conn.execute(
-                "UPDATE model_call_traces SET ended_at=%s,duration_ms=%s,first_response_at=%s,first_visible_text_at=%s,status=%s,error_type=%s,usage=%s,usage_source=%s WHERE id=%s AND run_id=%s",
-                (ended, duration, first_response_at, first_visible_text_at, status, error_type,
+        ended = ended_at or datetime.now(timezone.utc)
+        duration = duration_ms if duration_ms is not None else (max(0, int((time.monotonic() - started_clock) * 1000)) if started_clock is not None else max(0, int((ended - started_at).total_seconds() * 1000)))
+        async with self._trace_connection() as conn:
+            updated = await conn.execute(
+                "UPDATE model_call_traces SET ended_at=%s,duration_ms=%s,first_response_at=%s,first_visible_text_at=%s,first_token_ms=%s,first_visible_text_ms=%s,status=%s,error_type=%s,usage=%s,usage_source=%s WHERE id=%s AND run_id=%s AND status='running'",
+                (ended, duration, first_response_at, first_visible_text_at, first_token_ms, first_visible_text_ms, status, error_type,
                  Jsonb(usage) if usage is not None else None, usage_source, call_id, run['id']),
             )
+            if updated.rowcount:
+                await self._response_payload(conn, run, call_id, response)
+            # A successful model step is not a complete run, and cannot clear gaps.
             await conn.execute(
-                "INSERT INTO trace_payloads(id,run_id,model_call_id,kind,body,truncated,original_bytes,expires_at) VALUES (%s,%s,%s,'model_response',%s,%s,%s,%s)",
-                (str(uuid4()), run['id'], call_id, Jsonb(body), truncated, original_bytes, ended + timedelta(days=self.payload_retention_days)),
-            )
-            await conn.execute(
-                "UPDATE run_trace_states SET collected_steps=(SELECT count(*) FROM model_call_traces WHERE run_id=%s),updated_at=now(),integrity=%s WHERE run_id=%s",
-                (run['id'], 'complete' if status == 'succeeded' else 'incomplete', run['id']),
+                "UPDATE run_trace_states SET collected_steps=(SELECT count(*) FROM model_call_traces WHERE run_id=%s),updated_at=now() WHERE run_id=%s",
+                (run['id'], run['id']),
             )
 
     async def link_tool_trace(self, model_call_id, tool_call_id, step_index):
-        async with self.db.pool.connection() as conn:
+        async with self._trace_connection() as conn:
             await conn.execute(
                 "INSERT INTO tool_trace_links(model_call_id,tool_call_id,step_index) VALUES (%s,%s,%s) ON CONFLICT DO NOTHING",
                 (model_call_id, tool_call_id, step_index),
             )
 
     async def mark_trace_gap(self, run, reason):
-        async with self.db.pool.connection() as conn:
+        async with self._trace_connection() as conn:
             await conn.execute(
-                "UPDATE run_trace_states SET integrity='incomplete',gap_reason=%s,updated_at=now() WHERE run_id=%s",
+                "UPDATE run_trace_states SET integrity='incomplete',gap_reason=left(concat_ws('；',gap_reason,%s),2000),updated_at=now() WHERE run_id=%s",
                 (reason, run['id']),
             )
 
+    async def finalize_run_trace(self, run, expected_steps, *, gap_reason=None):
+        async with self._trace_connection() as conn:
+            await conn.execute(
+                "UPDATE run_trace_states s SET expected_steps=%s,collected_steps=(SELECT count(*) FROM model_call_traces c WHERE c.run_id=s.run_id),"
+                "integrity=CASE WHEN s.integrity='incomplete' OR s.gap_reason IS NOT NULL OR %s::text IS NOT NULL "
+                "OR (SELECT count(*) FROM model_call_traces c WHERE c.run_id=s.run_id)<>%s "
+                "OR EXISTS(SELECT 1 FROM model_call_traces c WHERE c.run_id=s.run_id AND c.ended_at IS NULL) "
+                "OR EXISTS(SELECT 1 FROM agent_tool_calls t WHERE t.run_id=s.run_id AND NOT EXISTS(SELECT 1 FROM tool_trace_links l WHERE l.tool_call_id=t.id)) "
+                "THEN 'incomplete' ELSE 'complete' END,"
+                "gap_reason=left(nullif(concat_ws('；',s.gap_reason,%s),''),2000),updated_at=now() "
+                "WHERE s.run_id=%s AND EXISTS(SELECT 1 FROM agent_runs r WHERE r.id=s.run_id AND r.status NOT IN ('queued','running'))",
+                (expected_steps, gap_reason, expected_steps, gap_reason, run['id']),
+            )
+            await conn.execute(
+                "UPDATE run_trace_states SET gap_reason='模型终态或工具关联记录缺失' WHERE run_id=%s AND integrity='incomplete' AND gap_reason IS NULL",
+                (run['id'],),
+            )
+
+    async def reconcile_traces(self):
+        # Grace starts at the durable BUSINESS terminal event, not at the last
+        # telemetry update (which can precede a long model call by minutes).
+        # 120s exceeds a full writer queue's bounded retry/drain budget.
+        terminal = (
+            "EXISTS(SELECT 1 FROM agent_events e WHERE e.run_id=r.id "
+            "AND e.type IN ('run.completed','run.failed','run.interrupted') "
+            "AND e.created_at<now()-interval '120 seconds')"
+        )
+        async with self._trace_connection() as conn:
+            await conn.execute(
+                "UPDATE model_call_traces SET ended_at=now(),status='interrupted',error_type='trace_terminal_missing' "
+                "WHERE id IN (SELECT c.id FROM model_call_traces c JOIN agent_runs r ON c.run_id=r.id "
+                "WHERE c.ended_at IS NULL AND r.status NOT IN ('queued','running') AND " + terminal + " LIMIT 100)"
+            )
+            await conn.execute(
+                "UPDATE run_trace_states SET integrity='incomplete',gap_reason=left(concat_ws('；',gap_reason,'终态观测缺失，由恢复扫描标记'),2000),updated_at=now() "
+                "WHERE run_id IN (SELECT s.run_id FROM run_trace_states s JOIN agent_runs r ON s.run_id=r.id "
+                "WHERE r.status NOT IN ('queued','running') AND s.integrity<>'incomplete' "
+                "AND (s.integrity='partial' OR EXISTS(SELECT 1 FROM model_call_traces c WHERE c.run_id=s.run_id AND c.error_type='trace_terminal_missing')) "
+                "AND " + terminal + " LIMIT 100)"
+            )
+
     async def cleanup_observability(self, payload_days=30, metadata_days=90):
-        async with self.db.pool.connection() as conn, conn.transaction():
+        await self.reconcile_traces()
+        async with self._trace_connection() as conn:
+            # Retain the payload identity/expiry until metadata retention ends,
+            # so inspection can distinguish expired content from an absent capture.
             await conn.execute(
-                "WITH doomed AS (SELECT id FROM trace_payloads WHERE expires_at<=now() LIMIT 500) "
-                "DELETE FROM trace_payloads WHERE id IN (SELECT id FROM doomed)"
+                "WITH doomed AS (SELECT p.id FROM trace_payloads p JOIN agent_runs r ON r.id=p.run_id "
+                "WHERE p.expires_at<=now() AND p.body<>'{}'::jsonb AND r.status NOT IN ('queued','running') "
+                "ORDER BY p.expires_at,p.id LIMIT 500 FOR UPDATE OF p SKIP LOCKED) "
+                "UPDATE trace_payloads SET body='{}'::jsonb WHERE id IN (SELECT id FROM doomed)"
             )
+            # Freeze one batch for every FK-dependent deletion, including when
+            # several server processes run their cleanup loops concurrently.
+            doomed = await (await conn.execute(
+                "SELECT c.id FROM model_call_traces c JOIN agent_runs r ON r.id=c.run_id "
+                "WHERE c.ended_at<=now()-make_interval(days => %s) AND r.status NOT IN ('queued','running') "
+                "ORDER BY c.ended_at,c.id LIMIT 500 FOR UPDATE OF c SKIP LOCKED", (metadata_days,)
+            )).fetchall()
+            call_ids = [row['id'] for row in doomed]
+            if call_ids:
+                await conn.execute("DELETE FROM trace_payloads WHERE model_call_id=ANY(%s::uuid[])", (call_ids,))
+                await conn.execute("DELETE FROM tool_trace_links WHERE model_call_id=ANY(%s::uuid[])", (call_ids,))
+                await conn.execute("DELETE FROM model_call_traces WHERE id=ANY(%s::uuid[])", (call_ids,))
             await conn.execute(
-                "WITH doomed AS (SELECT id FROM model_call_traces WHERE ended_at IS NOT NULL "
-                "AND ended_at<=now()-make_interval(days => %s) LIMIT 500) "
-                "DELETE FROM trace_payloads WHERE model_call_id IN (SELECT id FROM doomed)", (metadata_days,)
-            )
-            await conn.execute(
-                "WITH doomed AS (SELECT id FROM model_call_traces WHERE ended_at IS NOT NULL "
-                "AND ended_at<=now()-make_interval(days => %s) LIMIT 500) "
-                "DELETE FROM tool_trace_links WHERE model_call_id IN (SELECT id FROM doomed)", (metadata_days,)
-            )
-            await conn.execute(
-                "WITH doomed AS (SELECT id FROM model_call_traces WHERE ended_at IS NOT NULL "
-                "AND ended_at<=now()-make_interval(days => %s) LIMIT 500) "
-                "DELETE FROM model_call_traces WHERE id IN (SELECT id FROM doomed)", (metadata_days,)
-            )
-            await conn.execute(
-                "DELETE FROM run_trace_states WHERE run_id NOT IN (SELECT id FROM agent_runs WHERE status IN ('queued','running')) "
-                "AND updated_at<=now()-make_interval(days => %s)", (metadata_days,)
+                "WITH doomed AS (SELECT s.run_id FROM run_trace_states s JOIN agent_runs r ON r.id=s.run_id "
+                "WHERE r.status NOT IN ('queued','running') AND s.updated_at<=now()-make_interval(days => %s) "
+                "AND NOT EXISTS(SELECT 1 FROM model_call_traces c WHERE c.run_id=s.run_id) "
+                "ORDER BY s.updated_at,s.run_id LIMIT 500 FOR UPDATE OF s SKIP LOCKED) "
+                "DELETE FROM run_trace_states WHERE run_id IN (SELECT run_id FROM doomed)", (metadata_days,)
             )
             await conn.execute(
                 "WITH doomed AS (SELECT id FROM admin_audit_events WHERE created_at<=now()-make_interval(days => %s) LIMIT 500) "

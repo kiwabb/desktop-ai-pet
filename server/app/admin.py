@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from psycopg.types.json import Jsonb
 
-from .model_config import ModelConfigStore
+from .model_config import ModelConfigStore, decode_cursor, encode_cursor
 
 SESSION_COOKIE = "pet_admin_session"
 CSRF_COOKIE = "pet_admin_csrf"
@@ -72,26 +72,106 @@ def _json_body(body: object) -> dict:
     return body
 
 
+
+async def _read_body(request: Request):
+    try:
+        body = await request.json()
+    except (ValueError, UnicodeError):
+        _error(400, "invalid_body", "请求体必须为有效 JSON")
+    return _json_body(body)
+
+
+def _page_args(request):
+    try:
+        limit = int(request.query_params.get("limit", "100"))
+        if not 1 <= limit <= 200:
+            raise ValueError()
+        cursor = request.query_params.get("cursor")
+        decoded = decode_cursor(cursor) if cursor else None
+    except (ValueError, TypeError):
+        _error(400, "invalid_page", "分页参数无效")
+    return limit, decoded
+
+
+def _page_query(request, alias="", *, where=None, values=None):
+    limit, cursor = _page_args(request)
+    prefix = alias + "." if alias else ""
+    where, values = list(where or []), list(values or [])
+    if cursor:
+        where.append(f"({prefix}created_at,{prefix}id)<(%s,%s)")
+        values.extend(cursor)
+    clause = " WHERE " + " AND ".join(where) if where else ""
+    return clause + f" ORDER BY {prefix}created_at DESC,{prefix}id DESC LIMIT %s", [*values, limit + 1], limit
+
+
+def _page_result(rows, limit, project):
+    page = rows[:limit]
+    return {"items": [project(row) for row in page],
+            "next_cursor": encode_cursor(page[-1]) if len(rows) > limit else None}
+
+
+def _date_filter(value):
+    try:
+        parsed = datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            raise ValueError()
+        return parsed
+    except (ValueError, TypeError):
+        _error(400, "invalid_time", "时间筛选必须为含时区的 ISO 时间")
+
+
+async def _idempotent_claim(conn, principal, request, action, body):
+    key = _uuid(request.headers.get("idempotency-key"), "Idempotency-Key")
+    digest = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    await conn.execute(
+        "INSERT INTO admin_idempotency_keys(admin_user_id,action,key,request_hash) VALUES (%s,%s,%s,%s) "
+        "ON CONFLICT(admin_user_id,action,key) DO NOTHING", (principal.id, action, key, digest))
+    row = await (await conn.execute(
+        "SELECT request_hash,response FROM admin_idempotency_keys WHERE admin_user_id=%s AND action=%s AND key=%s FOR UPDATE",
+        (principal.id, action, key))).fetchone()
+    if row["request_hash"] != digest:
+        _error(409, "idempotency_conflict", "相同幂等键已用于不同请求")
+    return key, row["response"]
+
+
+async def _idempotent_complete(conn, principal, action, key, response):
+    await conn.execute("UPDATE admin_idempotency_keys SET response=%s WHERE admin_user_id=%s AND action=%s AND key=%s",
+                       (Jsonb(response), principal.id, action, key))
+
 class AdminAuth:
     def __init__(self, db, settings):
         self.db, self.settings = db, settings
         self._failures: dict[str, list[float]] = {}
 
     async def login(self, username: str, password: str):
-        if not isinstance(username, str) or not username or not isinstance(password, str):
+        if (not isinstance(username, str) or not username.strip() or len(username) > 200
+                or not isinstance(password, str) or len(password) > 1024):
             _error(401, "invalid_credentials", "用户名或密码错误")
         key = username.strip().lower()
         now = time.monotonic()
-        recent = [stamp for stamp in self._failures.get(key, []) if now - stamp < 60]
+        # Prune expired buckets and reserve before I/O, so concurrent attempts are bounded.
+        for old_key, stamps in list(self._failures.items()):
+            active = [stamp for stamp in stamps if now - stamp < 60]
+            if active:
+                self._failures[old_key] = active
+            else:
+                del self._failures[old_key]
+        if key not in self._failures and len(self._failures) >= 1024:
+            _error(429, "login_rate_limited", "登录请求过多，请稍后重试")
+        recent = self._failures.setdefault(key, [])
         if len(recent) >= 5:
             _error(429, "login_rate_limited", "登录失败次数过多，请稍后重试")
+        recent.append(now)
         async with self.db.pool.connection() as conn:
             row = await (await conn.execute("SELECT * FROM admin_users WHERE username=%s AND active=TRUE", (username.strip(),))).fetchone()
         if not row or not verify_password(password, row["password_hash"]):
-            recent.append(now)
-            self._failures[key] = recent
             _error(401, "invalid_credentials", "用户名或密码错误")
-        self._failures.pop(key, None)
+        # Remove this successful reservation only; do not erase parallel failures.
+        current = self._failures.get(key, [])
+        if now in current:
+            current.remove(now)
+        if not current:
+            self._failures.pop(key, None)
         token, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(32)
         expires = datetime.now(timezone.utc) + timedelta(seconds=self.settings.admin_session_ttl_seconds)
         async with self.db.pool.connection() as conn:
@@ -158,7 +238,7 @@ def install_admin_routes(app, db, settings, coordination):
     @router.post("/auth/login")
     async def login(request: Request):
         auth.check_origin(request)
-        body = _json_body(await request.json())
+        body = await _read_body(request)
         if set(body) != {"username", "password"}:
             _error(400, "invalid_body", "登录参数无效")
         row, token, csrf = await auth.login(body["username"], body["password"])
@@ -202,38 +282,44 @@ def install_admin_routes(app, db, settings, coordination):
     @router.get("/accounts")
     async def accounts(request: Request):
         await auth.current(request)
+        suffix, values, limit = _page_query(request)
         async with db.pool.connection() as conn:
-            rows = await (await conn.execute("SELECT id,name,created_at FROM accounts ORDER BY created_at DESC,id DESC LIMIT 200")).fetchall()
-        return {"items": [{"id": str(row["id"]), "name": row["name"], "created_at": row["created_at"].isoformat()} for row in rows], "next_cursor": None}
+            rows = await (await conn.execute("SELECT id,name,created_at FROM accounts" + suffix, values)).fetchall()
+        return _page_result(rows, limit, lambda row: {"id": str(row["id"]), "name": row["name"], "created_at": row["created_at"].isoformat()})
 
     @router.post("/accounts")
     async def create_account(request: Request):
         principal = await auth.current(request, write=True, admin_only=True)
-        body = _json_body(await request.json())
+        body = await _read_body(request)
         if set(body) != {"name"} or not isinstance(body["name"], str) or not 1 <= len(body["name"].strip()) <= 200:
             _error(400, "invalid_name", "账号名称无效")
         account_id = str(uuid4())
         async with db.pool.connection() as conn, conn.transaction():
+            key, previous = await _idempotent_claim(conn, principal, request, "account.create", {"name": body["name"].strip()})
+            if previous is not None:
+                return previous
             await conn.execute("INSERT INTO accounts(id,name) VALUES (%s,%s)", (account_id, body["name"].strip()))
             await audit(conn, principal, "account.create", "account", account_id, "success", request)
+            await _idempotent_complete(conn, principal, "account.create", key, {"id": account_id, "name": body["name"].strip()})
         return {"id": account_id, "name": body["name"].strip()}
 
     @router.get("/devices")
     async def devices(request: Request):
         await auth.current(request)
+        suffix, values, limit = _page_query(request, "d")
         async with db.pool.connection() as conn:
             rows = await (await conn.execute(
                 "SELECT d.id,d.account_id,d.name,d.roles,d.revoked_at,d.created_at,a.name AS account_name "
-                "FROM devices d JOIN accounts a ON a.id=d.account_id ORDER BY d.created_at DESC,d.id DESC LIMIT 300"
+                "FROM devices d JOIN accounts a ON a.id=d.account_id" + suffix, values
             )).fetchall()
-        return {"items": [{"id": str(row["id"]), "account_id": str(row["account_id"]), "account_name": row["account_name"],
+        return _page_result(rows, limit, lambda row: {"id": str(row["id"]), "account_id": str(row["account_id"]), "account_name": row["account_name"],
                            "name": row["name"], "roles": row["roles"], "revoked_at": row["revoked_at"].isoformat() if row["revoked_at"] else None,
-                           "created_at": row["created_at"].isoformat()} for row in rows], "next_cursor": None}
+                           "created_at": row["created_at"].isoformat()})
 
     @router.post("/devices")
     async def create_device(request: Request):
         principal = await auth.current(request, write=True, admin_only=True)
-        body = _json_body(await request.json())
+        body = await _read_body(request)
         if (set(body) != {"account_id", "name", "roles"} or not isinstance(body["roles"], list)
                 or not all(isinstance(role, str) for role in body["roles"])
                 or set(body["roles"]) - {"control", "node"}):
@@ -244,13 +330,18 @@ def install_admin_routes(app, db, settings, coordination):
             _error(400, "invalid_device", "设备参数无效")
         token, device_id = secrets.token_urlsafe(48), str(uuid4())
         async with db.pool.connection() as conn, conn.transaction():
+            normalized = {"account_id": account_id, "name": name, "roles": sorted(set(body["roles"]))}
+            key, previous = await _idempotent_claim(conn, principal, request, "device.issue", normalized)
+            if previous is not None:
+                return JSONResponse({**previous, "credential_unavailable": True}, headers={"Cache-Control": "no-store"})
             exists = await (await conn.execute("SELECT 1 FROM accounts WHERE id=%s", (account_id,))).fetchone()
             if not exists:
                 _error(404, "account_not_found", "账号不存在")
             await conn.execute("INSERT INTO devices(id,account_id,name,token_hash,roles) VALUES (%s,%s,%s,%s,%s)",
                                (device_id, account_id, name, hashlib.sha256(token.encode()).hexdigest(), body["roles"]))
             await audit(conn, principal, "device.issue", "device", device_id, "success", request, {"account_id": account_id, "roles": body["roles"]})
-        response = JSONResponse({"device_id": device_id, "account_id": account_id, "device_token": token}, headers={"Cache-Control": "no-store"})
+            await _idempotent_complete(conn, principal, "device.issue", key, {"device_id": device_id, "account_id": account_id})
+        response = JSONResponse({"device_id": device_id, "account_id": account_id, "device_token": token, "credential_unavailable": False}, headers={"Cache-Control": "no-store"})
         return response
 
     @router.post("/devices/{device_id}/revoke")
@@ -279,52 +370,84 @@ def install_admin_routes(app, db, settings, coordination):
             where.append("r.status=%s"); values.append(status)
         if account_id:
             where.append("r.account_id=%s"); values.append(account_id)
-        clause = " WHERE " + " AND ".join(where) if where else ""
+        dates = {}
+        for param, operator in (("created_from", ">="), ("created_to", "<=")):
+            value = request.query_params.get(param)
+            if value:
+                dates[param] = _date_filter(value)
+                where.append(f"r.created_at{operator}%s"); values.append(dates[param])
+        if len(dates) == 2 and dates["created_from"] > dates["created_to"]:
+            _error(400, "invalid_time", "开始时间不能晚于结束时间")
+        suffix, values, limit = _page_query(request, "r", where=where, values=values)
         async with db.pool.connection() as conn:
             rows = await (await conn.execute(
                 "SELECT r.id,r.account_id,r.session_id,r.request_id,r.status,r.error,r.created_at,r.model_config_version_id, "
-                "s.integrity,s.collected_steps FROM agent_runs r LEFT JOIN run_trace_states s ON s.run_id=r.id" + clause + " ORDER BY r.ordinal DESC LIMIT 100", values
+                "s.integrity,s.collected_steps FROM agent_runs r LEFT JOIN run_trace_states s ON s.run_id=r.id" + suffix, values
             )).fetchall()
-        return {"items": [{"id": str(row["id"]), "account_id": str(row["account_id"]), "session_id": str(row["session_id"]),
+        return _page_result(rows, limit, lambda row: {"id": str(row["id"]), "account_id": str(row["account_id"]), "session_id": str(row["session_id"]),
                            "request_id": str(row["request_id"]), "status": row["status"], "error": row["error"],
                            "created_at": row["created_at"].isoformat(), "model_config_version_id": str(row["model_config_version_id"]) if row["model_config_version_id"] else None,
-                           "trace_integrity": row["integrity"] or "legacy", "trace_steps": row["collected_steps"] or 0} for row in rows], "next_cursor": None}
+                           "trace_integrity": row["integrity"] or "legacy", "trace_steps": row["collected_steps"] or 0})
 
     @router.get("/runs/{run_id}")
     async def run_detail(run_id: str, request: Request):
         principal = await auth.current(request)
         run_id = _uuid(run_id, "run_id")
         async with db.pool.connection() as conn, conn.transaction():
-            if principal.is_admin:
-                await audit(conn, principal, "run.detail.read", "run", run_id, "success", request)
-            row = await (await conn.execute("SELECT * FROM agent_runs WHERE id=%s", (run_id,))).fetchone()
+            row = await (await conn.execute("SELECT id,account_id,session_id,request_id,status,error,created_at,model_config_version_id FROM agent_runs WHERE id=%s", (run_id,))).fetchone()
             if not row:
                 _error(404, "run_not_found", "运行不存在")
             trace = await (await conn.execute("SELECT * FROM run_trace_states WHERE run_id=%s", (run_id,))).fetchone()
             calls = await (await conn.execute("SELECT * FROM model_call_traces WHERE run_id=%s ORDER BY step_index", (run_id,))).fetchall()
             payloads = await (await conn.execute("SELECT id,model_call_id,kind,expires_at FROM trace_payloads WHERE run_id=%s ORDER BY created_at", (run_id,))).fetchall()
             tools = await (await conn.execute(
-                "SELECT t.id,t.name,t.status,t.arguments,t.result,t.error,t.created_at,l.model_call_id,l.step_index "
+                "SELECT t.id,t.name,t.status,t.error,t.created_at,l.model_call_id,l.step_index "
                 "FROM agent_tool_calls t LEFT JOIN tool_trace_links l ON l.tool_call_id=t.id "
                 "WHERE t.run_id=%s ORDER BY t.ordinal", (run_id,))).fetchall()
+            timings = await (await conn.execute(
+                "SELECT type,envelope #>> '{payload,tool_call,id}' AS tool_id,min(created_at) AS first_at,max(created_at) AS last_at "
+                "FROM agent_events WHERE run_id=%s AND type IN ('run.started','run.completed','run.failed','run.interrupted','tool.finished') "
+                "GROUP BY type,envelope #>> '{payload,tool_call,id}'", (run_id,))).fetchall()
+        started = next((item["first_at"] for item in timings if item["type"] == "run.started"), None)
+        terminals = [item["last_at"] for item in timings if item["type"] in {"run.completed", "run.failed", "run.interrupted"}]
+        ended = max(terminals) if terminals else None
+        tool_ends = {item["tool_id"]: item["last_at"] for item in timings if item["type"] == "tool.finished"}
         result = {"id": str(row["id"]), "account_id": str(row["account_id"]), "session_id": str(row["session_id"]), "request_id": str(row["request_id"]),
-                  "status": row["status"], "error": row["error"], "created_at": row["created_at"].isoformat(), "input_text": row["input_text"] if principal.is_admin else None,
+                  "status": row["status"], "error": row["error"], "created_at": row["created_at"].isoformat(),
+                  "model_config_version_id": str(row["model_config_version_id"]) if row.get("model_config_version_id") else None,
+                  "started_at": started.isoformat() if started else None, "ended_at": ended.isoformat() if ended else None,
+                  "timing_source": "persisted_events",
                   "trace": {"integrity": trace["integrity"] if trace else "legacy", "gap_reason": trace["gap_reason"] if trace else "未采集模型级链路", "calls": []}}
         for call in calls:
             call_payloads = [{"id": str(item["id"]), "kind": item["kind"], "expired": item["expires_at"] <= datetime.now(timezone.utc)}
                              for item in payloads if str(item["model_call_id"]) == str(call["id"])]
             result["trace"]["calls"].append({"id": str(call["id"]), "step_index": call["step_index"], "model_name": call["model_name"], "status": call["status"],
                                                "started_at": call["started_at"].isoformat(), "ended_at": call["ended_at"].isoformat() if call["ended_at"] else None,
-                                               "duration_ms": call["duration_ms"], "first_response_at": call["first_response_at"].isoformat() if call["first_response_at"] else None,
+                                               "duration_ms": call["duration_ms"], "first_token_ms": call.get("first_token_ms"), "first_visible_text_ms": call.get("first_visible_text_ms"), "first_response_at": call["first_response_at"].isoformat() if call["first_response_at"] else None,
                                                "first_visible_text_at": call["first_visible_text_at"].isoformat() if call["first_visible_text_at"] else None,
                                                "usage": call["usage"], "usage_source": call["usage_source"], "error_type": call["error_type"], "payloads": call_payloads})
         result["tools"] = [{"id": str(tool["id"]), "name": tool["name"], "status": tool["status"],
                              "error": tool["error"], "created_at": tool["created_at"].isoformat(),
                              "model_call_id": str(tool["model_call_id"]) if tool["model_call_id"] else None,
                              "step_index": tool["step_index"],
-                             "arguments": tool["arguments"] if principal.is_admin else None,
-                             "result": tool["result"] if principal.is_admin else None} for tool in tools]
+                             "ended_at": tool_ends[str(tool["id"])].isoformat() if str(tool["id"]) in tool_ends else None,
+                             "timing_source": "persisted_events"} for tool in tools]
         return result
+
+    @router.post("/runs/{run_id}/content")
+    async def run_content(run_id: str, request: Request):
+        principal = await auth.current(request, write=True, admin_only=True)
+        run_id = _uuid(run_id, "run_id")
+        async with db.pool.connection() as conn, conn.transaction():
+            await audit(conn, principal, "run.content.read", "run", run_id, "success", request)
+            row = await (await conn.execute("SELECT input_text FROM agent_runs WHERE id=%s", (run_id,))).fetchone()
+            if not row:
+                _error(404, "run_not_found", "运行不存在")
+            tools = await (await conn.execute("SELECT id,arguments,result FROM agent_tool_calls WHERE run_id=%s ORDER BY ordinal", (run_id,))).fetchall()
+        from .tracing import redact_trace
+        return JSONResponse(redact_trace({"input_text": row["input_text"], "tools": [
+            {"id": str(tool["id"]), "arguments": tool["arguments"], "result": tool["result"]} for tool in tools]}),
+            headers={"Cache-Control": "no-store"})
 
     @router.post("/runs/{run_id}/payloads/{payload_id}")
     async def trace_payload(run_id: str, payload_id: str, request: Request):
@@ -336,16 +459,18 @@ def install_admin_routes(app, db, settings, coordination):
             if not row:
                 _error(404, "payload_not_found", "追踪正文不存在")
         if row["expires_at"] <= datetime.now(timezone.utc):
-            return {"status": "expired", "kind": row["kind"]}
-        return {"status": "available", "kind": row["kind"], "body": row["body"], "truncated": row["truncated"], "original_bytes": row["original_bytes"]}
+            return JSONResponse({"status": "expired", "kind": row["kind"]}, headers={"Cache-Control": "no-store"})
+        from .tracing import redact_trace
+        return JSONResponse({"status": "available", "kind": row["kind"], "body": redact_trace(row["body"]), "truncated": row["truncated"], "original_bytes": row["original_bytes"]}, headers={"Cache-Control": "no-store"})
 
     @router.get("/todos")
     async def admin_todos(request: Request):
         await auth.current(request)
+        suffix, values, limit = _page_query(request)
         async with db.pool.connection() as conn:
-            rows = await (await conn.execute("SELECT id,account_id,status,remind_at,created_at FROM todos ORDER BY created_at DESC,id DESC LIMIT 200")).fetchall()
-        return {"items": [{"id": str(row["id"]), "account_id": str(row["account_id"]),
-                           "status": row["status"], "remind_at": row["remind_at"].isoformat() if row["remind_at"] else None, "created_at": row["created_at"].isoformat()} for row in rows], "next_cursor": None}
+            rows = await (await conn.execute("SELECT id,account_id,status,remind_at,created_at FROM todos" + suffix, values)).fetchall()
+        return _page_result(rows, limit, lambda row: {"id": str(row["id"]), "account_id": str(row["account_id"]),
+                           "status": row["status"], "remind_at": row["remind_at"].isoformat() if row["remind_at"] else None, "created_at": row["created_at"].isoformat()})
 
     @router.post("/todos/{todo_id}/content")
     async def todo_content(todo_id: str, request: Request):
@@ -359,9 +484,9 @@ def install_admin_routes(app, db, settings, coordination):
             )).fetchone()
             if not row:
                 _error(404, "todo_not_found", "待办不存在")
-        return {"id": str(row["id"]), "account_id": str(row["account_id"]), "title": row["title"],
+        return JSONResponse({"id": str(row["id"]), "account_id": str(row["account_id"]), "title": row["title"],
                 "status": row["status"], "remind_at": row["remind_at"].isoformat() if row["remind_at"] else None,
-                "created_at": row["created_at"].isoformat()}
+                "created_at": row["created_at"].isoformat()}, headers={"Cache-Control": "no-store"})
 
     @router.get("/tools")
     async def tools(request: Request):
@@ -381,7 +506,8 @@ def install_admin_routes(app, db, settings, coordination):
     @router.get("/model-config")
     async def model_config(request: Request):
         await auth.current(request)
-        return await configs.public_state()
+        limit, _ = _page_args(request)
+        return await configs.public_state(limit=limit, cursor=request.query_params.get("cursor"))
 
     @router.post("/model-config/enable")
     async def enable_model_config(request: Request):
@@ -396,10 +522,12 @@ def install_admin_routes(app, db, settings, coordination):
     @router.post("/model-config/drafts")
     async def save_model_draft(request: Request):
         principal = await auth.current(request, write=True, admin_only=True)
-        body = _json_body(await request.json())
+        body = await _read_body(request)
         allowed = {"parent_version_id", "base_url", "model_name", "api_key", "timeout_seconds"}
         if set(body) - allowed or not {"base_url", "model_name", "timeout_seconds"} <= set(body):
             _error(400, "invalid_config", "模型配置参数无效")
+        if body.get("parent_version_id") is not None:
+            body["parent_version_id"] = _uuid(body["parent_version_id"], "parent_version_id")
         try:
             row = await configs.save_draft(principal.id, body, _request_id(request))
         except LookupError as exc:
@@ -422,7 +550,7 @@ def install_admin_routes(app, db, settings, coordination):
     @router.post("/model-config/publish")
     async def publish_model_config(request: Request):
         principal = await auth.current(request, write=True, admin_only=True)
-        body = _json_body(await request.json())
+        body = await _read_body(request)
         if set(body) != {"version_id", "expected_revision"}:
             _error(400, "invalid_config", "发布参数无效")
         try:
@@ -438,11 +566,11 @@ def install_admin_routes(app, db, settings, coordination):
     @router.post("/model-config/rollback")
     async def rollback_model_config(request: Request):
         principal = await auth.current(request, write=True, admin_only=True)
-        body = _json_body(await request.json())
-        if set(body) != {"version_id"}:
+        body = await _read_body(request)
+        if "version_id" not in body or set(body) - {"version_id", "key_source"}:
             _error(400, "invalid_config", "回滚参数无效")
         try:
-            result = await configs.clone_for_rollback(principal.id, _uuid(body["version_id"], "version_id"))
+            result = await configs.clone_for_rollback(principal.id, _uuid(body["version_id"], "version_id"), body.get("key_source", "current"), _request_id(request))
         except LookupError as exc:
             _error(404, "version_not_found", str(exc))
         except ValueError as exc:
@@ -452,12 +580,13 @@ def install_admin_routes(app, db, settings, coordination):
     @router.get("/audits")
     async def audits(request: Request):
         principal = await auth.current(request, admin_only=True)
+        suffix, values, limit = _page_query(request, "a")
         async with db.pool.connection() as conn:
             rows = await (await conn.execute(
                 "SELECT a.id,a.action,a.object_type,a.object_id,a.result,a.request_id,a.metadata,a.created_at,u.username "
-                "FROM admin_audit_events a LEFT JOIN admin_users u ON u.id=a.admin_user_id ORDER BY a.created_at DESC,a.id DESC LIMIT 200"
+                "FROM admin_audit_events a LEFT JOIN admin_users u ON u.id=a.admin_user_id" + suffix, values
             )).fetchall()
-        return {"items": [{"id": str(row["id"]), "username": row["username"], "action": row["action"], "object_type": row["object_type"], "object_id": row["object_id"],
-                           "result": row["result"], "request_id": str(row["request_id"]) if row["request_id"] else None, "metadata": row["metadata"], "created_at": row["created_at"].isoformat()} for row in rows]}
+        return _page_result(rows, limit, lambda row: {"id": str(row["id"]), "username": row["username"], "action": row["action"], "object_type": row["object_type"], "object_id": row["object_id"],
+                           "result": row["result"], "request_id": str(row["request_id"]) if row["request_id"] else None, "metadata": row["metadata"], "created_at": row["created_at"].isoformat()})
 
     app.include_router(router)
