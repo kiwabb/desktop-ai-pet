@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/backend/server-agent.md", "reason": "设备鉴权、业务事务、事件顺序、工具副作用与验证边界"}
+{"file": ".trellis/spec/backend/todo-reminders.md", "reason": "保持待办与提醒真实状态和账号隔离"}
+{"file": ".trellis/spec/desktop/dual-mode-llm.md", "reason": "服务端范围与冻结客户端协议，避免影响单机模式"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "管理前端质量约束"}
+{"file": ".trellis/tasks/09-08-server-admin-planning/research/github-references.md", "reason": "管理框架参考、技术栈适配与证据限制"}
+{"file": ".trellis/tasks/09-08-server-admin-planning/research/deepseek-harness-tracing.md", "reason": "Trajectory 参考、模型级埋点缺口和数据真实性"}
