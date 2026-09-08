@@ -25,3 +25,11 @@ Chat native backing remains940×760 for every open mode; compact uses a713×401 
 
 ## User-requested expansion refinement
 The user accepted the native correction, but rejected compact-to-expanded visual quality. Keep native backing/layering/drag stable. Shared frame should interpolate actual old/new geometry on ordinary-motion mode, keep the dock's screen anchor fixed, and stage destination content opacity rather than exposing reflow. Reverse transitions should begin at current visible geometry. Under system reduced-motion, avoid geometry motion and use short content opacity unless the user explicitly requests an application-level exception. Do not change OS preferences. Ensure native click-through bounds track the animated frame and receive final bounds; do not flood IPC with unbounded per-frame requests.
+
+
+## Revision: continuous composited expansion
+User rejected the width/height/SVG-per-frame implementation as visibly stepped even after script cost reduction and corrected first-RAF timing. The earlier geometry interpolation paragraph is superseded for implementation strategy: retain endpoint geometry and hit bounds, but avoid main-thread layout and path updates on each animation frame.
+
+The nine-slice prototype was rejected after intermediate-frame inspection: upper right contour movement and stationary dock could not remain seamless with independent tiles. Final candidate keeps one SVG outline and fixed destination HTML layout. Browser-native SVG animations interpolate normalized path geometry, dock compensation, footprints and scene translation on one SVG timeline. HTML content/actions/paw use unscaled WAAPI translation. This still incurs SVG layout/paint; no GPU-only claim is made. Reverse transitions sample actual current SVG time and numeric path state. Temporary layers must clean up on cancellation, hidden state and finish.
+
+Check real native Todo and settings expansion/reversal, plus browser per-animation layout and source-frame geometry. Browser cost improvement is supporting evidence only; user-visible stepped growth remains a failed acceptance result regardless of successful build.

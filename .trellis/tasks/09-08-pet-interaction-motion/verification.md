@@ -65,3 +65,35 @@ Stutter candidate (same browser QA6-cycle script): LayoutCount450 vs764, RecalcS
 Candidate todo geometry51-frame sample: background covers frame throughout, root opacity1, body minimum0.8; dock X spread0.015625px,Y0.00268555px, dimensions<0.001px. Reverse preserved exact619.328125×555.890625 at first reverse frame, returned475×278 with width cleared; reduced branch still140ms opacity0.8→1 with no transform.
 
 Actual old native app was visible during this turn: recorded `/tmp/pet-stutter-before.mov` with two real todo/back cycles, showing real0 pending/2 completed state. No checkboxes, reminders, send or settings actions mutated data. Candidate native comparison pending.
+
+### Final startup clock refinement
+- Morph clock now starts at first RAF; page preparation no longer consumes the 280ms interval. Delayed-first-RAF test, frontend build and diff check passed. Bundle JS: index-yuRvV166.js. Native debug app packaged and restarted.
+- Native AX verified Todo open and return, using the actual empty Todo state (0 pending, 0 completed); no data seeded or modified.
+- Native recording /tmp/pet-stutter-clock-fixed.mov was affected by desktop switching/movement. It does not establish smoothness or FPS acceptance. Keep task in progress pending stable native/user verification.
+
+### User rejected stepped expansion
+- Latest user feedback: expansion still grows in steps and is not smooth. Earlier browser CPU reduction and first-RAF clock correction did not satisfy native acceptance.
+- Reopened implementation architecture review: replace per-frame layout/SVG repaint where feasible with composited motion; preserve full background, original decorations and fixed cat/platform. Acceptance requires actual continuous expansion and reversal, not only build/AX or script timing.
+
+### Rejected compositor prototype (not shipped)
+- Nine-slice fixed-layout SVG prototype reduced six-cycle browser LayoutCount from450 to52, but introduced double outline, seams, clipped controls and transient footprint overflow. These were observed in paused browser intermediate frames, not native production.
+- Single-target slices removed the double outline, but upper right edge and fixed dock impose incompatible slice motion and reverse source textures did not stay continuous. Prototype rejected; no native bundle was launched.
+- Continuing with a single continuous SVG outline driven by native animation and fixed layout. This still entails paint and must not be described as guaranteed GPU/compositor-only motion.
+
+### Single native SVG outline candidate
+- Replaced per-frame JS frame/SVG writes with fixed HTML layout, one SVG native path animation and unscaled content motion. Nine-slice prototype removed. Normalized path, reverse interpolation, dock configuration/clamping, cleanup and compact checks passed; read-only Trellis review passed.
+- Real local WKWebView mechanism probe supports d animation, pause and currentTime. This is mechanism evidence only, not application flow acceptance.
+- Browser paused intermediate frames show continuous single outline without slice seams, full background, in-frame footer footprints and intact corner. Live 55-frame dock geometry: x spread0.012513px, y0, width spread0.000184px, height0.000062px.
+- Browser six-cycle cost before final coordinate-only correction: ScriptDuration0.224613s, TaskDuration0.680817s, LayoutDuration0.025777s, LayoutCount473. SVG still performs layout/paint; do not claim zero Layout or guaranteed GPU motion.
+- Final frontend index-Ca-FW5AB.js / index-CwZZLpeN.css; native debug bundle built and restarted. Initial native chat open verified. Native Todo capture did not complete because active window changed; recording showed compact only. User acceptance question pending. Do not mark smoothness accepted or task completed.
+
+### Native causal diagnosis after repeated user rejection
+User again rejects final SMIL candidate as stepped. No smoothness acceptance is claimed. Four diagnostic modes (normal, no-shadows, translate-only, none) are being compared on the actual native app using opt-in debug instrumentation. Programmatic DOM click follows real React/native mode routing, but excludes physical mouse input latency. RAF intervals remain callback evidence only.
+System Animation Hitches recording successfully attached to the native process; idle baseline has no hitches rows. Initial diagnostic request bridge failed to report; four-mode runs have not yet occurred. Revised diagnostics add two-window mode acknowledgements, explicit status/errors and correct filtered-SVG selector. This is instrumentation repair, not a product performance fix.
+
+### Confirmed native event-loop block
+Runtime PID73887 verified both actual frontend assets index-DkdoNmVw.js/protocol phase-v3; stale assets excluded for this run. Native sample /tmp/pet-diag-dispatch.sample.txt: main thread1343/1343 samples inside synchronous backend::agent_view → credentials::hydrate → PlatformStore::get → keyring::get_password → SecurityServer::decrypt → mach_msg. This blocks the native event loop and explains failed diagnostic ACKs/AppleEvent activation timeout. Source agent_view holds AgentState mutex across startup credential hydration. This is confirmed startup/native unresponsiveness; it does not yet prove the earlier sustained expansion stutter has the same sole cause. Scoped initialization repair precedes four-mode animation measurement. No credential values read or printed.
+
+### UI-thread repair closure and remaining animation verification
+Committed scoped backend/spec repair as48c9496. Backend20 tests passed; independent review passed. Native PID80935 sample /tmp/pet-after-keychain.sample.txt shows main thread servicing/waiting in normal runloop, not blocked in Keychain. Diagnostic ACK/report processing resumed after repair.
+One real native Todo route recorded click→layout153ms, preparation34ms then257ms until morph start, with RAF intervals186/260/146/210/325ms; these callback delays are real but not presentation FPS. The subsequent four-mode batch was invalid: hidden chat/action unavailable, wrong-window early reports, and overlapping compilation. It supplies no causal comparison. Normal mode restored and confirmed in diagnostic result; waiting for a stable visible desktop interval requested from user. Do not claim animation solved or archive task.

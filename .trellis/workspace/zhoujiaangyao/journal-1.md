@@ -762,3 +762,25 @@ System reduceMotion=1 explained disabled animation path. Initial root no longer 
 ### Status
 
 [OK] **Completed**
+
+
+## Session 25: Server admin control plane implementation
+<!-- trellis-session: v=2 fp=c9e672f38b463a2b -->
+
+**Date**: 2026-09-08
+**Task**: Server admin control plane implementation
+**Branch**: `codex/pet-interaction-motion`
+
+### Summary
+
+Implemented the server admin control plane and independent React/Vite admin workspace: admin sessions and audit, account/device operations, versioned encrypted model configuration with explicit enable/test/CAS publish/rollback, run model/tool traces, retention cleanup, and audited sensitive reads. Passed 72 server tests, Python compile and lock checks, admin typecheck and production build. Real PostgreSQL migration, model call, browser login, and desktop acceptance remain unrun; unrelated pet interaction edits were preserved.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `17649bc` | feat: add server admin control plane |
+
+### Status
+
+[OK] **Completed**
