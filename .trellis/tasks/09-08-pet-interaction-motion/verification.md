@@ -16,3 +16,7 @@ Native IPC has no cancellation contract: if invoke never returns, its single-fli
 
 ## Status
 Implementation and package ready; native visual acceptance pending manual unlock. Keep task in_progress, do not archive.
+
+
+## Follow-up after user rejected initial-open experience
+See research/initial-open-followup.md for current correction and evidence. Previous implementation did not satisfy native first-open acceptance. Latest debug package index-DZkRX6TI.js restarted. System reducedMotion=1 was read; now reduced mode retains opacity-only entry. Browser final normal/reduced intermediate frames inspected; original image and geometry checks, viewport-recovery/interaction tests pass. Native screen recording unavailable because no matching onscreen app window; user asked to bring desktop visible. Do not archive or claim native flicker eliminated.

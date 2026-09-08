@@ -51,15 +51,15 @@ function deferred() {
   return { promise, resolve, reject }
 }
 const tick = async () => { for (let i = 0; i < 20; i++) await Promise.resolve() }
-function transitionHarness() {
+function transitionHarness(viewportReady = true) {
   const calls = [], errors = [], commits = []
   let currentCommit = null
   const bindings = {
     chatModeRef: { current: 'compact' }, modeTransitionRef: { current: false },
     pendingCommitRef: { current: undefined }, pendingModeRef: { current: null }, modeWaitersRef: { current: [] },
     flushSync: callback => { currentCommit = []; callback(); commits.push(currentCommit); currentCommit = null }, setModeTransitioning() {}, setPanelEntering() {},
-    setPanelPreparing() {}, setChatMode: mode => currentCommit?.push(mode), setError: error => errors.push(error),
-    waitForWindowPaint: async () => {},
+    setPanelPreparing(value) { bindings.preparing = value }, setChatMode: mode => currentCommit?.push(mode), setError: error => errors.push(error),
+    waitForWindowPaint: async () => {}, waitForPanelViewport: async () => viewportReady,
     invoke: (_command, { mode }) => { const call = { mode, ...deferred() }; calls.push(call); return call.promise },
   }
   const change = new Function(...Object.keys(bindings), `${extractFunction(source, 'changePetChatMode')}; return changePetChatMode`)(...Object.values(bindings))
@@ -129,3 +129,48 @@ console.log('actual transition handlers: queued failure propagation, retry, fina
   assert.deepEqual(h.commits.at(-1), ['settings'])
 }
 console.log('destination content and native mode commit atomically; same-size page navigation bypasses IPC')
+
+{
+  const h = transitionHarness()
+  h.bindings.chatModeRef.current = 'closed'
+  const opening = h.change('compact')
+  await tick()
+  h.calls[0].resolve()
+  await opening
+  assert.equal(h.bindings.chatModeRef.current, 'compact')
+}
+
+// The viewport gate observes renderer dimensions, and never calls timeout ready.
+for (const scenario of ['ready', 'resize', 'timeout']) {
+  let resized, timer, removed = false
+  const window = {
+    innerWidth: scenario === 'ready' ? 713 : 232, innerHeight: scenario === 'ready' ? 401 : 381,
+    setTimeout(callback) { timer = callback; return 1 }, clearTimeout() {},
+    addEventListener(_name, callback) { resized = callback },
+    removeEventListener() { removed = true },
+  }
+  const wait = new Function('window', `${extractFunction(source, 'waitForPanelViewport')}; return waitForPanelViewport`)(window)
+  const result = wait('compact')
+  if (scenario === 'resize') { window.innerWidth = 713; window.innerHeight = 401; resized() }
+  if (scenario === 'timeout') timer()
+  assert.equal(await result, scenario !== 'timeout')
+  assert.equal(removed, true)
+}
+console.log('viewport observation: ready, delayed resize and unready timeout clean up correctly')
+
+{
+  const h = transitionHarness(false)
+  h.bindings.chatModeRef.current = 'closed'
+  const opening = h.change('compact')
+  const rejected = assert.rejects(opening, /限定时间/)
+  await tick()
+  h.calls[0].resolve()
+  await tick()
+  assert.deepEqual(h.calls.map(call => call.mode), ['compact', 'closed'])
+  h.calls[1].resolve()
+  await rejected
+  assert.equal(h.bindings.chatModeRef.current, 'closed')
+  assert.equal(h.bindings.modeTransitionRef.current, false)
+  assert.equal(h.bindings.preparing, false)
+}
+console.log('unready initial viewport restores native closed frame, React mode and interaction guards')

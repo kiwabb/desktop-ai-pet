@@ -45,7 +45,17 @@ export function ChatBubbleShell({ width, height, dock, variant, showFooterFootpr
           <rect x="-10" y="-10" width={g.canvasWidth + 20} height={g.canvasHeight + 20} fill="white" />
           <g transform={g.dockTransform}><rect x="978" y="820" width="430" height="210" fill={url('fade')} /></g>
         </mask>
+        {/* Feather the temporary reveal through the junction; the dock side
+            remains white throughout, without a rectangular alpha boundary. */}
+        <linearGradient id={id('entrance-fade')} x1={width - 40} x2={width + 25} gradientUnits="userSpaceOnUse">
+          <stop stopColor="black" /><stop offset="1" stopColor="white" />
+        </linearGradient>
+        <mask id={id('entrance-mask')} maskUnits="userSpaceOnUse" x="-80" y="-80" width={g.canvasWidth + 160} height={g.canvasHeight + 160}>
+          <rect x="-80" y="-80" width={g.canvasWidth + 160} height={g.canvasHeight + 160} fill="white" />
+          <rect className="shell-bubble-entrance-mask" x="-80" y="-80" width={g.canvasWidth + 160} height={g.canvasHeight + 160} fill={url('entrance-fade')} opacity="0" />
+        </mask>
       </defs>
+      <g mask={url('entrance-mask')}>
       <use href={`#${id('outline')}`} fill={url('fill')} stroke="#ffce9f" strokeWidth={7 * g.scale} filter={url('shadow')} />
       <g clipPath={url('clip')}>
         <g transform={g.dockTransform}>
@@ -73,6 +83,7 @@ export function ChatBubbleShell({ width, height, dock, variant, showFooterFootpr
             </svg>
           </g>
         ))}
+      </g>
       </g>
     </svg>
   )

@@ -57,7 +57,10 @@
   that imports application CSS to catch leaked desktop positioning.
 - Check both appearances with reduced motion enabled, and check a committed
   `visible=true -> false -> true` sequence with `animateEntrance=true`: the
-  animation must restart after reopening and be disabled under reduced motion.
+  animation must restart after reopening. Reduced motion must disable spatial
+  transforms/bounce; the integrated initial reveal may use a bounded 160ms
+  opacity-only dissolve. Inspect computed styles because global animation resets
+  can accidentally disable that dissolve.
 - QA React callers must be included in TypeScript validation when public props
   change. Use neutral frame slots or the actual unavailable/unconfigured state;
   do not invent a connected AgentView or a successful send response.

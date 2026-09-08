@@ -509,3 +509,38 @@
   .chat-panel button { transition: none; }
   .chat-panel button:active:not(:disabled) { transform: none; }
 }
+
+
+/* One paint of the continuous perimeter: a luminance mask fades only its
+ * bubble region, leaving the right-hand platform fully painted and stationary. */
+@keyframes integrated-shell-dissolve {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes integrated-content-arrive {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes integrated-content-dissolve {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.chat-panel.is-attached.is-integrated.is-entering { animation: none; }
+.chat-panel.is-attached.is-integrated.is-entering .shell-bubble-entrance-mask {
+  animation: integrated-shell-dissolve 280ms cubic-bezier(.2, .75, .25, 1) both;
+}
+.chat-panel.is-attached.is-integrated.is-entering > .assistant-paw-badge {
+  animation: integrated-content-dissolve 280ms cubic-bezier(.2, .75, .25, 1) both;
+}
+.chat-panel.is-attached.is-integrated.is-entering > .chat-panel-surface {
+  animation: integrated-content-arrive 280ms cubic-bezier(.2, .75, .25, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel.is-attached.is-integrated.is-entering .shell-bubble-entrance-mask {
+    animation: integrated-shell-dissolve 160ms ease-out both !important;
+  }
+  .chat-panel.is-attached.is-integrated.is-entering > .assistant-paw-badge,
+  .chat-panel.is-attached.is-integrated.is-entering > .chat-panel-surface {
+    animation: integrated-content-dissolve 160ms ease-out both !important;
+  }
+}

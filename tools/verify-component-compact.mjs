@@ -136,6 +136,7 @@ if (/<ellipse/.test(badgeBody))
 
 const badgeRules = [...frameCss.matchAll(/([^{}]+)\{([^{}]+)\}/g)]
   .filter(match => match[1].includes('.assistant-paw-badge'))
+  .filter(match => !/^\s*animation\s*:[^;]+;\s*$/.test(match[2]))
 if (badgeRules.length !== 1 || !badgeRules[0][1].trim().endsWith('.chat-panel > .assistant-paw-badge'))
   fail('paw badge must have exactly one shared root-child rule, with no variant overrides')
 const badgeRule = badgeRules[0][2]

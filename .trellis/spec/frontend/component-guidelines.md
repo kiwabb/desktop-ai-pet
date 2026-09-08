@@ -316,3 +316,21 @@ a batch's waiters before processing its successor; reject waiters on that batch'
 failure. Do not use a timer race to permit another native size write: an unresolved
 IPC has not been cancelled. `tools/verify-pet-motion.mjs` covers same-flush page
 commit, queued failure, retry, single-flight and closed-page callback invalidation.
+
+## Initial integrated-shell reveal
+
+Never scale/fade the entire integrated root: its continuous SVG owns the platform
+that replaces the cropped original disk. Keep root/platform stationary and fully
+painted; fade the bubble region through a smooth luminance mask, coordinated with
+surface and paw opacity. A hard rectangular mask boundary leaves a visible alpha
+seam. Inspect a mid-animation frame, not only the settled screenshot.
+
+Normal entry may translate content by 6px; reduced entry uses opacity only for
+160ms. Preserve the OS preference and use a scoped rule that survives global
+reduced-motion animation resets. Disable the body's independent page-change
+animation during initial entrance so two timelines do not compete.
+
+`waitForPanelViewport(mode)` observes CSS viewport dimensions with a bounded
+600ms deadline; false means not ready and requires recovery, never timed success.
+Matching dimensions and RAF callbacks do not prove AppKit actually presented a
+frame. Native acceptance requires the pet window on the current visible desktop.

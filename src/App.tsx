@@ -31,6 +31,23 @@ function waitForWindowPaint() {
   })
 }
 
+/** Observe WKWebView's CSS viewport, independently of the native command reply. */
+function waitForPanelViewport(mode: 'compact' | 'expanded') {
+  const [width, height] = mode === 'compact' ? [713, 401] : [940, 760]
+  return new Promise<boolean>(resolve => {
+    const matches = () => Math.abs(window.innerWidth - width) <= 1 && Math.abs(window.innerHeight - height) <= 1
+    const finish = (ready: boolean) => {
+      window.clearTimeout(timeout)
+      window.removeEventListener('resize', resized)
+      resolve(ready)
+    }
+    const resized = () => { if (matches()) finish(true) }
+    const timeout = window.setTimeout(() => finish(matches()), 600)
+    window.addEventListener('resize', resized)
+    resized()
+  })
+}
+
 function App() {
   const currentWindow = getCurrentWindow()
   const isChatWindow = currentWindow.label === 'chat'
@@ -258,15 +275,21 @@ function App() {
         flushSync(() => setPanelPreparing(true))
         // Mount the panel into the compact surface and paint it once while
         // the native window is still small — the panel sits off-frame and
-        // stays invisible. Only then do AppKit and React commit the resize
-        // together: the panel appears with a fully laid-out first frame and
-        // no flash of an unstyled intermediate surface.
+        // stays invisible. Resize next, observe the CSS viewport, then reveal.
+        // These steps prepare layout; only native capture can establish when
+        // AppKit actually presents the new backing frame.
         flushSync(() => {
           chatModeRef.current = mode
           setChatMode(mode)
         })
         await waitForWindowPaint()
         await invoke('set_pet_chat_mode', { mode })
+        if (!await waitForPanelViewport(mode)) {
+          // A timer expiry is not readiness. Restore the native closed frame
+          // before the existing failure path restores React's previous mode.
+          await invoke('set_pet_chat_mode', { mode: 'closed' })
+          throw new Error('桌宠窗口未在限定时间内完成尺寸更新')
+        }
         await waitForWindowPaint()
         // Reveal the final layout and start its entrance in the same commit;
         // there is no intermediate frame with an empty expanded surface.

@@ -109,13 +109,13 @@ export function ChatBubbleFrame({
     return () => observer.disconnect()
   }, [integrated])
   useLayoutEffect(() => {
-    if (!visible || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!visible || animateEntrance || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const animation = bodyRef.current?.animate?.([
       { opacity: .65, transform: 'translateY(6px)' },
       { opacity: 1, transform: 'translateY(0)' },
     ], { duration: 180, easing: 'cubic-bezier(.2,.75,.25,1)' })
     return () => animation?.cancel()
-  }, [title, visible])
+  }, [title, visible, animateEntrance])
   const defaults = tailDefaults[variant]
   const tailWidth = tail?.width ?? defaults.width
   const frameStyle: FrameStyle = {
