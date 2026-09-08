@@ -814,3 +814,34 @@ Implemented the server admin control plane and independent React/Vite admin work
 ### Next Steps
 
 - 等待真实迁移、重启和首次管理员开通授权，再做模型与已登录UI验收
+
+
+## Session 27: 后台已启动，真实模型与追踪验收通过
+<!-- trellis-session: v=2 fp=cbf6ba8b55e969f5 -->
+
+**Date**: 2026-09-08
+**Task**: 后台已启动，真实模型与追踪验收通过
+**Branch**: `codex/pet-interaction-motion`
+
+### Summary
+
+用户明确授权后应用005-007并开通真实管理员、启动18081/18181。真实SQL暴露concat_ws类型错误，修复并重启后todo.list完整追踪通过；配置真实测试、发布与回滚通过。密码只存0600本地文件。登录后浏览器交互未完整验收，不归档任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a4831d5` | fix: type trace gap parameters for PostgreSQL |
+
+### Testing
+
+- [OK] 真实PostgreSQL 87条常量SQL及24次追踪SQL EXPLAIN通过；追踪定向17项通过
+- [OK] 真实模型两次只读todo.list，待办2到2；修复后35段流式文本、两次模型调用、完整追踪；发布回滚成功
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 用户可访问18181后台；继续登录后的浏览器交互验收

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 26
+- **Total Sessions**: 27
 - **Last Active**: 2026-09-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~816 | Active |
+| `journal-1.md` | ~847 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 27 | 2026-09-08 | 后台已启动，真实模型与追踪验收通过 | `a4831d5` | `codex/pet-interaction-motion` |
 | 26 | 2026-09-08 | 后台与链路追踪修复，真实验收待授权 | `c140251` | `codex/pet-interaction-motion` |
 | 25 | 2026-09-08 | Server admin control plane implementation | `17649bc` | `codex/pet-interaction-motion` |
 | 24 | 2026-09-08 | 桌面端双模式 LLM：单机直调 + 服务端模式切换 | `66a161d`, `3ede62c`, `774b02a`, `61a8dae` | `codex/pet-interaction-motion` |
