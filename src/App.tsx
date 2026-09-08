@@ -14,9 +14,19 @@ import { getPetLiveStatus } from './lib/pet-live-status'
 type ChatMode = 'closed' | 'compact' | 'expanded'
 
 function waitForWindowPaint() {
+  // RAF provides a paint opportunity, not acknowledgement from AppKit.
   return new Promise<void>(resolve => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.setTimeout(resolve, 0))
+    let first = 0
+    let second = 0
+    const finish = () => {
+      window.clearTimeout(timeout)
+      window.cancelAnimationFrame(first)
+      window.cancelAnimationFrame(second)
+      resolve()
+    }
+    const timeout = window.setTimeout(finish, 120)
+    first = window.requestAnimationFrame(() => {
+      second = window.requestAnimationFrame(finish)
     })
   })
 }
@@ -33,10 +43,14 @@ function App() {
   const [chatMode, setChatMode] = useState<ChatMode>('closed')
   const [modeTransitioning, setModeTransitioning] = useState(false)
   const [panelEntering, setPanelEntering] = useState(false)
+  const [panelPreparing, setPanelPreparing] = useState(false)
   const [petState, setPetState] = useState<PetState>('idle')
   const [petReply, setPetReply] = useState<string | null>(null)
   const chatModeRef = useRef<ChatMode>('closed')
   const modeTransitionRef = useRef(false)
+  const pendingCommitRef = useRef<(() => void) | undefined>(undefined)
+  const pendingModeRef = useRef<ChatMode | null>(null)
+  const modeWaitersRef = useRef<Array<{ resolve: () => void; reject: (cause: unknown) => void }>>([])
   const contextMenuPromiseRef = useRef<Promise<Menu> | null>(null)
   const viewRef = useRef<AgentView | null>(null)
   const submittingRef = useRef(false)
@@ -200,19 +214,27 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [status, chatMode, modeTransitioning, reminderRetry])
 
-  async function changePetChatMode(mode: ChatMode) {
-    if (modeTransitionRef.current || chatModeRef.current === mode)
+  async function changePetChatMode(mode: ChatMode, commitPage?: () => void) {
+    if (modeTransitionRef.current) {
+      pendingModeRef.current = mode
+      pendingCommitRef.current = commitPage
+      return new Promise<void>((resolve, reject) => modeWaitersRef.current.push({ resolve, reject }))
+    }
+    if (chatModeRef.current === mode) {
+      if (commitPage) flushSync(commitPage)
       return
+    }
 
     modeTransitionRef.current = true
     const previousMode = chatModeRef.current
     let transitionCommitted = false
     try {
-      // Keep the current cat layer visible and anchored while AppKit changes
-      // the native panel size. The final mode and the panel are committed
-      // together after the resize, so no intermediate stretched/blank frame
-      // can leak to the desktop.
-      flushSync(() => setModeTransitioning(true))
+      // Open-to-open changes keep the mounted shell visible. Native sizing is
+      // serialized; entrance motion belongs only to a closed-to-open change.
+      flushSync(() => {
+        setModeTransitioning(true)
+        setPanelEntering(false)
+      })
 
       if (mode === 'closed') {
         // Shrink the native surface only after the shared cat layer is ready;
@@ -233,6 +255,7 @@ function App() {
       }
 
       if (previousMode === 'closed') {
+        flushSync(() => setPanelPreparing(true))
         // Mount the panel into the compact surface and paint it once while
         // the native window is still small — the panel sits off-frame and
         // stays invisible. Only then do AppKit and React commit the resize
@@ -242,16 +265,16 @@ function App() {
           chatModeRef.current = mode
           setChatMode(mode)
         })
-        await new Promise<void>(resolve =>
-          requestAnimationFrame(() => setTimeout(resolve, 0))
-        )
+        await waitForWindowPaint()
         await invoke('set_pet_chat_mode', { mode })
         await waitForWindowPaint()
         // Reveal the final layout and start its entrance in the same commit;
         // there is no intermediate frame with an empty expanded surface.
         flushSync(() => {
           setModeTransitioning(false)
+          setPanelPreparing(false)
           setPanelEntering(true)
+          commitPage?.()
         })
         transitionCommitted = true
         return
@@ -262,9 +285,14 @@ function App() {
       flushSync(() => {
         chatModeRef.current = mode
         setChatMode(mode)
+        commitPage?.()
         setModeTransitioning(false)
       })
       transitionCommitted = true
+    }
+    catch (cause) {
+      setError('切换面板失败，请重试。')
+      throw cause
     }
     finally {
       if (!transitionCommitted)
@@ -275,7 +303,20 @@ function App() {
           setChatMode(previousMode)
           setModeTransitioning(false)
         })
+      setPanelPreparing(false)
       modeTransitionRef.current = false
+      const pending = pendingModeRef.current
+      const pendingCommit = pendingCommitRef.current
+      pendingCommitRef.current = undefined
+      const waiters = modeWaitersRef.current.splice(0)
+      pendingModeRef.current = null
+      try {
+        if (pending) await changePetChatMode(pending, pendingCommit)
+        waiters.forEach(waiter => waiter.resolve())
+      } catch (cause) {
+        waiters.forEach(waiter => waiter.reject(cause))
+        setError('切换面板失败，请重试。')
+      }
     }
   }
 
@@ -288,13 +329,16 @@ function App() {
     await changePetChatMode('compact')
   }
 
-  async function changeChatExpanded(expanded: boolean) {
-    setChatExpanded(expanded)
+  async function changeChatExpanded(expanded: boolean, commitPage?: () => void) {
     if (!isChatWindow) {
-      await changePetChatMode(expanded ? 'expanded' : 'compact')
+      await changePetChatMode(expanded ? 'expanded' : 'compact', commitPage)
       return
     }
     await invoke('set_chat_window_expanded', { expanded })
+    flushSync(() => {
+      setChatExpanded(expanded)
+      commitPage?.()
+    })
   }
 
   async function closeChatWindow() {
@@ -406,8 +450,8 @@ function App() {
           tools={status?.snapshot.tool_calls ?? []}
           streaming={streaming}
           error={error}
-          onClose={() => void closeChatWindow()}
-          onExpandedChange={expanded => void changeChatExpanded(expanded)}
+          onClose={() => void closeChatWindow().catch(() => {})}
+          onExpandedChange={changeChatExpanded}
           acceptedRequestId={acceptedRequestId}
           onSend={handleSend}
         />
@@ -422,15 +466,15 @@ function App() {
           <ChatPanel
             attached
             expanded={chatMode === 'expanded'}
-            visible={!modeTransitioning}
+            visible={!panelPreparing}
             animateEntrance={panelEntering}
             status={status}
             messages={messages}
             tools={status?.snapshot.tool_calls ?? []}
             streaming={streaming}
             error={error}
-            onClose={() => void closeChatWindow()}
-            onExpandedChange={expanded => void changeChatExpanded(expanded)}
+            onClose={() => void closeChatWindow().catch(() => {})}
+            onExpandedChange={changeChatExpanded}
             acceptedRequestId={acceptedRequestId}
             onSend={handleSend}
           />
@@ -444,7 +488,7 @@ function App() {
         // settings panel must change only the panel, never the pet artwork.
         mode="reference-closed"
         onPetInteract={handlePetInteract}
-        onToggleChat={() => void openChatWindow()}
+        onToggleChat={() => void openChatWindow().catch(() => {})}
         onContextMenu={() => void openPetContextMenu()}
       />
     </main>

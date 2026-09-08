@@ -45,7 +45,7 @@ interface ChatPanelProps {
   streaming: boolean
   error: string | null
   onClose: () => void
-  onExpandedChange: (expanded: boolean) => void
+  onExpandedChange: (expanded: boolean, commitPage?: () => void) => void | Promise<void>
   acceptedRequestId: string | null
   onSend: (content: string) => { requestId: string; accepted: Promise<void> }
 }
@@ -61,6 +61,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   const submittedDraftRef = useRef<{ content: string; requestId: string } | null>(null)
   const sendingRef = useRef(false)
   const returnExpandedRef = useRef(expanded)
+  const pageIntentRef = useRef(0)
   const compositionRef = useRef(false)
   const compositionEndedAtRef = useRef(-Infinity)
   const backButtonRef = useRef<HTMLButtonElement>(null)
@@ -105,6 +106,8 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
     setDraft(current => current === submitted.content ? '' : current)
   }
 
+  useEffect(() => () => { pageIntentRef.current += 1 }, [])
+
   function focusCurrentView() {
     const target = settingsOpen
       ? messageListRef.current?.querySelector<HTMLInputElement>('input')
@@ -135,7 +138,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
     }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !event.isComposing && event.keyCode !== 229 && !compositionRef.current)
-        onClose()
+        closePanel()
     }
     window.addEventListener('focus', recoverFocus)
     window.addEventListener('keydown', closeOnEscape)
@@ -163,7 +166,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
       await saveAgentSettings(baseUrl, apiKey)
       setApiKey('')
       setSettingsOpen(false)
-      onExpandedChange(false)
+      await onExpandedChange(false)
     }
     catch (cause) {
       setSettingsError(cause instanceof Error ? cause.message : String(cause))
@@ -193,7 +196,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
       await request.accepted
       acknowledgeSubmission(submitted)
       // Keep the existing conversation visible while the server accepts and streams.
-      if (!expanded) onExpandedChange(true)
+      if (!expanded) await onExpandedChange(true)
     }
     catch {
       // App owns the visible error. Preserve the draft for an idempotent retry.
@@ -203,32 +206,55 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
     }
   }
 
-  function returnToChat() {
-    setSettingsOpen(false)
-    setTodosOpen(false)
-    onExpandedChange(returnExpandedRef.current)
+  function closePanel() {
+    pageIntentRef.current += 1
+    onClose()
   }
 
-  function openSettings() {
+  async function changePage(targetExpanded: boolean, commitPage: () => void) {
+    const intent = ++pageIntentRef.current
+    let committed = false
+    const commit = () => {
+      if (committed || intent !== pageIntentRef.current) return
+      committed = true
+      commitPage()
+    }
+    try {
+      await onExpandedChange(targetExpanded, commit)
+      // Hosts without native resizing may omit the optional commit callback.
+      commit()
+    } catch { /* Host reports resize failure; preserve the current page. */ }
+  }
+
+  function returnToChat() {
+    void changePage(returnExpandedRef.current, () => {
+      setSettingsOpen(false)
+      setTodosOpen(false)
+    })
+  }
+
+  async function openSettings() {
     if (settingsOpen) {
       returnToChat()
       return
     }
     if (!todosOpen) returnExpandedRef.current = expanded
-    setTodosOpen(false)
-    setSettingsOpen(true)
-    if (!expanded) onExpandedChange(true)
+    await changePage(true, () => {
+      setTodosOpen(false)
+      setSettingsOpen(true)
+    })
   }
 
-  function toggleTodos() {
+  async function toggleTodos() {
     if (todosOpen) {
       returnToChat()
       return
     }
     if (!settingsOpen) returnExpandedRef.current = expanded
-    setSettingsOpen(false)
-    setTodosOpen(true)
-    if (!expanded) onExpandedChange(true)
+    await changePage(true, () => {
+      setSettingsOpen(false)
+      setTodosOpen(true)
+    })
   }
 
   function applyQuickPrompt(prompt: string) {
@@ -263,7 +289,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
               <Pin aria-hidden="true" />
             </span>
           )}
-          <button className="icon-button" type="button" aria-label="收起对话" onClick={onClose}>
+          <button className="icon-button" type="button" aria-label="收起对话" onClick={closePanel}>
             <X aria-hidden="true" />
           </button>
         </>

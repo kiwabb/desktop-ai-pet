@@ -1,0 +1,29 @@
+{
+  "id": "pet-interaction-motion",
+  "name": "pet-interaction-motion",
+  "title": "桌宠交互与动效优化",
+  "description": "修复小聊天框切换大设置页的闪烁卡顿，统一稳定的窗口切换与灵动动效。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P2",
+  "creator": "zhoujiaangyao",
+  "assignee": "zhoujiaangyao",
+  "createdAt": "2026-09-08",
+  "completedAt": null,
+  "branch": "codex/pet-interaction-motion",
+  "base_branch": "codex/desktop-pet-frontend-polish",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "implementation_approved": true,
+    "implementation_status": "implemented_packaged_native_acceptance_pending_unlock"
+  }
+}

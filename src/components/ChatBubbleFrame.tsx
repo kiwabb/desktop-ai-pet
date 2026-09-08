@@ -89,6 +89,7 @@ export function ChatBubbleFrame({
   children,
 }: ChatBubbleFrameProps) {
   const rootRef = useRef<HTMLElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const attached = appearance === 'attached'
   const explicitTail = tail != null && Object.values(tail).some(value => value !== undefined)
@@ -107,6 +108,14 @@ export function ChatBubbleFrame({
     observer.observe(root)
     return () => observer.disconnect()
   }, [integrated])
+  useLayoutEffect(() => {
+    if (!visible || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const animation = bodyRef.current?.animate?.([
+      { opacity: .65, transform: 'translateY(6px)' },
+      { opacity: 1, transform: 'translateY(0)' },
+    ], { duration: 180, easing: 'cubic-bezier(.2,.75,.25,1)' })
+    return () => animation?.cancel()
+  }, [title, visible])
   const defaults = tailDefaults[variant]
   const tailWidth = tail?.width ?? defaults.width
   const frameStyle: FrameStyle = {
@@ -148,7 +157,7 @@ export function ChatBubbleFrame({
           {actions && <div className="header-actions">{actions}</div>}
         </header>
 
-        <div className="chat-panel-body">{children}</div>
+        <div ref={bodyRef} className="chat-panel-body">{children}</div>
         {footer != null && <div className="chat-panel-footer">{footer}</div>}
       </div>
     </section>

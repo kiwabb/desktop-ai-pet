@@ -49,11 +49,16 @@
   layout. Apply `border-box` to the frame and its descendants/pseudo-elements.
   Keep default positioning in normal flow; restrict desktop `absolute`/`inset`
   rules to actual hosts, never a bare `.chat-panel` in application CSS.
-- Entrance motion is active only when `visible && animateEntrance`. A committed
-  hidden state removes the animation so showing the mounted frame can replay it.
+- Entrance motion is active only when `visible && animateEntrance`. The host must
+  disable `animateEntrance` when switching between already-open panel modes;
+  replaying the initial entrance after a native resize creates a second jump.
   `animateEntrance=false` must not hide the frame. Component-local reduced-motion
   selectors must override the actual animation selectors without depending on a
   global `!important` reset.
+- Open-to-open native mode changes must not hide the entire frame or toggle the
+  cat platform crop. Closed-to-open preparation is a distinct phase. A paint
+  opportunity obtained through RAF is not proof that AppKit presented the frame;
+  bound RAF waits and verify native transitions separately from browser previews.
 - The paw badge is frame decoration: a direct child anchored over the top-left
   corner with one shared size/offset rule across variants and appearances.
   Never place it inside the title's flex row or override its geometry by mode.
@@ -296,3 +301,18 @@ real model operation.
 `useChatReading` scrolls only its own viewport, never `scrollIntoView` on an ancestor. Follow new content only near the bottom or after the user explicitly returns to latest; preserve the reading position across settings/todo navigation. Returning from secondary pages restores the initiating chat mode; successful settings save retains the compact-return contract.
 
 The approved pet PNG remains unchanged. `PetLiveStatus` overlays only the interior of its decorative speech bubble with actual AgentView-derived connection/model/device state. Do not punch a separately rasterized transparent mask beneath an opaque replacement: fractional edges can expose a visible seam. Keep pet pixels, original outline, and the independent open-state bottom clip untouched.
+
+## Native panel and page commit contract
+
+`ChatPanel.onExpandedChange(expanded, commitPage?)` may return a promise. Native
+hosts invoke the optional page callback inside the same `flushSync` as the target
+layout update. A callback after that flush is a separate commit, even under React
+automatic batching. Non-native hosts may omit it; ChatPanel performs a guarded,
+once-only fallback on resolution. `changePage` invalidates superseded intentions;
+close and unmount also invalidate pending page callbacks.
+
+Serialize native frame writes and keep the latest pending target/callback. Capture
+a batch's waiters before processing its successor; reject waiters on that batch's
+failure. Do not use a timer race to permit another native size write: an unresolved
+IPC has not been cancelled. `tools/verify-pet-motion.mjs` covers same-flush page
+commit, queued failure, retry, single-flight and closed-page callback invalidation.

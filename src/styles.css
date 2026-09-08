@@ -1039,16 +1039,8 @@ textarea:focus-visible {
   pointer-events: auto;
 }
 
-/*
- * Native resize guard
- * -------------------
- * AppKit resizes the borderless panel asynchronously. During that short
- * interval keep only the shared cat crop mounted at the bottom-right; App
- * passes visible={false} to the chat panel for the same interval, so the
- * bubble hides itself through its own is-hidden state. The new mode and chat
- * panel are committed in one React flush after the native resize, eliminating
- * the stretched/blank intermediate frame that reads as a click flicker.
- */
+/* Keep the shared cat anchored during native size changes. The open frame
+ * remains mounted and visible; this class must never control its visibility. */
 .pet-shell.pet-chat-resizing .pet-stage {
   top: auto;
   right: 0;
@@ -1095,6 +1087,6 @@ textarea:focus-visible {
 /* The integrated platform replaces only the original disk front, not the cat
  * or cushion. The alpha PNG itself is unchanged; this shallow crop follows
  * the cushion lower edge (source center y744 /893), leaving closed mode exact. */
-.pet-shell:has(.chat-panel.is-integrated:not(.is-hidden)) .closed-reference-art {
+.pet-shell:not(.pet-chat-closed):has(.chat-panel.is-integrated:not(.is-hidden)) .closed-reference-art {
   clip-path: polygon(0 0, 100% 0, 100% 78%, 96% 80%, 90% 82%, 73% 83.3%, 44% 83.3%, 22% 82%, 9% 80%, 0 77%);
 }
