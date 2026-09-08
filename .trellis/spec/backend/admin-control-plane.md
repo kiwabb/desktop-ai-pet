@@ -104,3 +104,5 @@ Correct: map the distinct domains and verify both success and failure transactio
 Wrong: await trace persistence inside the model loop and mark the whole run complete on each model success.
 
 Correct: submit bounded observations separately, preserve gaps, and finalize on the run's actual terminal lifecycle.
+
+Nullable psycopg parameters passed to variadic PostgreSQL functions require an explicit type, e.g. `concat_ws('；', gap_reason, %s::text)`. Matching placeholder counts cannot catch this error; validate these statements with real PostgreSQL `EXPLAIN` (without `ANALYZE`) and actual null parameter shapes before claiming runtime acceptance.

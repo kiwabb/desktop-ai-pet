@@ -249,7 +249,7 @@ class RuntimeStore:
     async def mark_trace_gap(self, run, reason):
         async with self._trace_connection() as conn:
             await conn.execute(
-                "UPDATE run_trace_states SET integrity='incomplete',gap_reason=left(concat_ws('；',gap_reason,%s),2000),updated_at=now() WHERE run_id=%s",
+                "UPDATE run_trace_states SET integrity='incomplete',gap_reason=left(concat_ws('；',gap_reason,%s::text),2000),updated_at=now() WHERE run_id=%s",
                 (reason, run['id']),
             )
 
@@ -262,7 +262,7 @@ class RuntimeStore:
                 "OR EXISTS(SELECT 1 FROM model_call_traces c WHERE c.run_id=s.run_id AND c.ended_at IS NULL) "
                 "OR EXISTS(SELECT 1 FROM agent_tool_calls t WHERE t.run_id=s.run_id AND NOT EXISTS(SELECT 1 FROM tool_trace_links l WHERE l.tool_call_id=t.id)) "
                 "THEN 'incomplete' ELSE 'complete' END,"
-                "gap_reason=left(nullif(concat_ws('；',s.gap_reason,%s),''),2000),updated_at=now() "
+                "gap_reason=left(nullif(concat_ws('；',s.gap_reason,%s::text),''),2000),updated_at=now() "
                 "WHERE s.run_id=%s AND EXISTS(SELECT 1 FROM agent_runs r WHERE r.id=s.run_id AND r.status NOT IN ('queued','running'))",
                 (expected_steps, gap_reason, expected_steps, gap_reason, run['id']),
             )

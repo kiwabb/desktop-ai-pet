@@ -21,6 +21,6 @@
   "children": [],
   "parent": null,
   "relatedFiles": [],
-  "notes": "代码修复与独立复核完成；104 项服务端、9 项前端隔离测试及管理端构建通过。真实迁移、服务重启、首次管理员开通与模型/UI 验收待用户授权，任务保留 in_progress。",
+  "notes": "用户已授权并完成真实上线：005-007已应用，管理员和服务已开通。真实SSE测试、配置发布回滚、todo.list运行与完整追踪通过。实际PostgreSQL发现concat_ws类型问题已修复并重启验证。登录后浏览器交互仍待验收，保留in_progress。",
   "meta": {}
 }

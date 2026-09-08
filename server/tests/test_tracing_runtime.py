@@ -203,6 +203,28 @@ class RedactionTests(unittest.TestCase):
 
 
 class TraceStoreTests(unittest.IsolatedAsyncioTestCase):
+    async def test_gap_text_parameters_are_typed_even_when_reason_is_null(self):
+        # PostgreSQL concat_ws accepts variadic "any": unlike assignment fields,
+        # it cannot infer the type of an untyped psycopg string/None parameter.
+        from contextlib import asynccontextmanager
+        from app.runtime_store import RuntimeStore
+        store = RuntimeStore(SimpleNamespace())
+        conn = SimpleNamespace(execute=AsyncMock())
+        @asynccontextmanager
+        async def connection():
+            yield conn
+        store._trace_connection = connection
+        await store.mark_trace_gap({'id': 'run'}, '写入失败')
+        await store.finalize_run_trace({'id': 'run'}, 1)
+        await store.finalize_run_trace({'id': 'run'}, 1, gap_reason='队列已满')
+        variadic = [call for call in conn.execute.await_args_list if 'concat_ws' in call.args[0]]
+        self.assertEqual(len(variadic), 3)
+        for call in variadic:
+            sql, args = call.args
+            self.assertRegex(sql, r"concat_ws\('；',(?:s\.)?gap_reason,%s::text\)")
+            self.assertEqual(sql.count('%s'), len(args))
+        self.assertIsNone(variadic[1].args[1][3])
+
     async def test_retention_preserves_expiry_and_uses_one_terminal_metadata_batch(self):
         # SQL/adapter contract, not a live retention or PostgreSQL test.
         from contextlib import asynccontextmanager
