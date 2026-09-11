@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 27
-- **Last Active**: 2026-09-08
+- **Total Sessions**: 28
+- **Last Active**: 2026-09-11
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~847 | Active |
+| `journal-1.md` | ~870 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 28 | 2026-09-11 | 待办能力插件化（DeepSeek Harness 式插件 seam） | `fb4fefb`, `53d2b92` | `feat/todo-as-plugin` |
 | 27 | 2026-09-08 | 后台已启动，真实模型与追踪验收通过 | `a4831d5` | `codex/pet-interaction-motion` |
 | 26 | 2026-09-08 | 后台与链路追踪修复，真实验收待授权 | `c140251` | `codex/pet-interaction-motion` |
 | 25 | 2026-09-08 | Server admin control plane implementation | `17649bc` | `codex/pet-interaction-motion` |

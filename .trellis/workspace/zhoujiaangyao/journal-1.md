@@ -845,3 +845,26 @@ Implemented the server admin control plane and independent React/Vite admin work
 ### Next Steps
 
 - 用户可访问18181后台；继续登录后的浏览器交互验收
+
+
+## Session 28: 待办能力插件化（DeepSeek Harness 式插件 seam）
+<!-- trellis-session: v=2 fp=3b0bcd90c5ebf63f -->
+
+**Date**: 2026-09-11
+**Task**: 待办能力插件化（DeepSeek Harness 式插件 seam）
+**Branch**: `feat/todo-as-plugin`
+
+### Summary
+
+参考 DeepSeek Harness 一切皆插件思想完成架构演进：plugins/todo/plugin.json 成为双端单一事实源；服务端 plugin_runtime.py（Plugin 协议 + PluginRegistry 执行骨架）与 Rust local_agent/plugin_runtime.rs（ToolPlugin trait）对称落地，todo 迁移为首个范例插件，核心循环零 todo 符号；前端 tool-presentation 注册表 + affects 订阅派发；文档新增 D13 与插件开发指南。验证：pytest 123 / cargo 55 / vitest 6 / pnpm build 全绿，服务端模式真实端到端待办闭环通过；遗留人工项：单机模式真实聊天闭环与桌面 UI 目视验收。另批量提交 09-08 任务组在飞工作（宠物交互动效 + 待办 UX 升级）并归档 4 个任务。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `fb4fefb` | feat: refactor todo capability into a plugin seam |
+| `53d2b92` | feat: pet interaction motion polish and todo UX upgrades |
+
+### Status
+
+[OK] **Completed**
