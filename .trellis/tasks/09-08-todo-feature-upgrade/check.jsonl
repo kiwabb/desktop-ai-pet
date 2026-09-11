@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/todo-reminders.md", "reason": "待办规则核对"}
+{"file": ".trellis/spec/backend/server-agent.md", "reason": "服务端契约核对"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端质量规范"}
+{"file": ".trellis/spec/desktop/dual-mode-llm.md", "reason": "双模式一致性核对"}
