@@ -33,12 +33,19 @@ export function toolStatusText(status: ToolCall['status']) {
   return { running: '执行中', completed: '已完成', failed: '失败', needs_reconciliation: '待核实' }[status]
 }
 
+/** Unregistered tools never surface a bare English tool name to the user:
+ * the degrade branch frames it as a generic 工具 while keeping the raw name
+ * for identification. */
+export function toolFallbackName(name: string): string {
+  return name.trim() ? `工具：${name}` : '工具'
+}
+
 /** Presentation lookup through the registry; an unregistered tool degrades to
  * the generic shape instead of throwing (AC5). */
 export function presentTool(tool: ToolCall): ToolPresentation {
   const plugin = plugins.find(candidate => candidate.toolNames.includes(tool.name))
   if (plugin) return plugin.present(tool)
-  return { name: tool.name, status: toolStatusText(tool.status), text: '' }
+  return { name: toolFallbackName(tool.name), status: toolStatusText(tool.status), text: '' }
 }
 
 /** Fingerprint of the confirmed effects feeding one refresh group, dispatched

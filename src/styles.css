@@ -19,6 +19,17 @@
   --muted-soft: #796959;
   --rule-strong: rgba(155, 120, 94, 0.22);
   --focus-accent: #a45831;
+  /* Settings colorize (09-11, recorded in DESIGN.md): capsule input language
+   * (composer 准绳) + primary gradient bright stop + success status family. */
+  --input-bg: #fffdf9;
+  --input-rule: rgba(172, 144, 122, 0.45);
+  --input-focus: rgba(165, 106, 72, 0.65);
+  --input-focus-ring: rgba(165, 106, 72, 0.1);
+  --primary-hi: #bd7145;
+  --success: #76996c;
+  --success-ink: #526c44;
+  --success-bg: #f2f6e9;
+  --success-rule: #d8e1c6;
   /* Type ladder (typeset, 09-11): role sizes; weights stay on the
    * 400/500/600/700/800 ladder recorded in DESIGN.md. */
   --text-caption: 11px;

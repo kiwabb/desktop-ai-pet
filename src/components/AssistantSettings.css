@@ -1,76 +1,84 @@
 /* Settings content only: the shared frame continues to own its header,
- * perimeter, footprints and platform. */
+ * perimeter, footprints and platform. All colors/sizes come from the
+ * styles.css :root / ChatBubbleFrame tokens recorded in DESIGN.md. */
 .chat-panel.is-expanded .message-list.is-settings:has(.assistant-settings) { padding: 16px; }
-.assistant-settings { container-type: inline-size; color: var(--pet-ink); font-size: 13px; line-height: 1.55; }
+.assistant-settings { container-type: inline-size; color: var(--pet-ink); font-size: var(--text-body-sm); line-height: 1.55; }
 .assistant-settings * { box-sizing: border-box; }
 .assistant-settings-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
-.assistant-settings .assistant-settings-card { min-width: 0; margin: 0; border: 1px solid var(--pet-rule); border-radius: 17px; background: linear-gradient(130deg, #fff, #fffdfb); box-shadow: 0 4px 12px rgba(115,72,40,.035), inset 0 1px 0 #fff; }
+/* Cards speak the surface-lift language: 细暖描边 + 低位柔影 + 内高光。 */
+.assistant-settings .assistant-settings-card { min-width: 0; margin: 0; border: 1px solid var(--pet-rule); border-radius: 17px; background: linear-gradient(130deg, #fff, var(--pet-surface)); box-shadow: 0 4px 14px rgba(92, 61, 41, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8); }
 .assistant-settings h2, .assistant-settings h3, .assistant-settings p { margin: 0; }
-.assistant-settings h2 { display: flex; align-items: center; gap: 8px; color: #6c3f24; font-size: 15px; font-weight: 600; }
-.assistant-settings h2 svg, .assistant-settings h3 svg, .assistant-settings label svg { width: 16px; height: 16px; flex: none; color: #af7b48; stroke-width: 1.8; }
+.assistant-settings h2 { display: flex; align-items: center; gap: 8px; color: var(--pet-ink); font-size: var(--text-body); font-weight: 700; }
+.assistant-settings h2 svg, .assistant-settings h3 svg, .assistant-settings label svg { width: 16px; height: 16px; flex: none; color: #c07a4e; stroke-width: 1.8; }
 .assistant-settings .assistant-connection-card { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
-.assistant-settings-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid #ead9c6; border-radius: 12px; background: #faf1e4; }
-.assistant-settings-mode button { height: 36px; padding: 0 10px; color: #79624d; border: 0; border-radius: 9px; background: transparent; font-size: 13px; font-weight: 600; }
-.assistant-settings-mode button.is-active { color: #6c3f24; background: linear-gradient(#fff, #fff8ee); box-shadow: 0 1px 3px rgba(128,70,34,.12); }
+.assistant-settings-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--pet-rule); border-radius: 12px; background: #faf2e8; }
+.assistant-settings-mode button { height: 36px; padding: 0 10px; color: var(--muted-soft); border: 0; border-radius: 10px; background: transparent; font-size: var(--text-body-sm); font-weight: 600; }
+.assistant-settings-mode button.is-active { color: var(--pet-ink); background: var(--pet-surface); box-shadow: 0 1px 3px rgba(128, 70, 34, 0.12); }
 .assistant-settings-models { position: relative; }
-.assistant-settings-models input { padding-right: 42px; }
-.assistant-settings-models>button { position: absolute; top: 1px; right: 1px; display: grid; place-items: center; height: 44px; width: 42px; padding: 0; color: #937a65; background: transparent; border: 0; border-radius: 9px; }
+.assistant-settings-models input { padding-right: 46px; }
+/* In-capsule icon buttons follow the composer-tool language: quiet,
+ * transparent, muted — the capsule itself carries the border. */
+.assistant-settings-models>button { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; height: 34px; width: 34px; padding: 0; color: var(--muted-soft); background: transparent; border: 0; border-radius: 999px; }
+.assistant-settings-models>button:hover:not(:disabled) { color: var(--focus-accent); }
 .assistant-settings-models>button svg { width: 17px; height: 17px; }
 .assistant-settings-models>button:disabled { opacity: .6; cursor: wait; }
 .assistant-settings-intro { display: flex; align-items: center; gap: 12px; }
-.assistant-settings-intro h2 { font-size: 20px; letter-spacing: -.025em; }
-.assistant-settings-intro p { margin-top: 6px; color: #796959; font-size: 12px; }
-.assistant-settings-shield { display: grid; place-items: center; width: 47px; height: 52px; flex: none; color: #a37859; border: 1px solid #ead9ca; border-radius: 15px; background: linear-gradient(135deg, #f8f0e9, #f3e8e0); box-shadow: inset 0 1px 0 #fffaf6, 0 3px 7px rgba(150,108,74,.06); }
+.assistant-settings-intro h2 { font-size: 16px; letter-spacing: -.025em; }
+.assistant-settings-intro p { margin-top: 6px; color: var(--muted-soft); font-size: var(--text-label); }
+.assistant-settings-shield { display: grid; place-items: center; width: 47px; height: 52px; flex: none; color: #c07a4e; border: 1px solid var(--pet-rule); border-radius: 16px; background: linear-gradient(135deg, #f7ecdf, #f3e3d3); box-shadow: inset 0 1px 0 #fff, 0 3px 7px rgba(92, 61, 41, 0.06); }
 .assistant-settings-shield svg { width: 28px; height: 28px; stroke-width: 1.7; }
 .assistant-settings-field { display: grid; gap: 8px; }
-.assistant-settings label { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #594032; font-weight: 600; }
-.assistant-settings input { display: block; width: 100%; min-width: 0; height: 46px; padding: 0 12px; border: 1px solid #e9d9c9; border-radius: 10px; outline: none; background: linear-gradient(#fffefa, #fffaf3); color: #493b31; font-size: 14px; box-shadow: inset 0 1px 2px rgba(133,91,48,.035); }
-.assistant-settings input::placeholder { color: #796959; opacity: 1; }
-.assistant-settings input:focus { border-color: #bc895e; box-shadow: 0 0 0 3px rgba(188,137,94,.12); }
+.assistant-settings label { display: flex; align-items: center; gap: 7px; font-size: var(--text-body-sm); color: var(--pet-ink); font-weight: 600; }
+/* Inputs use the composer capsule language: #fffdf9 底 + 统一描边 + 聚焦环。 */
+.assistant-settings input { display: block; width: 100%; min-width: 0; height: 46px; padding: 0 16px; border: 1px solid var(--input-rule); border-radius: 999px; outline: none; background: var(--input-bg); color: var(--pet-ink); font-size: var(--text-body); transition: border-color 160ms ease-out, box-shadow 160ms ease-out; }
+.assistant-settings input::placeholder { color: var(--muted-soft); opacity: 1; }
+.assistant-settings input:focus { border-color: var(--input-focus); box-shadow: 0 0 0 3px var(--input-focus-ring); }
 .assistant-settings-secret { position: relative; }
-.assistant-settings-secret input { padding-right: 42px; }
-.assistant-settings-secret button { position: absolute; top: 1px; right: 1px; display: grid; place-items: center; height: 44px; width: 42px; padding: 0; color: #937a65; background: transparent; border: 0; border-radius: 9px; }
+.assistant-settings-secret input { padding-right: 46px; }
+.assistant-settings-secret button { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; height: 34px; width: 34px; padding: 0; color: var(--muted-soft); background: transparent; border: 0; border-radius: 999px; }
+.assistant-settings-secret button:hover { color: var(--focus-accent); }
 .assistant-settings-secret button svg { width: 17px; height: 17px; }
-.assistant-settings-help { color: #796959; font-size: 12px; }
+.assistant-settings-help { color: var(--muted-soft); font-size: var(--text-label); }
 .assistant-settings-help summary { display: flex; align-items: center; gap: 5px; width: fit-content; cursor: pointer; list-style: none; }
 .assistant-settings-help summary::-webkit-details-marker { display: none; }
 .assistant-settings-help svg { width: 13px; height: 13px; }
-.assistant-settings-help p { margin-top: 7px; padding: 8px 10px; background: #faf0e3; border-radius: 8px; overflow-wrap: anywhere; }
-.assistant-settings .assistant-settings-field-note { color: #796959; font-size: 12px; }
-.assistant-settings-model { padding-top: 12px; border-top: 1px solid #efe2d4; }
-.assistant-settings-model h3 { display: flex; gap: 7px; align-items: center; font-size: 12px; font-weight: 600; }
-.assistant-settings-model-chip { display: inline-block; max-width: 100%; margin-top: 10px; padding: 6px 13px; color: #865122; background: #fff1d7; border: 1px solid #edd9b3; border-radius: 9px; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.assistant-settings-model p { margin-top: 6px; color: #796959; font-size: 12px; }
-.assistant-settings-save { display: grid; justify-items: center; gap: 3px; width: 100%; min-height: 61px; margin-top: auto; padding: 9px 12px; color: #fffdf7; border: 1px solid #8e4f2b; border-radius: 12px; background: linear-gradient(130deg, #a35d35, #914a2a); box-shadow: inset 0 1px 0 rgba(255,235,201,.27), 0 4px 8px rgba(128,70,34,.13); }
+.assistant-settings-help p { margin-top: 7px; padding: 8px 10px; background: #faf2e8; border-radius: 10px; overflow-wrap: anywhere; }
+.assistant-settings .assistant-settings-field-note { color: var(--muted-soft); font-size: var(--text-label); }
+.assistant-settings-model { padding-top: 12px; border-top: 1px solid var(--pet-rule); }
+.assistant-settings-model h3 { display: flex; gap: 7px; align-items: center; font-size: var(--text-label); font-weight: 600; }
+.assistant-settings-model-chip { display: inline-block; max-width: 100%; margin-top: 10px; padding: 6px 13px; color: var(--focus-accent); background: #fbe8d8; border: 1px solid #ebc3a7; border-radius: 10px; font-size: var(--text-body-sm); font-weight: 600; overflow-wrap: anywhere; }
+.assistant-settings-model p { margin-top: 6px; color: var(--muted-soft); font-size: var(--text-label); }
+/* The one primary action: 焦糖橘渐变（DESIGN.md Buttons），同发送键语言。 */
+.assistant-settings-save { display: grid; justify-items: center; gap: 3px; width: 100%; min-height: 61px; margin-top: auto; padding: 9px 12px; color: #fff; border: 1px solid #7d4423; border-radius: 12px; background: linear-gradient(145deg, var(--primary-hi), var(--focus-accent)); box-shadow: 0 3px 7px rgba(174, 91, 42, 0.14), inset 0 1px 0 rgba(255, 231, 208, 0.4); }
 .assistant-settings-save>span { display: flex; align-items: center; gap: 9px; }
-.assistant-settings-save strong { font-size: 15px; font-weight: 600; }
+.assistant-settings-save strong { font-size: var(--text-body); font-weight: 700; }
 .assistant-settings-save svg { width: 17px; height: 17px; }
-.assistant-settings-save small { font-size: 12px; color: #fffdf7; }
+.assistant-settings-save small { font-size: var(--text-label); color: #fbe8d8; }
 .assistant-settings-save:hover:not(:disabled) { filter: brightness(1.06); }
 .assistant-settings-save:disabled { opacity: .65; cursor: wait; }
-.assistant-settings button:focus-visible, .assistant-settings summary:focus-visible { outline: 2px solid #b97840; outline-offset: 3px; }
+.assistant-settings button:focus-visible, .assistant-settings summary:focus-visible { outline: 2px solid var(--focus-accent); outline-offset: 3px; }
 .assistant-settings-aside { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .assistant-settings-aside .assistant-settings-card { padding: 14px 12px; }
-.assistant-settings-status-dot { width: 6px; height: 6px; margin-left: auto; border-radius: 50%; background: #baa18a; }
-.assistant-settings-status-dot.is-connected { background: #76996c; }
-.assistant-settings-status { display: flex; align-items: center; gap: 9px; padding: 10px; margin-top: 12px; border: 1px solid #eadbc6; border-radius: 10px; background: #fbf3e5; color: #80623f; }
-.assistant-settings-status.is-connected { color: #526c44; background: #f2f6e9; border-color: #d8e1c6; }
+.assistant-settings-status-dot { width: 6px; height: 6px; margin-left: auto; border-radius: 50%; background: #cbb7a4; }
+.assistant-settings-status-dot.is-connected { background: var(--success); }
+.assistant-settings-status { display: flex; align-items: center; gap: 9px; padding: 10px; margin-top: 12px; border: 1px solid var(--pet-rule); border-radius: 10px; background: #fcf7ef; color: var(--muted-soft); }
+.assistant-settings-status.is-connected { color: var(--success-ink); background: var(--success-bg); border-color: var(--success-rule); }
 .assistant-settings-status>svg { width: 21px; height: 21px; flex: none; }
-.assistant-settings-status strong { display: block; font-size: 12px; line-height: 1.5; font-weight: 600; }
-.assistant-settings-status small { display: block; margin-top: 3px; font-size: 12px; }
-.assistant-settings dl { display: grid; gap: 6px; margin: 10px 0 0; padding: 6px 8px; border: 1px solid #f0e6d9; border-radius: 9px; background: #fff9ef; font-size: 12px; }
+.assistant-settings-status strong { display: block; font-size: var(--text-label); line-height: 1.5; font-weight: 600; }
+.assistant-settings-status small { display: block; margin-top: 3px; font-size: var(--text-label); }
+.assistant-settings dl { display: grid; gap: 6px; margin: 10px 0 0; padding: 6px 8px; border: 1px solid var(--pet-rule); border-radius: 10px; background: #fdfaf5; font-size: var(--text-label); }
 .assistant-settings dl>div { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 7px; }
-.assistant-settings dt { color: #796959; }
-.assistant-settings dd { margin: 0; text-align: right; overflow-wrap: anywhere; color: #76563c; }
-.assistant-settings ol, .assistant-settings ul { display: grid; gap: 9px; margin: 13px 0 0; padding: 0; list-style: none; font-size: 12px; }
+.assistant-settings dt { color: var(--muted-soft); }
+.assistant-settings dd { margin: 0; text-align: right; overflow-wrap: anywhere; color: #7c6a5e; }
+.assistant-settings ol, .assistant-settings ul { display: grid; gap: 9px; margin: 13px 0 0; padding: 0; list-style: none; font-size: var(--text-label); }
 .assistant-settings li { display: flex; align-items: flex-start; gap: 7px; }
-.assistant-settings ol li>span { display: grid; place-items: center; width: 17px; height: 17px; flex: none; margin-top: 1px; color: #865122; border: 1px solid #f0d9b3; border-radius: 50%; background: #fff1d9; font-size: 12px; }
-.assistant-settings .assistant-security-card { flex: 1; background: linear-gradient(130deg, #fffdf6, #fff8e8); }
-.assistant-settings ul svg { width: 15px; height: 15px; flex: none; margin-top: 2px; color: #9a8151; }
-.assistant-settings .assistant-settings-error { margin-top: 8px; padding: 9px; color: #9a4036; background: #fff0ea; border: 1px solid #edc9bf; border-radius: 8px; font-size: 12px; overflow-wrap: anywhere; }
-.assistant-settings-footer { display: flex; align-items: center; min-height: 35px; margin-top: 12px; line-height: 1.6; padding: 0 24px; color: #796959; font-size: 12px; }
+.assistant-settings ol li>span { display: grid; place-items: center; width: 17px; height: 17px; flex: none; margin-top: 1px; color: var(--focus-accent); border: 1px solid #ebc3a7; border-radius: 50%; background: #fbe8d8; font-size: var(--text-label); }
+.assistant-settings .assistant-security-card { flex: 1; background: linear-gradient(130deg, var(--pet-surface), #f7ecdf); }
+.assistant-settings ul svg { width: 15px; height: 15px; flex: none; margin-top: 2px; color: #998677; }
+.assistant-settings .assistant-settings-error { margin-top: 8px; padding: 9px; color: var(--danger); background: #fff1f0; border: 1px solid #eda99f; border-radius: 10px; font-size: var(--text-label); overflow-wrap: anywhere; }
+.assistant-settings-footer { display: flex; align-items: center; min-height: 35px; margin-top: 12px; line-height: 1.6; padding: 0 24px; color: var(--muted-soft); font-size: var(--text-label); }
 .assistant-settings-footer>span { display: flex; align-items: center; gap: 7px; overflow-wrap: anywhere; }
-.assistant-settings-footer svg { width: 12px; height: 12px; color: #bc8067; }
+.assistant-settings-footer svg { width: 12px; height: 12px; color: #c07a4e; }
 @container (max-width: 570px) {
   .assistant-settings-grid { grid-template-columns: minmax(0, 1fr); }
   .assistant-settings .assistant-connection-card { gap: 18px; }

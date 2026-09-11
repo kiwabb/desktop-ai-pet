@@ -14,6 +14,15 @@ colors:
   border-peach: "#fed7aa"
   danger: "#b42318"
   info-blue: "#0f7d91"
+  input-bg: "#fffdf9"
+  input-rule: "rgba(172, 144, 122, 0.45)"
+  input-focus: "rgba(165, 106, 72, 0.65)"
+  input-focus-ring: "rgba(165, 106, 72, 0.1)"
+  primary-hi: "#bd7145"
+  success: "#76996c"
+  success-ink: "#526c44"
+  success-bg: "#f2f6e9"
+  success-rule: "#d8e1c6"
 typography:
   display:
     fontFamily: "Nunito, ui-rounded, 'SF Pro Rounded', -apple-system, sans-serif"
@@ -174,7 +183,7 @@ components:
 
 ### Buttons
 - **Shape:** 发送键 16px 圆角方形（展开 48px）/ 紧凑态为 999px 胶囊内嵌。
-- **Primary:** 焦糖橘渐变（linear-gradient(145deg, #bd7145, #a45831)）白字；紧凑紧凑胶囊态用蜜橘渐变。
+- **Primary:** 焦糖橘渐变（linear-gradient(145deg, --primary-hi #bd7145, #a45831)）白字；紧凑紧凑胶囊态用蜜橘渐变。设置页主按钮（保存并连接）与发送键共用此语言。
 - **Hover / Focus:** hover 加深一档；focus-visible 2px solid #a45831 外描边。active scale(0.96–0.97)。
 
 ### Icon Buttons
@@ -185,9 +194,13 @@ components:
 - **Style:** 快捷提问 = 单一暖白胶囊（无逐个着色），棕字 600，左对齐 icon+text。
 - **提醒 chip:** 奶油底虚线（空）/ 实线（已设），逾期转 danger 红。
 
+### Semantic
+- **成功绿（Success Green）** (#76996c, --success): 连接状态点等成功指示；配套文字 --success-ink (#526c44)、底 --success-bg (#f2f6e9)、描边 --success-rule (#d8e1c6)。仅用于状态语义，不作装饰。
+- **主渐变亮端（Primary Hi）** (#bd7145, --primary-hi): 主按钮焦糖橘渐变的亮端（linear-gradient(145deg, --primary-hi, --focus-accent)）。
+
 ### Inputs
-- **Style:** 胶囊语言统一——composer 是准绳：#fffdf9 底、1px rgba(172,144,122,0.45) 描边、999px（行内编辑器 12px）、caret 焦糖橘。
-- **Focus:** 描边转 rgba(165,106,72,0.65) + 3px 同色 10% 外晕。
+- **Style:** 胶囊语言统一——composer 是准绳：--input-bg (#fffdf9) 底、1px --input-rule (rgba(172,144,122,0.45)) 描边、999px（行内编辑器 12px）、caret 焦糖橘。设置页（AssistantSettings）输入框与 composer 共用此语言。
+- **Focus:** 描边转 --input-focus (rgba(165,106,72,0.65)) + 3px --input-focus-ring（同色 10%）外晕。
 
 ### Pin Badge
 - **Style:** 26px（紧凑 22px）蜜桃小徽章，纯状态指示——不是按钮，无 hit area 暗示，role="img"。

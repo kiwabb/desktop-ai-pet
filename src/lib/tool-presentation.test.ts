@@ -28,14 +28,15 @@ describe('tool presentation registry', () => {
 
   it('degrades unknown tools to the generic shape without throwing (AC5)', () => {
     expect(() => presentTool(tool('some_future_tool'))).not.toThrow()
-    expect(presentTool(tool('some_future_tool'))).toEqual({ name: 'some_future_tool', status: '已完成', text: '' })
+    expect(presentTool(tool('some_future_tool'))).toEqual({ name: '工具：some_future_tool', status: '已完成', text: '' })
     expect(presentTool(tool('some_future_tool', { status: 'running' })).status).toBe('执行中')
+    expect(presentTool(tool('  ')).name).toBe('工具')
   })
 
   it('degrades gracefully when a plugin registration is removed (AC5)', () => {
     resetToolPresentations()
     expect(() => presentTool(tool('todo_create'))).not.toThrow()
-    expect(presentTool(tool('todo_create'))).toEqual({ name: 'todo_create', status: '已完成', text: '' })
+    expect(presentTool(tool('todo_create'))).toEqual({ name: '工具：todo_create', status: '已完成', text: '' })
     expect(toolEffectsFingerprint([tool('todo_create')], 'todo-list')).toBe('[]')
   })
 
