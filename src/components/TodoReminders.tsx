@@ -38,7 +38,9 @@ function ReminderItem({ item, generation }: { item: Todo; generation: number }) 
       // Native confirmation updates the projection and removes the notice.
     }
     catch (cause) {
-      if (mountedRef.current) setError(cause instanceof Error ? cause.message : String(cause))
+      // Raw failure stays in the console; the card shows a readable message.
+      console.error('[TodoReminders] 提醒处理失败', cause)
+      if (mountedRef.current) setError('保存失败，请重试。')
     }
     finally {
       if (mountedRef.current) {
@@ -50,7 +52,7 @@ function ReminderItem({ item, generation }: { item: Todo; generation: number }) 
 
   const timestamp = item.remind_at ? new Date(item.remind_at) : null
   const time = timestamp && !Number.isNaN(timestamp.getTime())
-    ? new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short' }).format(timestamp)
+    ? new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(timestamp)
     : '提醒时间不可用'
 
   return <article className="todo-reminder-card">

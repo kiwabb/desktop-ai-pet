@@ -7,7 +7,8 @@
 .chat-panel .message-markdown ul, .chat-panel .message-markdown ol { margin: 8px 0 12px; padding-left: 22px; }
 .chat-panel .message-markdown li { margin: 4px 0; }
 .chat-panel .message-markdown li > p { margin-bottom: 4px; }
-.chat-panel .message-markdown blockquote { margin: 10px 0; padding: 4px 12px; border-left: 3px solid #cba783; background: rgba(151,112,76,.07); }
+.chat-panel .message-markdown blockquote { margin: 10px 0; padding: 2px 0 2px 12px; border-left: 1px solid #d9c4ad; color: #6d5c4e; }
+.chat-panel .message-user .message-markdown blockquote { color: inherit; }
 .chat-panel .message-markdown a { color: #8b4c2d; text-decoration: underline; text-underline-offset: 3px; }
 .chat-panel .message-user .message-markdown a { color: inherit; }
 .chat-panel .message-markdown code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>诊断预览（临时）</title>
+    <script>
+      // Minimal Tauri v2 invoke mock so embedded TodoList renders sample data.
+      const SAMPLE_TODOS = [
+        { id: 't1', title: '整理周五评审的演示文稿', status: 'pending', created_at: '2026-09-10T09:20:00Z', remind_at: null },
+        { id: 't2', title: '给妈妈回电话', status: 'pending', created_at: '2026-09-10T12:00:00Z', remind_at: '2026-09-11T10:30:00Z' },
+        { id: 't3', title: '提交季度报销单', status: 'pending', created_at: '2026-09-09T08:00:00Z', remind_at: '2026-09-10T18:00:00Z' },
+        { id: 't4', title: '买猫粮（鸡肉味两袋）', status: 'completed', created_at: '2026-09-08T15:00:00Z', remind_at: null },
+        { id: 't5', title: '还图书馆的书', status: 'completed', created_at: '2026-09-07T11:00:00Z', remind_at: null }
+      ]
+      window.__TAURI_INTERNALS__ = {
+        invoke: async (cmd) => {
+          if (cmd === 'agent_list_todos') return { generation: 1, items: SAMPLE_TODOS }
+          throw new Error(`diagnosis mock: unhandled ${cmd}`)
+        },
+        transformCallback: () => 0,
+        unregisterCallback: () => {},
+        callbacks: new Map(),
+        ipc: () => {},
+        metadata: { currentWindow: { label: 'diagnosis' }, currentWebview: { label: 'diagnosis', windowLabel: 'diagnosis' } }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/qa/diagnosis-preview.tsx"></script>
+  </body>
+</html>

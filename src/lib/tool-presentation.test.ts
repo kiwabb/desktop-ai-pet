@@ -70,7 +70,7 @@ describe('tool presentation registry', () => {
     }
     registerToolPresentation(dummy)
     expect(presentTool(tool('dummy_ping')).name).toBe('哑工具')
-    expect(presentTool(tool('todo_list')).name).toBe('查询待办')
+    expect(presentTool(tool('todo_list')).name).toBe('待办列表')
     expect(toolEffectsFingerprint([], 'dummy-panel')).toBe('[[]]')
   })
 })

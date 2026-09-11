@@ -98,7 +98,7 @@
 .chat-panel .chat-header[data-tauri-drag-region] { cursor: grab; }
 
 .chat-panel .assistant-identity { min-width: 0; pointer-events: none; }
-.chat-panel .assistant-identity h1 { margin: 0; color: #2f2925; font-size: 16px; font-weight: 750; line-height: 1.2; letter-spacing: -0.01em; }
+.chat-panel .assistant-identity h1 { margin: 0; color: #2f2925; font-size: 16px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
 .chat-panel .assistant-identity p { max-width: 260px; margin: 3px 0 0; overflow: hidden; color: var(--pet-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .chat-panel .header-actions { display: flex; align-items: center; gap: 0; }
 
@@ -248,7 +248,7 @@
 .chat-panel.is-attached.is-compact .assistant-identity p {
   max-width: none;
   margin-top: 5px;
-  color: #a59489;
+  color: var(--pet-muted);
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
@@ -257,19 +257,24 @@
 /* Header icon glyphs center at panel-relative y≈38 (master 231-264 → CSS
  * 98.5-112.6); they sit on the title line, not down at the subtitle.
  * Reference glyph centres are 37px apart (master 895/981/1070), so the compact
- * hit areas are 33px + 4px gap instead of the roomier 44px used elsewhere. */
+ * hit areas are 33px + 4px gap instead of the roomier 44px used elsewhere.
+ * The button language matches the expanded header: framed warm-white tile. */
 .chat-panel.is-attached.is-compact .header-actions { margin-top: 20px; gap: 4px; }
-.chat-panel.is-attached.is-compact .header-actions .pin-indicator { width: 33px; height: 33px; }
+.chat-panel.is-attached.is-compact .header-actions .pin-indicator { width: 22px; height: 22px; }
 .chat-panel.is-attached.is-compact .icon-button {
   min-width: 33px;
   min-height: 33px;
   width: 33px;
   height: 33px;
   color: #8e7b70;
+  background: linear-gradient(145deg, #fffefa, #fcf7ef);
+  border: 1px solid var(--pet-rule);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 5px rgba(126, 79, 40, 0.04);
   touch-action: manipulation;
 }
 .chat-panel.is-attached.is-compact .icon-button:hover,
-.chat-panel.is-attached.is-compact .icon-button.is-active { color: #b55d2c; background: #fff0e5; }
+.chat-panel.is-attached.is-compact .icon-button.is-active { color: #a3653f; border-color: rgba(203, 168, 136, 0.45); background: linear-gradient(145deg, #fffaf1, #f9ecdc); }
 .chat-panel.is-attached.is-compact .icon-button svg { width: 17px; height: 17px; }
 
 .chat-panel .compact-paw-trail {
@@ -351,7 +356,17 @@
 .chat-panel.is-attached.is-expanded .header-actions .icon-button {
   min-width: 44px;
   min-height: 44px;
+  background: linear-gradient(145deg, #fffefa, #fcf7ef);
+  border: 1px solid var(--pet-rule);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 5px rgba(126, 79, 40, 0.04);
   touch-action: manipulation;
+}
+.chat-panel.is-attached.is-expanded .header-actions .icon-button:hover,
+.chat-panel.is-attached.is-expanded .header-actions .icon-button.is-active {
+  color: #a3653f;
+  border-color: rgba(203, 168, 136, 0.45);
+  background: linear-gradient(145deg, #fffaf1, #f9ecdc);
 }
 .chat-panel.is-attached.is-expanded .header-actions .icon-button svg { width: 19px; height: 19px; }
 .chat-panel.is-attached.is-expanded .assistant-identity h1 { color: #4e4038; font-size: 18px; }
@@ -377,15 +392,14 @@
 /* --- Entrance motion ---------------------------------------------------------- */
 
 @keyframes component-chat-bloom {
-  0% { opacity: 0; transform: translate(44px, 18px) scale(0.82); }
-  68% { opacity: 1; transform: translate(-3px, -1px) scale(1.012); }
-  100% { opacity: 1; transform: translate(0, 0) scale(1); }
+  from { opacity: 0; transform: translate(24px, 10px) scale(0.92); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
 }
 
 @keyframes pet-chat-expand { from { transform: translate(22px, 12px) scale(0.94); } to { transform: translate(0, 0) scale(1); } }
 
 .chat-panel.is-attached.is-compact.is-entering {
-  animation: component-chat-bloom 300ms cubic-bezier(0.22, 0.9, 0.28, 1.08) both;
+  animation: component-chat-bloom 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .chat-panel.is-attached.is-expanded.is-entering {
@@ -451,7 +465,7 @@
 }
 .chat-panel.is-attached.is-integrated.is-compact .assistant-identity h1 {
   font-size: 20px;
-  font-weight: 720;
+  font-weight: 700;
   letter-spacing: -0.035em;
   color: #594032;
 }
@@ -463,8 +477,10 @@
 }
 .chat-panel.is-attached.is-integrated.is-compact .header-actions .icon-button {
   color: #8e7662;
-  border: 1px solid transparent;
+  border: 1px solid var(--pet-rule);
   border-radius: 10px;
+  background: linear-gradient(145deg, #fffefa, #fcf7ef);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 5px rgba(126, 79, 40, 0.04);
 }
 .chat-panel.is-attached.is-integrated.is-compact .header-actions .icon-button svg {
   stroke-width: 1.7;
@@ -472,8 +488,8 @@
 .chat-panel.is-attached.is-integrated.is-compact .header-actions .icon-button:hover,
 .chat-panel.is-attached.is-integrated.is-compact .header-actions .icon-button.is-active {
   color: #a3653f;
-  border-color: rgba(203, 168, 136, 0.28);
-  background: rgba(255, 253, 248, 0.8);
+  border-color: rgba(203, 168, 136, 0.45);
+  background: linear-gradient(145deg, #fffaf1, #f9ecdc);
   box-shadow: inset 0 1px 0 #fff;
 }
 .chat-panel.is-integrated .chat-header {
@@ -483,7 +499,7 @@
 .chat-panel.is-integrated.is-expanded .chat-header {
   background: linear-gradient(120deg, rgba(255,253,250,.94), rgba(255,254,253,.8));
 }
-.chat-panel.is-integrated .assistant-identity h1 { color: var(--pet-ink); font-weight: 720; letter-spacing: -0.025em; }
+.chat-panel.is-integrated .assistant-identity h1 { color: var(--pet-ink); font-weight: 700; letter-spacing: -0.025em; }
 .chat-panel.is-integrated .assistant-identity p { color: var(--pet-muted); }
 .chat-panel.is-integrated .header-actions .icon-button { color: var(--pet-muted); }
 .chat-panel.is-integrated .header-actions .icon-button:hover,

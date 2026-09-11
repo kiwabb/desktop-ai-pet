@@ -9,6 +9,8 @@
 函数组件 + React 19。没有类组件、没有高阶组件、没有 render props。
 组件通过 props 单向接收数据和回调，跨窗口状态用 Tauri 事件同步，不用全局 store。
 
+视觉权威：仓库根的 `PRODUCT.md`（产品事实）与 `DESIGN.md`（视觉系统：tokens、字重阶梯、材质规则）是 UI 工作的上游约束——新增/修改样式优先复用 `styles.css :root` 的 tokens 与 DESIGN.md 的 Named Rules，不要引入体系外的一次性色值/字重（中间字重如 650 禁止，用阶梯档位）。设计类任务走 Impeccable 流程（`.agents/skills/impeccable/`）。
+
 ---
 
 ## Component Structure

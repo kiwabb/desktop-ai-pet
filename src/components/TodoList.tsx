@@ -65,8 +65,12 @@ export function TodoList({ generation, refreshVersion }: { generation: number; r
       }
       setState({ kind: 'ready', items: result.items })
     }).catch((cause: unknown) => {
-      if (active && request === requestRef.current)
-        setState({ kind: 'error', message: cause instanceof Error ? cause.message : String(cause) })
+      if (active && request === requestRef.current) {
+        // The raw failure stays in the console for diagnosis; the UI shows a
+        // user-readable message with its recovery (the refresh hint below).
+        console.error('[TodoList] 待办列表读取失败', cause)
+        setState({ kind: 'error', message: '待办读取失败，可能是助手连接暂时中断。' })
+      }
     }).finally(() => {
       if (active && request === requestRef.current) releaseBusy()
     })

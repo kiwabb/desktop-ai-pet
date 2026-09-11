@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-11T00:00:00+08:00",
+  "title": "Design System: 橘伴 Desktop AI Pet",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "焦糖橘 Caramel Orange", "canonical": "#a45831", "tonalRamp": ["#3a1c0e", "#5c2f18", "#7d4423", "#a45831", "#c07a4e", "#d69d77", "#ebc3a7", "#fbe8d8"] },
+      "send-orange": { "role": "primary", "displayName": "蜜橘 Honey Orange", "canonical": "#e8793b", "tonalRamp": ["#4a1f08", "#74330f", "#9d4a1a", "#c96a2c", "#e8793b", "#f2985f", "#f9b98c", "#fddbbd"] },
+      "ink": { "role": "neutral", "displayName": "墨棕 Ink Brown", "canonical": "#493b31", "tonalRamp": ["#1f1712", "#332921", "#493b31", "#615146", "#7c6a5e", "#998677", "#b7a899", "#d6cbc1"] },
+      "muted-soft": { "role": "neutral", "displayName": "柔灰棕 Soft Muted Brown", "canonical": "#796959", "tonalRamp": ["#2e2620", "#4a3f36", "#796959", "#8f8071", "#a69889", "#bcb1a4", "#d1c9bf", "#e6e1da"] },
+      "surface-cream": { "role": "neutral", "displayName": "奶油面 Cream Surface", "canonical": "#fffdfa", "tonalRamp": ["#f3e3d3", "#f7ecdf", "#faf2e8", "#fcf7ef", "#fdfaf5", "#fffdfa", "#fffefb", "#ffffff"] },
+      "rule": { "role": "neutral", "displayName": "暖分隔线 Warm Rule", "canonical": "#eadfd4", "tonalRamp": ["#8a7563", "#a08b78", "#b6a18e", "#cbb7a4", "#dfcdbb", "#eadfd4", "#f4ece3", "#faf6f0"] },
+      "danger": { "role": "tertiary", "displayName": "Danger Red", "canonical": "#b42318", "tonalRamp": ["#4a0e08", "#701510", "#971d15", "#b42318", "#cf4a3e", "#e07a6d", "#eda99f", "#f8d2cb"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "紧凑面板标题。" },
+      "title": { "displayName": "Title", "purpose": "展开面板标题、空态标题、卡片标题。" },
+      "body": { "displayName": "Body", "purpose": "消息正文与表单输入。" },
+      "label": { "displayName": "Label", "purpose": "作者名、时间戳、工具条、计数。" }
+    },
+    "shadows": [
+      { "name": "surface-lift", "value": "0 4px 14px rgba(92, 61, 41, 0.06), inset 0 1px 0 rgba(255,255,255,0.8)", "purpose": "消息气泡与带框图标按钮的奶油鼓起感。" },
+      { "name": "panel-ambient", "value": "0 18px 44px rgba(99, 62, 38, 0.18)", "purpose": "外壳级环境投影，仅框架使用。" },
+      { "name": "send-lift", "value": "0 3px 7px rgba(174, 91, 42, 0.14), inset 0 1px 0 rgba(255,231,208,0.4)", "purpose": "发送键。" }
+    ],
+    "motion": [
+      { "name": "ease-expo-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "面板入场与状态过渡的标准缓动；禁止回弹。" },
+      { "name": "ease-ui", "value": "cubic-bezier(.2,.75,.25,1)", "purpose": "按钮按压与页内内容位移。" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Send Button",
+      "kind": "button",
+      "refersTo": "send-button",
+      "description": "面板唯一主操作，焦糖橘渐变，hover 加深一档。",
+      "html": "<button class=\"ds-send\" type=\"button\" aria-label=\"发送消息\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/></svg></button>",
+      "css": ".ds-send { display: grid; place-items: center; width: 48px; height: 48px; color: #fff; background: linear-gradient(145deg, #bd7145, #a45831); border: 1px solid rgba(192, 108, 60, 0.22); border-radius: 16px; box-shadow: 0 3px 7px rgba(174, 91, 42, 0.14), inset 0 1px 0 rgba(255, 231, 208, 0.4); transition: transform 160ms ease-out, background 160ms ease-out; } .ds-send:hover { background: linear-gradient(145deg, #b1673c, #96502d); } .ds-send:active { transform: scale(0.96); } .ds-send:focus-visible { outline: 2px solid #a45831; outline-offset: 2px; }"
+    },
+    {
+      "name": "Icon Button",
+      "kind": "button",
+      "refersTo": "icon-button",
+      "description": "带框暖白瓷砖，面板头部唯一图标按钮语言（展开 44px / 紧凑 33px）。",
+      "html": "<button class=\"ds-icon\" type=\"button\" aria-label=\"设置\"><svg viewBox=\"0 0 24 24\" width=\"19\" height=\"19\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2\"/></svg></button>",
+      "css": ".ds-icon { display: grid; place-items: center; width: 44px; height: 44px; color: #796959; background: linear-gradient(145deg, #fffefa, #fcf7ef); border: 1px solid #eadfd4; border-radius: 10px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 5px rgba(126,79,40,0.04); transition: background 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out; } .ds-icon:hover { color: #a3653f; border-color: rgba(203, 168, 136, 0.45); background: linear-gradient(145deg, #fffaf1, #f9ecdc); } .ds-icon:focus-visible { outline: 2px solid #a45831; outline-offset: 2px; }"
+    },
+    {
+      "name": "Quick Prompt Chip",
+      "kind": "chip",
+      "refersTo": "quick-prompt-chip",
+      "description": "快捷提问：单一暖白胶囊，不再逐个着色。",
+      "html": "<button class=\"ds-chip\" type=\"button\">帮我分析</button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; height: 28px; padding: 0 11px; color: #695345; background: linear-gradient(160deg, #fffdf8, #fcf6ee); border: 1px solid rgba(197, 171, 145, 0.36); border-radius: 999px; box-shadow: 0 1px 3px rgba(93, 61, 39, 0.05); font-size: 13px; font-weight: 600; transition: background 160ms ease-out, border-color 160ms ease-out; } .ds-chip:hover { border-color: rgba(181, 133, 92, 0.52); background: linear-gradient(160deg, #fffaf1, #faf0e3); } .ds-chip:focus-visible { outline: 2px solid #a45831; outline-offset: 2px; }"
+    },
+    {
+      "name": "Input Capsule",
+      "kind": "input",
+      "refersTo": "input-capsule",
+      "description": "面板内输入统一为胶囊语言；行内编辑器用 12px 圆角变体。",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"记录一项待办…\" />",
+      "css": ".ds-input { min-height: 40px; padding: 8px 14px; color: #493b31; background: #fffdf9; border: 1px solid rgba(172, 144, 122, 0.45); border-radius: 999px; caret-color: #a45831; font-size: 13px; outline: none; transition: border-color 160ms ease-out, box-shadow 160ms ease-out; } .ds-input::placeholder { color: #796959; } .ds-input:focus { border-color: rgba(165, 106, 72, 0.65); box-shadow: 0 0 0 3px rgba(165, 106, 72, 0.1); }"
+    },
+    {
+      "name": "Assistant Bubble",
+      "kind": "card",
+      "refersTo": "message-bubble-assistant",
+      "description": "助手消息气泡：奶油渐变面 + 暖描边 + 低位柔影，小角指向猫头像。",
+      "html": "<div class=\"ds-bubble\">好的，我看了看你的待办列表，周五之前有三件事。</div>",
+      "css": ".ds-bubble { max-width: 320px; padding: 12px 15px; color: #493b31; background: linear-gradient(165deg, #fffefa, #fdf8f0); border: 1px solid rgba(155, 120, 94, 0.22); border-radius: 18px 18px 18px 6px; box-shadow: 0 4px 14px rgba(92, 61, 41, 0.06), inset 0 1px 0 rgba(255,255,255,0.8); font-size: 14px; line-height: 1.7; }"
+    },
+    {
+      "name": "Pin Badge",
+      "kind": "custom",
+      "refersTo": "pin-badge",
+      "description": "置顶状态徽章：纯指示器，不是按钮。",
+      "html": "<span class=\"ds-pin\" role=\"img\" aria-label=\"桌宠已置顶\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 17v5\"/><path d=\"M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z\"/></svg></span>",
+      "css": ".ds-pin { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; color: #96755a; background: rgba(255, 241, 226, 0.92); border: 1px solid rgba(203, 168, 136, 0.5); border-radius: 999px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "奶油糖壳里的猫（The Cream Shell）",
+    "overview": "一体 SVG 奶油渐变外壳是视觉权威；面板内部延续同一套暖调奶油材质。密度偏松弛，控件安静、圆角柔软、动效指数缓出，唯一允许喧闹的是猫本身。已确认拒绝：彩虹糖果色 chip、回弹缓动、面向用户的技术词汇、裸色 3px 侧边条。",
+    "keyCharacteristics": ["奶油渐变材质从外壳贯穿到内部", "一套控件语言：带框图标按钮 + 胶囊输入 + 单一强调色", "字重阶梯 800/700/600/500/400", "空状态由白猫帧资产出场"],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "强调橘在任何一屏占比 ≤10%；次要操作一律暖白底 + 棕字。", "section": "colors" },
+      { "name": "The Warm Gray Rule", "body": "次级文字从暖棕取色（--muted-soft），禁用中性灰。", "section": "colors" },
+      { "name": "The Weight Ladder Rule", "body": "字重只取 400/500/600/700/800 五档。", "section": "typography" },
+      { "name": "The No-Eyebrow Rule", "body": "标题上方不放 kicker/eyebrow。", "section": "typography" },
+      { "name": "The Declare-Elevation-Once Rule", "body": "细暖描边 + 低位柔影 + 内高光各司其职，不叠出幽灵卡片。", "section": "elevation" }
+    ],
+    "dos": ["次级文字与占位符用 --muted-soft (#796959)", "新增面板内表面延续奶油渐变叙事", "错误文案面向用户，原始错误进 console", "动效用 cubic-bezier(0.16, 1, 0.3, 1) 指数缓出"],
+    "donts": ["不给 chip/卡片逐个上彩虹色", "不用回弹缓动（宠物回复气泡是已记录豁免）", "不把状态指示器做成按钮形态", "不在标题上方加 eyebrow", "不改白猫三帧资产与外壳几何"]
+  }
+}

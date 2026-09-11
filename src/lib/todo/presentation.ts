@@ -42,7 +42,7 @@ function todoToolPresentation(tool: ToolCall) {
   const time = reminderTime(item)
   const cleared = item !== null && 'remind_at' in item && item.remind_at === null
   const hasReminderValue = item !== null && 'remind_at' in item && item.remind_at !== null
-  let name = kind === 'create' ? '记录待办' : kind === 'complete' ? '完成待办' : kind === 'list' ? '查询待办' : kind === 'reminder' ? '调整提醒' : tool.name
+  let name = kind === 'create' ? '记录待办' : kind === 'complete' ? '完成待办' : kind === 'list' ? '待办列表' : kind === 'reminder' ? '调整提醒' : tool.name
   let status = toolStatusText(tool.status)
   let text = ''
   if (tool.status !== 'completed') return { name, status, text }

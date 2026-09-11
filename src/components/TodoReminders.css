@@ -2,7 +2,7 @@
 .chat-panel .chat-content-with-reminders { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .chat-panel .chat-content-with-reminders > .message-list,
 .chat-panel .chat-content-with-reminders > .todo-list-view { flex: 1; min-height: 0; }
-.chat-panel .todo-reminders { flex: 0 1 auto; max-height: min(180px, 34%); overflow-y: auto; overscroll-behavior: contain; padding: 12px 22px; background: linear-gradient(120deg, #fcf2e4, #fff9ef); border-bottom: 1px solid var(--pet-rule); color: var(--pet-ink); scrollbar-color: #cdbba9 transparent; }
+.chat-panel .todo-reminders { flex: 0 1 auto; max-height: min(180px, 34%); overflow-y: auto; overscroll-behavior: contain; padding: 12px 22px; background: linear-gradient(120deg, #f7e9d2, #fcefdd); border-bottom: 1px solid var(--pet-rule); color: var(--pet-ink); scrollbar-color: #cdbba9 transparent; }
 .chat-panel .todo-reminders h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #795233; }
 .chat-panel .todo-reminders h2 > svg { width: 15px; height: 15px; }
 .chat-panel .todo-reminders h2 > span { margin-left: auto; font-size: 12px; font-weight: 400; }

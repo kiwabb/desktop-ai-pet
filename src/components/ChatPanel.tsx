@@ -393,13 +393,14 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
           configured
             ? (
                 <div className="empty-state">
+                  <img className="empty-cat" src={petPreview} alt="" aria-hidden="true" draggable={false} />
                   <h2>当前会话还没有消息</h2>
                   <p>可以询问已有待办，或告诉我需要记录的事情。</p>
                 </div>
               )
             : (
                 <div className="empty-state">
-                  <span className="empty-eyebrow">需要连接助手</span>
+                  <img className="empty-cat" src={petPreview} alt="" aria-hidden="true" draggable={false} />
                   <h2>连接助手服务后开始对话</h2>
                   <p>连接后将恢复服务端会话；当前没有可显示的历史消息。</p>
                   <button className="configure-button" type="button" onClick={openSettings}>配置助手服务</button>
@@ -415,7 +416,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
             <div className="message-content">
               <span className="message-author">{message.role === 'user' ? '你' : '橘伴'}</span>
               <div className="message-bubble">
-                {message.content ? <MessageContent content={message.content} /> : (message.pending && <LoaderCircle className="spinner" aria-label="正在生成回复" />)}
+                {message.content ? <MessageContent content={message.content} /> : (message.pending && <span className="message-pending"><LoaderCircle className="spinner" aria-hidden="true" />橘伴正在思考…</span>)}
               </div>
               {message.role === 'assistant' && tools.filter(tool => tool.run_id === message.runId).map(tool => {
                 const presentation = presentTool(tool)
