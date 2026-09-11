@@ -868,3 +868,25 @@ Implemented the server admin control plane and independent React/Vite admin work
 ### Status
 
 [OK] **Completed**
+
+
+## Session 29: UI 质感提升：Impeccable 诊断与全量打磨
+<!-- trellis-session: v=2 fp=8348d0c79292e038 -->
+
+**Date**: 2026-09-11
+**Task**: UI 质感提升：Impeccable 诊断与全量打磨
+**Branch**: `feat/ui-polish`
+
+### Summary
+
+引入 Impeccable 设计体系（.agents/skills/impeccable，引擎二进制已 gitignore）。建立 PRODUCT.md/DESIGN.md/.impeccable/design.json 设计事实层；对聊天面板/气泡做截图诊断（8 条问题，research/diagnosis.md）后按 polish→typeset→quieter→delight 全量打磨：外壳材质延续进面板内部、空状态白猫品牌时刻、三处 WCAG AA 对比度修复、控件/输入语言统一、去 AI slop（彩虹 chips/死样式/技术词汇）、字阶 tokens 化、message-arrive/pending-breathe 动效（reduced-motion 兜底）。终检：pnpm build/test、cargo、pytest 123+71 全绿，detect 仅剩宠物舞台已记录豁免；前后截图在任务 research/shots/。spec 更新：component-guidelines 增补 PRODUCT.md/DESIGN.md 视觉权威约定。遗留：AssistantSettings 输入框 token 化（后续 colorize）、未知工具 degrade 英文裸名兜底、桌面 UI 人工目视验收。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `33b2bb3` | feat: polish chat panel UI to showcase quality (Impeccable) |
+
+### Status
+
+[OK] **Completed**
