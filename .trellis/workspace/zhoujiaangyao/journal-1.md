@@ -890,3 +890,25 @@ Implemented the server admin control plane and independent React/Vite admin work
 ### Status
 
 [OK] **Completed**
+
+
+## Session 30: 设置页视觉收口（colorize/token 化）
+<!-- trellis-session: v=2 fp=3befacf067b43fd0 -->
+
+**Date**: 2026-09-11
+**Task**: 设置页视觉收口（colorize/token 化）
+**Branch**: `feat/settings-colorize`
+
+### Summary
+
+AssistantSettings 全量 token 化：硬编码色值/字号/字重收敛至 :root tokens（新增 9 个并回写 DESIGN.md），输入框统一胶囊语言、保存键焦糖橘渐变；tool-presentation 未知工具中文兜底（工具：<name>）。detect：AssistantSettings advisory 44+→0，failure 维持仅剩宠物舞台豁免。验证：pnpm build/test、cargo 55、pytest 123+71 全绿，设置页截图主会话复核通过。Impeccable 系列打磨暂告一段落。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `63c8fcb` | feat: align settings page with design system (colorize) |
+
+### Status
+
+[OK] **Completed**
