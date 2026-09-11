@@ -1,7 +1,10 @@
+import { motionDiagnosticMode } from '../lib/motion-diagnostics'
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { ReferenceChatBubbleTail, ReferenceMiniPaw, ReferencePawBadge } from './ReferenceIllustrations'
+import type { FrameGeometry } from './useFrameMorph'
+import { useFrameMorph } from './useFrameMorph'
 import { ChatBubbleShell } from './ChatBubbleShell'
 import type { ChatBubbleDockConfig } from './pet-shell-geometry'
 import './ChatBubbleFrame.css'
@@ -90,16 +93,21 @@ export function ChatBubbleFrame({
 }: ChatBubbleFrameProps) {
   const rootRef = useRef<HTMLElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
-  const [size, setSize] = useState({ width: 0, height: 0 })
+  const [geometry, setGeometry] = useState<FrameGeometry>({ width: 0, height: 0, dockShift: 0 })
+  const { width, height, dockShift } = geometry
   const attached = appearance === 'attached'
   const explicitTail = tail != null && Object.values(tail).some(value => value !== undefined)
   const integrated = attached && !explicitTail
+  const morphingRef = useFrameMorph(rootRef, variant, visible, integrated, setGeometry, dock)
+  const previousPageRef = useRef<{ title: string; variant: string; visible: boolean } | null>(null)
 
   useLayoutEffect(() => {
     if (!integrated || !rootRef.current) return
     const root = rootRef.current
-    const update = (width: number, height: number) => setSize(current =>
-      current.width === width && current.height === height ? current : { width, height })
+    const update = (width: number, height: number) => {
+      if (morphingRef.current) return
+      setGeometry(current => current.width === width && current.height === height ? current : { width, height, dockShift: 0 })
+    }
     update(root.offsetWidth, root.offsetHeight)
     const observer = new ResizeObserver(entries => {
       const box = entries[0]?.borderBoxSize[0]
@@ -109,13 +117,21 @@ export function ChatBubbleFrame({
     return () => observer.disconnect()
   }, [integrated])
   useLayoutEffect(() => {
-    if (!visible || animateEntrance || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const animation = bodyRef.current?.animate?.([
-      { opacity: .65, transform: 'translateY(6px)' },
+    const diagnostic = motionDiagnosticMode()
+    const previous = previousPageRef.current
+    previousPageRef.current = { title, variant, visible }
+    if (diagnostic === 'none' || diagnostic === 'translate-only') return
+    if (!visible || !previous?.visible || (previous.title === title && previous.variant === variant)) return
+    if (previous.variant !== variant && morphingRef.current) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const animation = bodyRef.current?.animate?.(reduced ? [
+      { opacity: .8 }, { opacity: 1 },
+    ] : [
+      { opacity: .8, transform: 'translateY(4px)' },
       { opacity: 1, transform: 'translateY(0)' },
-    ], { duration: 180, easing: 'cubic-bezier(.2,.75,.25,1)' })
+    ], { duration: reduced ? 140 : 190, easing: 'cubic-bezier(.2,.75,.25,1)' })
     return () => animation?.cancel()
-  }, [title, visible, animateEntrance])
+  }, [title, variant, visible])
   const defaults = tailDefaults[variant]
   const tailWidth = tail?.width ?? defaults.width
   const frameStyle: FrameStyle = {
@@ -136,7 +152,7 @@ export function ChatBubbleFrame({
       inert={!visible}
     >
       <ReferencePawBadge className="assistant-paw-badge" />
-      {integrated && size.width > 0 && <ChatBubbleShell width={size.width} height={size.height} dock={dock} variant={variant} showFooterFootprints={variant === 'expanded' && footer == null} />}
+      {integrated && width > 0 && <ChatBubbleShell width={width} height={height} dock={{ ...dock, offsetX: (dock?.offsetX ?? 0) + dockShift }} variant={variant} showFooterFootprints={variant === 'expanded' && footer == null} />}
       {attached && explicitTail && <ReferenceChatBubbleTail className="chat-bubble-tail" variant={variant} />}
 
       {attached && !integrated && variant === 'compact' && (

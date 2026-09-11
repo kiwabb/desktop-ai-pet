@@ -305,17 +305,20 @@ The approved pet PNG remains unchanged. `PetLiveStatus` overlays only the interi
 ## Native panel and page commit contract
 
 `ChatPanel.onExpandedChange(expanded, commitPage?)` may return a promise. Native
-hosts invoke the optional page callback inside the same `flushSync` as the target
-layout update. A callback after that flush is a separate commit, even under React
-automatic batching. Non-native hosts may omit it; ChatPanel performs a guarded,
-once-only fallback on resolution. `changePage` invalidates superseded intentions;
-close and unmount also invalidate pending page callbacks.
+hosts commit the optional page callback together with the target layout update:
+inside the same `flushSync` for closed→open reveals and same-size page
+navigation, and as one automatically batched React render for open-to-open mode
+changes — a `flushSync` there blocks the main thread for the whole destination
+render behind the morph's ghost cover. Non-native hosts may omit it; ChatPanel
+performs a guarded, once-only fallback on resolution. `changePage` invalidates
+superseded intentions; close and unmount also invalidate pending page callbacks.
 
 Serialize native frame writes and keep the latest pending target/callback. Capture
 a batch's waiters before processing its successor; reject waiters on that batch's
 failure. Do not use a timer race to permit another native size write: an unresolved
-IPC has not been cancelled. `tools/verify-pet-motion.mjs` covers same-flush page
-commit, queued failure, retry, single-flight and closed-page callback invalidation.
+IPC has not been cancelled. `tools/verify-pet-motion.mjs` covers the batched
+open-to-open page commit, same-flush same-size page commit, queued failure,
+retry, single-flight and closed-page callback invalidation.
 
 ## Initial integrated-shell reveal
 

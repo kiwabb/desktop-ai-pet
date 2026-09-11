@@ -56,12 +56,19 @@
 .chat-panel .todo-list-items { list-style: none; margin: 0; padding: 0; }
 .chat-panel .todo-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  column-gap: 4px;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 8px;
   position: relative;
-  padding: 10px 8px 12px 0;
+  padding: 6px 8px 6px 0;
   border-radius: 10px;
-  transition: background-color 160ms ease;
+  transition: background-color 160ms ease, opacity 180ms ease, transform 180ms ease;
+}
+.chat-panel .todo-row.is-leaving { opacity: 0; transform: translateX(10px); }
+.chat-panel .todo-row.is-entering { animation: todo-row-enter 200ms ease; }
+@keyframes todo-row-enter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .chat-panel .todo-row + .todo-row::before {
   content: '';
@@ -72,9 +79,16 @@
   height: 1px;
   background: var(--todo-rule);
 }
+/* While an editor is open it lives inside the content column; hiding the
+   chip (its value is mirrored in the editor) and the hover actions collapses
+   the auto tracks so the editor regains the row width. Focus moves into the
+   editor input via autoFocus when the chip trigger disappears. */
+.chat-panel .todo-row.is-editing-reminder .todo-reminder-chip,
+.chat-panel .todo-row.is-editing-reminder .todo-row-actions,
+.chat-panel .todo-row.is-editing-title .todo-row-actions { display: none; }
 .chat-panel .todo-row:hover,
 .chat-panel .todo-row:focus-within { background: #fbf3e8; }
-.chat-panel .todo-row-content { min-width: 0; padding-top: 10px; }
+.chat-panel .todo-row-content { min-width: 0; }
 .chat-panel .todo-row-content h2 {
   margin: 0;
   color: var(--todo-ink);
@@ -82,14 +96,6 @@
   font-weight: 500;
   line-height: 24px;
   overflow-wrap: anywhere;
-}
-.chat-panel .todo-row-content time {
-  display: block;
-  margin-top: 3px;
-  color: var(--todo-muted);
-  font-size: 12px;
-  line-height: 18px;
-  font-variant-numeric: tabular-nums;
 }
 .chat-panel .todo-row.is-completed h2 { color: var(--todo-muted); text-decoration: line-through; text-decoration-color: #b6a494; text-decoration-thickness: 1px; }
 .chat-panel .todo-complete-control {
@@ -137,9 +143,33 @@
   .chat-panel .todo-list-view *,
   .chat-panel .todo-list-view *::before { transition: none; animation: none; }
 }
-.chat-panel .todo-reminder-trigger { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; max-width: 100%; margin: 0; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; color: var(--todo-muted); font-size: 12px; text-align: left; cursor: pointer; }
-.chat-panel .todo-reminder-trigger svg { width: 14px; height: 14px; flex-shrink: 0; }
-.chat-panel .todo-reminder-trigger:hover:not(:disabled) { color: var(--todo-ink); background: #f5ecdf; }
+.chat-panel .todo-reminder-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid #deccb7;
+  border-radius: 999px;
+  background: #fdf6ec;
+  color: var(--todo-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
+}
+.chat-panel .todo-reminder-chip svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--todo-muted); }
+.chat-panel .todo-reminder-chip-day { color: var(--todo-muted); }
+.chat-panel .todo-reminder-chip:hover:not(:disabled) { background: #f3e6d4; }
+.chat-panel .todo-reminder-chip.is-empty { border-style: dashed; background: transparent; color: var(--todo-muted); }
+.chat-panel .todo-reminder-chip.is-overdue { color: #a14739; border-color: rgba(161, 71, 57, 0.4); background: #f9ece8; font-weight: 600; }
+.chat-panel .todo-reminder-chip.is-overdue svg,
+.chat-panel .todo-reminder-chip.is-overdue .todo-reminder-chip-day { color: #a14739; }
+.chat-panel.is-compact .todo-reminder-chip-day { display: none; }
 .chat-panel .todo-reminder-editor { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; padding: 12px; border: 1px solid #deccb7; border-radius: 9px; background: #fffaf4; }
 .chat-panel .todo-reminder-editor label { color: var(--todo-ink); font-size: 12px; }
 .chat-panel .todo-reminder-editor input { min-width: 0; width: 100%; min-height: 44px; padding: 8px; border: 1px solid #ad9478; border-radius: 6px; background: white; color: var(--todo-ink); font: inherit; font-size: 13px; }
@@ -149,7 +179,147 @@
 .chat-panel .todo-reminder-editor-actions button { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 9px; border: 0; border-radius: 6px; background: #f3e6d4; color: var(--todo-ink); font-size: 12px; cursor: pointer; }
 .chat-panel .todo-reminder-editor-actions button svg { width: 14px; height: 14px; }
 .chat-panel .todo-reminder-editor-actions button:hover:not(:disabled) { background: #e8d4b7; }
-.chat-panel .todo-reminder-trigger:disabled,
+.chat-panel .todo-reminder-chip:disabled,
 .chat-panel .todo-reminder-editor-actions button:disabled { opacity: 0.5; cursor: default; }
-.chat-panel .todo-reminder-trigger:focus-visible,
+.chat-panel .todo-reminder-chip:focus-visible,
 .chat-panel .todo-reminder-editor :focus-visible { outline: 2px solid var(--todo-accent); outline-offset: 2px; }
+
+.chat-panel .todo-add-form { display: flex; gap: 8px; margin: 10px 4px 6px 12px; }
+.chat-panel .todo-add-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #ad9478;
+  border-radius: 8px;
+  background: white;
+  color: var(--todo-ink);
+  font: inherit;
+  font-size: 13px;
+}
+.chat-panel .todo-add-form button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #f3e6d4;
+  color: var(--todo-ink);
+  font-size: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms ease, opacity 160ms ease;
+}
+.chat-panel .todo-add-form button svg { width: 14px; height: 14px; }
+.chat-panel .todo-add-form button:hover:not(:disabled) { background: #e8d4b7; }
+.chat-panel .todo-add-form button:disabled,
+.chat-panel .todo-add-form input:disabled { opacity: 0.5; cursor: default; }
+.chat-panel .todo-add-form :focus-visible { outline: 2px solid var(--todo-accent); outline-offset: 1px; }
+.chat-panel .todo-create-error { margin: 2px 4px 8px 12px; }
+
+.chat-panel .todo-row-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.chat-panel .todo-row:hover .todo-row-actions,
+.chat-panel .todo-row:focus-within .todo-row-actions { opacity: 1; }
+.chat-panel .todo-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--todo-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+.chat-panel .todo-row-action svg { width: 15px; height: 15px; }
+.chat-panel .todo-row-action:hover:not(:disabled) { color: var(--todo-ink); background: #f5ecdf; }
+.chat-panel .todo-row-action.is-danger:hover:not(:disabled) { color: #a14739; }
+.chat-panel .todo-row-action:disabled { opacity: 0.5; cursor: default; }
+.chat-panel .todo-row-action:focus-visible { outline: 2px solid var(--todo-accent); outline-offset: 1px; }
+
+.chat-panel .todo-title-editor { display: flex; flex-direction: column; gap: 6px; }
+.chat-panel .todo-title-editor input {
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid #ad9478;
+  border-radius: 6px;
+  background: white;
+  color: var(--todo-ink);
+  font: inherit;
+  font-size: 14px;
+}
+.chat-panel .todo-title-editor-actions { display: flex; gap: 4px; }
+.chat-panel .todo-title-editor-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #f3e6d4;
+  color: var(--todo-ink);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 160ms ease, opacity 160ms ease;
+}
+.chat-panel .todo-title-editor-actions button svg { width: 14px; height: 14px; }
+.chat-panel .todo-title-editor-actions button:hover:not(:disabled) { background: #e8d4b7; }
+.chat-panel .todo-title-editor-actions button:disabled { opacity: 0.5; cursor: default; }
+.chat-panel .todo-title-editor :focus-visible { outline: 2px solid var(--todo-accent); outline-offset: 1px; }
+
+.chat-panel .todo-reminder-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-panel .todo-reminder-quick button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #deccb7;
+  border-radius: 999px;
+  background: #fdf6ec;
+  color: var(--todo-ink);
+  font-size: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms ease, opacity 160ms ease;
+}
+.chat-panel .todo-reminder-quick button:hover:not(:disabled) { background: #f3e6d4; }
+.chat-panel .todo-reminder-quick button:disabled { opacity: 0.5; cursor: default; }
+
+.chat-panel .todo-group-empty { margin: 14px 4px 0 12px; color: var(--todo-muted); font-size: 12px; }
+.chat-panel .todo-completed-group { margin-top: 6px; }
+.chat-panel .todo-completed-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-top: 1px solid var(--todo-rule);
+  border-radius: 0;
+  background: transparent;
+  color: var(--todo-muted);
+  font-size: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 160ms ease;
+}
+.chat-panel .todo-completed-toggle svg { width: 14px; height: 14px; transition: transform 160ms ease; }
+.chat-panel .todo-completed-toggle[aria-expanded='true'] svg { transform: rotate(90deg); }
+.chat-panel .todo-completed-toggle:hover { color: var(--todo-ink); }
+.chat-panel .todo-completed-toggle:focus-visible { outline: 2px solid var(--todo-accent); outline-offset: 1px; }

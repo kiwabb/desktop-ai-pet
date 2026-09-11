@@ -135,6 +135,96 @@ pub async fn update_todo_http(config: &ServerConfig, todo_id: &str, action: Todo
     Ok(response.item)
 }
 
+pub async fn create_todo_http(config: &ServerConfig, title: &str) -> Result<Todo, String> {
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|_| "无法初始化待办操作")?;
+    let response = client
+        .post(format!("{}/v1/todos", config.base_url))
+        .bearer_auth(&config.token)
+        .json(&json!({"title": title}))
+        .send()
+        .await
+        .map_err(|_| "尚未确认创建结果，请刷新核对或重试")?;
+    if !response.status().is_success() {
+        return Err(match response.status().as_u16() {
+            400 => "待办标题需为 1 到 2000 个字符".into(),
+            code => format!("创建待办失败（{}），请刷新核对或重试", code),
+        });
+    }
+    let response: TodoCompletionResponse = response
+        .json()
+        .await
+        .map_err(|_| "创建结果格式不正确，请刷新核对")?;
+    Ok(response.item)
+}
+
+pub async fn update_todo_title_http(config: &ServerConfig, todo_id: &str, title: &str) -> Result<Todo, String> {
+    let todo_id = uuid::Uuid::parse_str(todo_id)
+        .map_err(|_| "待办标识不正确")?
+        .to_string();
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|_| "无法初始化待办操作")?;
+    let response = client
+        .patch(format!("{}/v1/todos/{}", config.base_url, todo_id))
+        .bearer_auth(&config.token)
+        .json(&json!({"title": title}))
+        .send()
+        .await
+        .map_err(|_| "尚未确认修改结果，请刷新核对或重试")?;
+    if !response.status().is_success() {
+        return Err(match response.status().as_u16() {
+            400 => "待办标题需为 1 到 2000 个字符".into(),
+            404 => "待办不存在或已删除".into(),
+            code => format!("修改待办失败（{}），请刷新核对或重试", code),
+        });
+    }
+    let response: TodoCompletionResponse = response
+        .json()
+        .await
+        .map_err(|_| "修改结果格式不正确，请刷新核对")?;
+    if response.item.id != todo_id {
+        return Err("修改结果与请求不一致，请刷新核对".into());
+    }
+    Ok(response.item)
+}
+
+pub async fn delete_todo_http(config: &ServerConfig, todo_id: &str) -> Result<Todo, String> {
+    let todo_id = uuid::Uuid::parse_str(todo_id)
+        .map_err(|_| "待办标识不正确")?
+        .to_string();
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|_| "无法初始化待办操作")?;
+    let response = client
+        .delete(format!("{}/v1/todos/{}", config.base_url, todo_id))
+        .bearer_auth(&config.token)
+        .send()
+        .await
+        .map_err(|_| "尚未确认删除结果，请刷新核对或重试")?;
+    if !response.status().is_success() {
+        return Err(match response.status().as_u16() {
+            404 => "待办不存在或已删除".into(),
+            code => format!("删除待办失败（{}），请刷新核对或重试", code),
+        });
+    }
+    let response: TodoCompletionResponse = response
+        .json()
+        .await
+        .map_err(|_| "删除结果格式不正确，请刷新核对")?;
+    if response.item.id != todo_id {
+        return Err("删除结果与请求不一致，请刷新核对".into());
+    }
+    Ok(response.item)
+}
+
 pub async fn set_reminder_http(config: &ServerConfig, todo_id: &str, remind_at: Option<&str>, expected_remind_at: Option<&str>) -> Result<Todo, String> {
     let todo_id = uuid::Uuid::parse_str(todo_id).map_err(|_| "待办标识不正确")?.to_string();
     let client = reqwest::Client::builder()
@@ -582,6 +672,74 @@ mod tests {
         assert_eq!(set_reminder_http(&config, "../bad", target, None).await.unwrap_err(), "待办标识不正确");
         assert!(set_reminder_http(&config, &item.id, target, None).await.unwrap_err().contains("尚未确认"));
     }
+    // Local test socket only: validates exact method/path/auth/body and typed responses.
+    async fn todo_write_fixture(method: &str, path_suffix: &str, request_body: Option<Value>, status: &str, response_body: &str) -> Result<Todo, String> {
+        use std::io::Read;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let expected = format!("{} /v1/todos{} ", method.to_lowercase(), path_suffix);
+        let response = format!("HTTP/1.1 {status}\r\nContent-Type: application/json\r\nLocation: http://127.0.0.1:1/secret\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response_body}", response_body.len());
+        let server = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+            let mut request = Vec::new();
+            loop {
+                let mut buffer = [0; 4096];
+                let size = socket.read(&mut buffer).unwrap();
+                assert!(size > 0);
+                request.extend_from_slice(&buffer[..size]);
+                if let Some(boundary) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n") {
+                    let headers = String::from_utf8_lossy(&request[..boundary]).to_lowercase();
+                    let length = headers.lines().find_map(|line| line.strip_prefix("content-length: ")).map(|text| text.parse::<usize>().unwrap()).unwrap_or(0);
+                    if request.len() < boundary + 4 + length { continue; }
+                    assert!(headers.starts_with(&expected));
+                    assert!(headers.contains("authorization: bearer unit-only"));
+                    if let Some(body) = &request_body {
+                        assert_eq!(serde_json::from_slice::<Value>(&request[boundary + 4..boundary + 4 + length]).unwrap(), *body);
+                    }
+                    break;
+                }
+            }
+            socket.write_all(response.as_bytes()).unwrap();
+        });
+        let config = ServerConfig { base_url: format!("http://{address}"), token: "unit-only".into(), session_id: None };
+        let id = "00000000-0000-0000-0000-000000000001";
+        let result = match method {
+            "POST" => create_todo_http(&config, "isolated").await,
+            "PATCH" => update_todo_title_http(&config, id, "renamed").await,
+            _ => delete_todo_http(&config, id).await,
+        };
+        server.join().unwrap();
+        result
+    }
+
+    #[tokio::test]
+    async fn todo_create_update_delete_validate_wire_contract_and_identity() {
+        let item = isolated_reminder();
+        let body = json!({"item": &item}).to_string();
+        let created = todo_write_fixture("POST", "", Some(json!({"title": "isolated"})), "200 OK", &body).await.unwrap();
+        assert_eq!(created.id, item.id);
+        assert_eq!(todo_write_fixture("POST", "", Some(json!({"title": "isolated"})), "400 Bad Request", "secret detail").await.unwrap_err(), "待办标题需为 1 到 2000 个字符");
+        let error = todo_write_fixture("POST", "", Some(json!({"title": "isolated"})), "503 Unavailable", "secret detail").await.unwrap_err();
+        assert!(error.contains("503") && !error.contains("secret"));
+        assert!(todo_write_fixture("POST", "", None, "200 OK", "invalid").await.is_err());
+
+        let renamed = todo_write_fixture("PATCH", "/00000000-0000-0000-0000-000000000001", Some(json!({"title": "renamed"})), "200 OK", &body).await.unwrap();
+        assert_eq!(renamed.title, item.title);
+        assert_eq!(todo_write_fixture("PATCH", "/00000000-0000-0000-0000-000000000001", Some(json!({"title": "renamed"})), "404 Not Found", "secret detail").await.unwrap_err(), "待办不存在或已删除");
+        assert!(todo_write_fixture("PATCH", "/00000000-0000-0000-0000-000000000001", Some(json!({"title": "renamed"})), "200 OK", &body.replace("000000000001", "000000000002")).await.is_err());
+
+        let deleted = todo_write_fixture("DELETE", "/00000000-0000-0000-0000-000000000001", None, "200 OK", &body).await.unwrap();
+        assert_eq!(deleted.id, item.id);
+        assert_eq!(todo_write_fixture("DELETE", "/00000000-0000-0000-0000-000000000001", None, "404 Not Found", "secret detail").await.unwrap_err(), "待办不存在或已删除");
+        assert!(todo_write_fixture("DELETE", "/00000000-0000-0000-0000-000000000001", None, "200 OK", &body.replace("000000000001", "000000000002")).await.is_err());
+
+        let config = ServerConfig { base_url: "http://127.0.0.1:1".into(), token: "unit-only".into(), session_id: None };
+        assert_eq!(update_todo_title_http(&config, "../bad", "x").await.unwrap_err(), "待办标识不正确");
+        assert_eq!(delete_todo_http(&config, "../bad").await.unwrap_err(), "待办标识不正确");
+        assert!(create_todo_http(&config, "x").await.unwrap_err().contains("尚未确认"));
+    }
+
     #[test]
     fn node_failure_preserves_control_connection_and_session() {
         let (sender, _rx) = mpsc::channel(1);

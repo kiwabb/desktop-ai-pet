@@ -1,8 +1,6 @@
-import { isTauri } from '@tauri-apps/api/core'
-import { PhysicalPosition } from '@tauri-apps/api/dpi'
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useEffect, useRef, useState } from 'react'
 
+import { usePetGroupDrag } from '../lib/usePetGroupDrag'
 import type { PetState } from '../lib/pet-state'
 import { petStateLabel } from '../lib/pet-state'
 import { getPetLiveStatus } from '../lib/pet-live-status'
@@ -29,15 +27,11 @@ interface PetStageProps {
 export function PetStage({ petState, reply, mode, liveStatus = getPetLiveStatus(null, petState), onPetInteract, onToggleChat, onContextMenu }: PetStageProps) {
   const rendererHostRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<PetRenderer | null>(null)
-  const windowPositionRef = useRef({ x: 0, y: 0 })
-  const dragRef = useRef<{
-    pointerId: number
-    pointerX: number
-    pointerY: number
-    windowX: number
-    windowY: number
-    moved: boolean
-  } | null>(null)
+  const groupDrag = usePetGroupDrag({
+    onClick: () => { onPetInteract(); onToggleChat() },
+    onDrag: (dragging, deltaX) => rendererRef.current?.setDrag(dragging, deltaX / 90),
+    onError: cause => console.error('拖动桌宠失败', cause),
+  })
   const [rendererStatus, setRendererStatus] = useState<'loading' | 'ready' | 'error'>('loading')
 
   useEffect(() => {
@@ -82,66 +76,6 @@ export function PetStage({ petState, reply, mode, liveStatus = getPetLiveStatus(
     rendererRef.current?.setState(petState)
   }, [petState])
 
-  useEffect(() => {
-    if (!isTauri())
-      return
-    const currentWindow = getCurrentWindow()
-    void currentWindow.outerPosition().then((position) => {
-      windowPositionRef.current = position
-    })
-    const unlistenPromise = currentWindow.onMoved(({ payload }) => {
-      windowPositionRef.current = payload
-    })
-    return () => {
-      unlistenPromise.then(unlisten => unlisten())
-    }
-  }, [])
-
-  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (event.button !== 0)
-      return
-    const position = windowPositionRef.current
-    dragRef.current = {
-      pointerId: event.pointerId,
-      pointerX: event.screenX,
-      pointerY: event.screenY,
-      windowX: position.x,
-      windowY: position.y,
-      moved: false,
-    }
-    rendererRef.current?.setDrag(true, 0)
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-
-  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current
-    if (!drag || drag.pointerId !== event.pointerId)
-      return
-    const deltaX = event.screenX - drag.pointerX
-    const deltaY = event.screenY - drag.pointerY
-    if (!drag.moved && Math.hypot(deltaX, deltaY) < 5)
-      return
-    drag.moved = true
-    rendererRef.current?.setDrag(true, deltaX / 90)
-    if (isTauri()) {
-      void getCurrentWindow().setPosition(new PhysicalPosition(
-        drag.windowX + deltaX,
-        drag.windowY + deltaY,
-      ))
-    }
-  }
-
-  function handlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
-    const drag = dragRef.current
-    dragRef.current = null
-    rendererRef.current?.setDrag(false, 0)
-    if (event.currentTarget.hasPointerCapture(event.pointerId))
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    if (drag && !drag.moved) {
-      onPetInteract()
-      onToggleChat()
-    }
-  }
 
   return (
     <section
@@ -181,13 +115,7 @@ export function PetStage({ petState, reply, mode, liveStatus = getPetLiveStatus(
         tabIndex={0}
         aria-label="点击白猫打开对话"
         title="点击打开对话"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={() => {
-          dragRef.current = null
-          rendererRef.current?.setDrag(false, 0)
-        }}
+        {...groupDrag}
         onContextMenu={(event) => {
           event.preventDefault()
           event.stopPropagation()

@@ -106,10 +106,9 @@ for (const selector of [
 if (css.includes('.pet-shell.pet-chat-compact .assistant-paw-badge'))
   fail('compact paw badge rule still lives in the global stylesheet instead of ChatBubbleFrame.css')
 
-if (!/PET_CHAT_COMPACT_WIDTH:\s*f64\s*=\s*713\.0/.test(rust))
-  fail('native compact width is not 713 logical pixels')
-if (!/PET_CHAT_COMPACT_HEIGHT:\s*f64\s*=\s*401\.0/.test(rust))
-  fail('native compact height is not 401 logical pixels')
+const compactScene = css.match(/\.pet-chat-scene\.pet-chat-compact\s*\{([^}]+)\}/)?.[1] ?? ''
+if (!compactScene.includes('width: 713px') || !compactScene.includes('height: 401px'))
+  fail('compact inner scene must remain 713x401 within the stable native backing')
 
 // The approved corner sticker keeps the compact reference's 53.3 x 59.27
 // dimensions in every mode. One root-relative rule must replace all old flex
@@ -137,8 +136,13 @@ if (/<ellipse/.test(badgeBody))
 const badgeRules = [...frameCss.matchAll(/([^{}]+)\{([^{}]+)\}/g)]
   .filter(match => match[1].includes('.assistant-paw-badge'))
   .filter(match => !/^\s*animation\s*:[^;]+;\s*$/.test(match[2]))
+  // The transient frame-morph state strips the badge's drop-shadow filters for
+  // repaint cost; it is not a variant override of the shared settled rule.
+  .filter(match => !match[1].includes('[data-frame-morphing]'))
 if (badgeRules.length !== 1 || !badgeRules[0][1].trim().endsWith('.chat-panel > .assistant-paw-badge'))
   fail('paw badge must have exactly one shared root-child rule, with no variant overrides')
+if (!frameCss.includes('.chat-panel[data-frame-morphing] > .assistant-paw-badge'))
+  fail('the morph-state badge filter relief rule is missing from ChatBubbleFrame.css')
 const badgeRule = badgeRules[0][2]
 for (const [prop, expected] of [
   ['position', 'absolute'],
@@ -261,7 +265,7 @@ if (compactShell.scale !== 0.6 || expandedShell.scale !== compactShell.scale)
 const shellSource = readFileSync(resolve('src/components/ChatBubbleShell.tsx'), 'utf8')
 if (compactShell.sideFootprints.length !== 5 || expandedShell.footerFootprints.length !== 2)
   fail('reference footprints require five side prints and two expanded footer prints')
-const footprintArt = shellSource.slice(shellSource.indexOf("<g id={id('footprint')}>"), shellSource.indexOf("<path id={id('outline')}"))
+const footprintArt = shellSource.slice(shellSource.indexOf("<g id={id('footprint')}>"), shellSource.indexOf("<path data-shell-outline="))
 if ((footprintArt.match(/<ellipse/g) ?? []).length !== 4 || !footprintArt.includes('M17 43c3-8 6-14 14-14'))
   fail('side/footer footprints must use the reference four-toe artwork, not the corner badge')
 if (Math.abs(compactShell.sideFootprints[3].y + 68 - 5.2) > .001 || Math.abs(expandedShell.sideFootprints[3].y + 40 - 364.2) > .001)

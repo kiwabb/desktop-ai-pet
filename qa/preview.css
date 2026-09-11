@@ -19,6 +19,8 @@ body #root { height: auto; overflow: visible; }
 .qa-slot input { font: inherit; min-width: 0; }
 .qa-frame-action { display: grid; place-items: center; width: 32px; height: 32px; padding: 4px; border: 0; border-radius: 50%; background: transparent; color: #8a7f78; cursor: pointer; }
 .qa-frame-action svg { width: 18px; height: 18px; }
-.preview-wrap { position: relative; width: 713px; height: 401px; }
-.preview-wrap.preview-expanded { width: 940px; height: 760px; }
-.preview-wrap .desktop-pet-app { position: absolute; inset: 0; }
+/* Match the accepted native split: fixed backing plus a separate fixed cat. */
+.preview-wrap { position: relative; width: 940px; height: 760px; }
+.preview-wrap > .desktop-pet-app { position: absolute; right: 0; bottom: 0; }
+.preview-wrap > .pet-chat-scene { z-index: 2; }
+.preview-wrap > .preview-cat-host { width: 232px; height: 380.9px; z-index: 3; pointer-events: none; }

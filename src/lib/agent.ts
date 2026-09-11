@@ -31,6 +31,16 @@ export function setTodoReminder(todoId: string, remindAt: string | null, expecte
   return invoke<TodoCompletionView>('agent_set_todo_reminder', { todoId, remindAt, expectedRemindAt })
 }
 
+export function createTodo(title: string) {
+  return invoke<TodoCompletionView>('agent_create_todo', { title })
+}
+export function updateTodoTitle(todoId: string, title: string) {
+  return invoke<TodoCompletionView>('agent_update_todo', { todoId, title })
+}
+export function deleteTodo(todoId: string) {
+  return invoke<TodoCompletionView>('agent_delete_todo', { todoId })
+}
+
 export interface AgentMessage {
   id: string
   role: 'user' | 'assistant'

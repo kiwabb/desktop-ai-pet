@@ -544,3 +544,20 @@
     animation: integrated-content-dissolve 160ms ease-out both !important;
   }
 }
+
+/* Frame-morph cost relief: while useFrameMorph sets data-frame-morphing, the
+ * destination shell fades in with its static backdrop-filter/shadow still
+ * attached, which forces WebKit to re-evaluate the backdrop per frame. These
+ * effects are stripped for the 300ms dissolve and restore automatically when
+ * the attribute is removed. This mirrors the settled no-backdrop precedents
+ * above (.is-expanded .header-actions, .is-integrated). Placed last so it
+ * wins the specificity tie against `.chat-panel.is-attached`. The integrated
+ * root already has no backdrop/shadow; this covers the plain attached variant
+ * and the paw badge's drop-shadows. */
+.chat-panel[data-frame-morphing] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.chat-panel[data-frame-morphing] > .assistant-paw-badge { filter: none; }
+.chat-panel[data-frame-morphing] > .chat-bubble-tail { filter: none; }

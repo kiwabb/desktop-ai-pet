@@ -1087,6 +1087,19 @@ textarea:focus-visible {
 /* The integrated platform replaces only the original disk front, not the cat
  * or cushion. The alpha PNG itself is unchanged; this shallow crop follows
  * the cushion lower edge (source center y744 /893), leaving closed mode exact. */
+.pet-shell.pet-panel-visible .closed-reference-art,
 .pet-shell:not(.pet-chat-closed):has(.chat-panel.is-integrated:not(.is-hidden)) .closed-reference-art {
   clip-path: polygon(0 0, 100% 0, 100% 78%, 96% 80%, 90% 82%, 73% 83.3%, 44% 83.3%, 22% 82%, 9% 80%, 0 77%);
 }
+
+/* One fixed native chat backing; compact keeps its approved 713x401 scene
+ * anchored at the same bottom-right point as the separate cat window. */
+.pet-chat-scene.pet-chat-compact {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 713px;
+  height: 401px;
+}
+.pet-chat-scene.pet-chat-expanded { width: 940px; height: 760px; }
+.pet-chat-scene .chat-header { touch-action: none; }

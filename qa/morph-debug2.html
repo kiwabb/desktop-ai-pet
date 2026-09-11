@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>morph 诊断复现 2（真实 ChatPanel）</title>
+    <!-- 非白背景：空白帧（ghost 与真实帧同时近透明）会以背景色暴露，便于像素级取证。 -->
+    <style>html, body { background: #b8c4d4 !important; }</style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/qa/morph-debug2.tsx"></script>
+  </body>
+</html>
