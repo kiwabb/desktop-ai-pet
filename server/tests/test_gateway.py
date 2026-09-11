@@ -69,29 +69,29 @@ class GatewayBoundary(unittest.TestCase):
     def test_direct_completion_requires_auth_and_valid_id(self):
         self.app.state.auth.authenticate.side_effect = PermissionError('拒绝')
         self.assertEqual(self.client.post('/v1/todos/invalid/complete').status_code, 403)
-        self.app.state.service.complete_todo.assert_not_awaited()
+        self.app.state.todo_store.complete_todo.assert_not_awaited()
         self.app.state.auth.authenticate.side_effect = None
         self.assertEqual(self.client.post('/v1/todos/invalid/complete').status_code, 400)
-        self.app.state.service.complete_todo.assert_not_awaited()
+        self.app.state.todo_store.complete_todo.assert_not_awaited()
 
     def test_direct_completion_passes_authenticated_owner_without_model(self):
         todo_id = str(uuid4())
         item = {'id': todo_id, 'title': 'isolated', 'status': 'completed', 'created_at': '2026-09-07T00:00:00Z'}
-        self.app.state.service.complete_todo.return_value = item
+        self.app.state.todo_store.complete_todo.return_value = item
         for _ in range(2):
             response = self.client.post(f'/v1/todos/{todo_id}/complete', headers={'authorization': 'Bearer unit-only'})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json(), {'item': item})
-        self.app.state.service.complete_todo.assert_awaited_with(self.who, todo_id)
+        self.app.state.todo_store.complete_todo.assert_awaited_with(self.who.account_id, todo_id)
         self.app.state.auth.authenticate.assert_awaited_with('Bearer unit-only', 'control')
         self.app.state.service.submit.assert_not_awaited()
         self.app.state.service.create_session.assert_not_awaited()
 
     def test_direct_completion_not_found_and_storage_errors_are_truthful(self):
         url = f'/v1/todos/{uuid4()}/complete'
-        self.app.state.service.complete_todo.side_effect = LookupError('未找到可完成的待办')
+        self.app.state.todo_store.complete_todo.side_effect = LookupError('未找到可完成的待办')
         self.assertEqual(self.client.post(url).status_code, 404)
-        self.app.state.service.complete_todo.side_effect = RuntimeError('secret DB details')
+        self.app.state.todo_store.complete_todo.side_effect = RuntimeError('secret DB details')
         response = self.client.post(url)
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('secret', response.text)
@@ -99,29 +99,29 @@ class GatewayBoundary(unittest.TestCase):
     def test_direct_reopen_requires_auth_and_valid_id(self):
         self.app.state.auth.authenticate.side_effect = PermissionError('拒绝')
         self.assertEqual(self.client.post('/v1/todos/invalid/reopen').status_code, 403)
-        self.app.state.service.reopen_todo.assert_not_awaited()
+        self.app.state.todo_store.reopen_todo.assert_not_awaited()
         self.app.state.auth.authenticate.side_effect = None
         self.assertEqual(self.client.post('/v1/todos/invalid/reopen').status_code, 400)
-        self.app.state.service.reopen_todo.assert_not_awaited()
+        self.app.state.todo_store.reopen_todo.assert_not_awaited()
 
     def test_direct_reopen_passes_authenticated_owner_without_model(self):
         todo_id = str(uuid4())
         item = {'id': todo_id, 'title': 'isolated', 'status': 'pending', 'created_at': '2026-09-07T00:00:00Z'}
-        self.app.state.service.reopen_todo.return_value = item
+        self.app.state.todo_store.reopen_todo.return_value = item
         for _ in range(2):
             response = self.client.post(f'/v1/todos/{todo_id}/reopen', headers={'authorization': 'Bearer unit-only'})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json(), {'item': item})
-        self.app.state.service.reopen_todo.assert_awaited_with(self.who, todo_id)
+        self.app.state.todo_store.reopen_todo.assert_awaited_with(self.who.account_id, todo_id)
         self.app.state.auth.authenticate.assert_awaited_with('Bearer unit-only', 'control')
         self.app.state.service.submit.assert_not_awaited()
         self.app.state.service.create_session.assert_not_awaited()
 
     def test_direct_reopen_not_found_and_storage_errors_are_truthful(self):
         url = f'/v1/todos/{uuid4()}/reopen'
-        self.app.state.service.reopen_todo.side_effect = LookupError('未找到可恢复的待办')
+        self.app.state.todo_store.reopen_todo.side_effect = LookupError('未找到可恢复的待办')
         self.assertEqual(self.client.post(url).status_code, 404)
-        self.app.state.service.reopen_todo.side_effect = RuntimeError('secret DB details')
+        self.app.state.todo_store.reopen_todo.side_effect = RuntimeError('secret DB details')
         response = self.client.post(url)
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('secret', response.text)
@@ -134,6 +134,7 @@ class GatewayBoundary(unittest.TestCase):
         self.app.state.auth.authenticate.return_value = self.who
         self.app.state.service = AsyncMock()
         self.app.state.service.events_after.return_value = []
+        self.app.state.todo_store = AsyncMock()
         self.app.state.registry = Registry(MagicMock())
         self.app.state.coordination = AsyncMock()
         self.app.state.coordination.heartbeat.return_value = True
@@ -151,7 +152,7 @@ class GatewayBoundary(unittest.TestCase):
         self.app.state.service.snapshot.assert_awaited_once_with(self.who, self.session)
 
     def test_internal_failure_does_not_expose_credentials(self):
-        self.app.state.service.list_todos.side_effect = RuntimeError("postgresql://user:secret@host/db")
+        self.app.state.todo_store.list_todos.side_effect = RuntimeError("postgresql://user:secret@host/db")
         response = self.client.get("/v1/todos")
         self.assertEqual(response.status_code, 503)
         self.assertNotIn("secret", response.text)

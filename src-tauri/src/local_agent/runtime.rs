@@ -1,8 +1,8 @@
 //! Local run executor: submit → durable acceptance → claim loop → tool loop,
 //! mirroring `server/app/agent_service.py` against the local SQLite store.
+use super::plugin_runtime;
 use super::prompts;
 use super::store::{RunRow, Store, StoreError};
-use super::tools;
 use crate::agent_protocol::{Envelope, RunStatus};
 use crate::backend::{AgentState, LocalConfig};
 use crate::llm::{
@@ -257,14 +257,15 @@ async fn tool_loop(
         Ok(client) => client,
         Err(error) => return LoopOutcome::Failed(failure_message(&error)),
     };
-    let tools = tools::model_tools();
+    let plugins = plugin_runtime::builtin_plugins();
+    let tools = plugins.model_tools();
     let mut steps = 0;
     loop {
         if steps >= MAX_AGENT_STEPS {
             return LoopOutcome::Failed(step_limit_message());
         }
         steps += 1;
-        let (text, calls) = match model_step(app, generation, store, run, &client, &messages, &tools).await {
+        let (text, calls) = match model_step(app, generation, store, run, &client, &messages, tools).await {
             Ok(step) => step,
             Err(outcome) => return outcome,
         };
@@ -276,7 +277,7 @@ async fn tool_loop(
         }
         messages.push(ChatMessage::assistant(text, &calls));
         for call in &calls {
-            let executed = match tools::execute(store, &run.id, call) {
+            let executed = match plugins.execute(store, &run.id, call) {
                 Ok(Some(executed)) => executed,
                 // LeaseLost analog: the terminal state belongs to recovery now.
                 Ok(None) => return LoopOutcome::Lost,

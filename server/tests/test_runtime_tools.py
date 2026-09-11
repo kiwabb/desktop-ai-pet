@@ -7,14 +7,16 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
-from app.todo_tools import TodoTools, validated_arguments, TOOL_DEFINITIONS, MODEL_TOOLS
+from app.plugin_runtime import PluginRegistry
+from app.plugins.todo import TodoPlugin, TodoStore, validated_arguments
+from app.plugins.todo.manifest import TOOL_DEFINITIONS, MODEL_TOOLS
 from app.registry import Registry
 from app.runtime_store import LeaseLost, RuntimeStore, uuid_text, wire
 
 
 class TransactionalDouble:
-    complete_todo_in_transaction = staticmethod(RuntimeStore.complete_todo_in_transaction)
-    set_todo_reminder_in_transaction = staticmethod(RuntimeStore.set_todo_reminder_in_transaction)
+    complete_todo_in_transaction = staticmethod(TodoStore.complete_todo_in_transaction)
+    set_todo_reminder_in_transaction = staticmethod(TodoStore.set_todo_reminder_in_transaction)
     def __init__(self):
         self.items = []
         self.tool = None
@@ -82,7 +84,11 @@ class ToolTests(unittest.IsolatedAsyncioTestCase):
         store = TransactionalDouble()
         registry = SimpleNamespace(resolve_server=AsyncMock(return_value='todo_create'))
         run = dict(id=str(uuid4()), session_id=str(uuid4()), account_id=str(uuid4()))
-        return store, registry, TodoTools(store, registry), run
+        plugin = TodoPlugin()
+        # The double provides both the core skeleton and the domain primitives
+        # (in production both wrap the same database pool).
+        plugin.store = store
+        return store, registry, PluginRegistry(store, registry, [plugin]), run
 
     async def test_create_owner_and_result_are_transaction_bound(self):
         store, registry, tools, run = self.setup_tool()
@@ -90,7 +96,7 @@ class ToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(store.account_seen, run['account_id'])
         self.assertEqual(result['status'], 'completed')
         self.assertEqual(result['result']['item']['id'], store.items[0]['id'])
-        registry.resolve_server.assert_awaited_once_with('todo.create')
+        registry.resolve_server.assert_awaited_once_with('todo.create', tools.handlers)
 
     async def test_repeat_tool_does_not_repeat_write(self):
         store, registry, tools, run = self.setup_tool()
@@ -151,7 +157,7 @@ class ToolTests(unittest.IsolatedAsyncioTestCase):
         args = {'todo_id': item['id'], 'remind_at': target.isoformat(), 'expected_remind_at': None}
         result = await tools.execute(run, 'owner', {'id': 'set', 'name': 'todo_reminder_set', 'args': args})
         self.assertEqual(result['result']['item']['remind_at'], target.isoformat())
-        registry.resolve_server.assert_awaited_with('todo.reminder.set')
+        registry.resolve_server.assert_awaited_with('todo.reminder.set', tools.handlers)
         store.tool = None
         conflict = await tools.execute(run, 'owner', {'id': 'stale', 'name': 'todo_reminder_set',
             'args': {**args, 'remind_at': None}})
@@ -214,7 +220,7 @@ class ToolTests(unittest.IsolatedAsyncioTestCase):
         second = await tools.execute(run, 'owner', {**call, 'id': 'again'})
         self.assertEqual(second['result'], first['result'])
         self.assertEqual(len(store.items), 1)
-        registry.resolve_server.assert_awaited_with('todo.complete')
+        registry.resolve_server.assert_awaited_with('todo.complete', tools.handlers)
 
     async def test_completion_failure_rolls_back_business_change(self):
         store, registry, tools, run = self.setup_tool()
@@ -276,7 +282,7 @@ class ToolTests(unittest.IsolatedAsyncioTestCase):
 
 
 class SqlBoundaryTests(unittest.IsolatedAsyncioTestCase):
-    def store(self, rows):
+    def store(self, rows, cls=RuntimeStore):
         cursor = SimpleNamespace(fetchone=AsyncMock(side_effect=rows))
         conn = SimpleNamespace(execute=AsyncMock(return_value=cursor))
         @asynccontextmanager
@@ -287,12 +293,12 @@ class SqlBoundaryTests(unittest.IsolatedAsyncioTestCase):
             yield conn
         conn.transaction = transaction
         db = SimpleNamespace(pool=SimpleNamespace(connection=connection))
-        return RuntimeStore(db), conn
+        return cls(db), conn
 
     async def test_direct_completion_uses_owned_update_without_run(self):
         todo_id, account_id = str(uuid4()), str(uuid4())
         row = dict(id=todo_id, account_id=account_id, title='isolated', status='completed', created_at=datetime.now(timezone.utc))
-        store, conn = self.store([row])
+        store, conn = self.store([row], TodoStore)
         result = await store.complete_todo(account_id, todo_id)
         self.assertEqual(result['status'], 'completed')
         conn.execute.assert_awaited_once()
@@ -302,7 +308,7 @@ class SqlBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('account_id', result)
 
     async def test_direct_completion_missing_and_invalid_rejected(self):
-        store, conn = self.store([None])
+        store, conn = self.store([None], TodoStore)
         with self.assertRaises(ValueError):
             await store.complete_todo(str(uuid4()), 'invalid')
         conn.execute.assert_not_awaited()
@@ -321,7 +327,7 @@ class SqlBoundaryTests(unittest.IsolatedAsyncioTestCase):
         async def transaction():
             yield
         conn.transaction = transaction
-        store = RuntimeStore(SimpleNamespace(pool=SimpleNamespace(connection=connection)))
+        store = TodoStore(SimpleNamespace(pool=SimpleNamespace(connection=connection)))
         original = copy.deepcopy(item)
         failures = []
         for owner, todo_id in [(other_account, item['id']), (account_id, str(uuid4()))]:
@@ -341,7 +347,7 @@ class SqlBoundaryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await store.complete_todo(account_id, item['id']))['status'], 'completed')
 
     async def test_direct_reopen_validates_before_database_and_propagates_failure(self):
-        store, conn = self.store([None])
+        store, conn = self.store([None], TodoStore)
         with self.assertRaises(ValueError):
             await store.reopen_todo(str(uuid4()), 'invalid')
         conn.execute.assert_not_awaited()
@@ -399,7 +405,7 @@ class RegistryContractTests(unittest.IsolatedAsyncioTestCase):
         @asynccontextmanager
         async def connection():
             yield conn
-        await Registry(SimpleNamespace(pool=SimpleNamespace(connection=connection))).register_server_tools()
+        await Registry(SimpleNamespace(pool=SimpleNamespace(connection=connection))).register_server_tools([TodoPlugin()])
         definitions = {definition['name']: definition for definition in TOOL_DEFINITIONS}
         self.assertEqual(definitions['todo.create']['version'], '2')
         instances = [call.args[1] for call in conn.execute.await_args_list if 'INSERT INTO tool_instances' in call.args[0]]

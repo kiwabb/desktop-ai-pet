@@ -62,7 +62,7 @@ async fn poll_reminders(app: AppHandle, generation: u64, store: Arc<Store>) {
             }
             inner.todo_mutation_epoch
         };
-        let result = store
+        let result = crate::local_agent::plugins::todo::TodoStore::new(&store)
             .due_reminders(Utc::now())
             .map_err(|error| error.message());
         {

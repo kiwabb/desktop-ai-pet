@@ -12,7 +12,7 @@ from app.auth import Principal
 from app.config import Settings
 from app.contracts import ReminderConflict, reminder_arguments, reminder_time
 from app.main import create_app
-from app.runtime_store import RuntimeStore
+from app.plugins.todo import TodoStore
 
 NOW = datetime(2026, 9, 7, 8, tzinfo=timezone.utc)
 
@@ -71,7 +71,7 @@ def store_for(items):
     @asynccontextmanager
     async def connection():
         yield conn
-    return RuntimeStore(SimpleNamespace(pool=SimpleNamespace(connection=connection))), conn
+    return TodoStore(SimpleNamespace(pool=SimpleNamespace(connection=connection))), conn
 
 
 class TimezoneSettingsTests(unittest.TestCase):
@@ -197,6 +197,7 @@ class ReminderGatewayTests(unittest.TestCase):
         self.who = Principal(str(uuid4()), str(uuid4()), ('control',))
         self.app.state.auth.authenticate.return_value = self.who
         self.app.state.service = AsyncMock()
+        self.app.state.todo_store = AsyncMock()
         self.client = TestClient(self.app)
         self.todo_id = str(uuid4())
         self.url = f'/v1/todos/{self.todo_id}/reminder'
@@ -205,18 +206,18 @@ class ReminderGatewayTests(unittest.TestCase):
         self.app.state.auth.authenticate.side_effect = PermissionError('拒绝')
         self.assertEqual(self.client.put(self.url, json={}).status_code, 403)
         self.assertEqual(self.client.get('/v1/todos/reminders/due').status_code, 403)
-        self.app.state.service.set_todo_reminder.assert_not_awaited()
-        self.app.state.service.due_reminders.assert_not_awaited()
+        self.app.state.todo_store.set_todo_reminder.assert_not_awaited()
+        self.app.state.todo_store.due_reminders.assert_not_awaited()
 
     def test_due_schedule_principal_no_run(self):
-        self.app.state.service.due_reminders.return_value = []
+        self.app.state.todo_store.due_reminders.return_value = []
         self.assertEqual(self.client.get('/v1/todos/reminders/due').json(), {'items': []})
-        self.app.state.service.due_reminders.assert_awaited_once_with(self.who)
-        self.app.state.service.set_todo_reminder.return_value = {'id': self.todo_id}
+        self.app.state.todo_store.due_reminders.assert_awaited_once_with(self.who.account_id)
+        self.app.state.todo_store.set_todo_reminder.return_value = {'id': self.todo_id}
         result = self.client.put(self.url, json={'remind_at': '2026-09-07T16:00:00+08:00', 'expected_remind_at': None},
                                  headers={'authorization': 'Bearer unit-only'})
         self.assertEqual(result.status_code, 200)
-        self.app.state.service.set_todo_reminder.assert_awaited_once_with(self.who, self.todo_id, NOW, None)
+        self.app.state.todo_store.set_todo_reminder.assert_awaited_once_with(self.who.account_id, self.todo_id, NOW, None)
         self.app.state.auth.authenticate.assert_awaited_with('Bearer unit-only', 'control')
         self.app.state.service.submit.assert_not_awaited()
 
@@ -225,10 +226,10 @@ class ReminderGatewayTests(unittest.TestCase):
             self.assertEqual(self.client.put(self.url, json=body).status_code, 400)
         self.assertEqual(self.client.put(self.url, content='not json').status_code, 400)
         self.assertEqual(self.client.put('/v1/todos/bad/reminder', json={}).status_code, 400)
-        self.app.state.service.set_todo_reminder.assert_not_awaited()
+        self.app.state.todo_store.set_todo_reminder.assert_not_awaited()
         for error, code in [(ReminderConflict('已修改'), 409), (LookupError('未找到'), 404),
                             (ValueError('时间已过去'), 400), (RuntimeError('secret db'), 503)]:
-            self.app.state.service.set_todo_reminder.side_effect = error
+            self.app.state.todo_store.set_todo_reminder.side_effect = error
             result = self.client.put(self.url, json={'remind_at': None, 'expected_remind_at': None})
             self.assertEqual(result.status_code, code)
             self.assertNotIn('secret', result.text)

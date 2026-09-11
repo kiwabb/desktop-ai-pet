@@ -28,12 +28,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await db.open()
             await coordination.open()
             registry = Registry(db)
-            await registry.register_server_tools()
+            from .plugin_runtime import builtin_plugins
+            plugins = builtin_plugins(db)
+            await registry.register_server_tools(plugins)
             from .agent_service import AgentService
-            service = AgentService(db, settings, coordination)
+            service = AgentService(db, settings, coordination, plugins)
             app.state.db, app.state.coordination = db, coordination
             app.state.auth, app.state.registry = Auth(db), registry
             app.state.service = service
+            # Plugins only declare their endpoints (plugin.json rest_endpoints);
+            # the core mounts them against the plugin's domain store.
+            app.state.todo_store = service.plugins.store_for('todo')
             install_admin_routes(app, db, settings, coordination)
             await service.start()
             yield
@@ -110,11 +115,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/v1/todos")
     async def todos(request: Request):
-        return {"items": await app.state.service.list_todos(await principal(request))}
+        who = await principal(request)
+        return {"items": await app.state.todo_store.list_todos(who.account_id)}
+
+    async def todo_title_argument(request: Request) -> str:
+        try:
+            body = await request.json()
+        except ValueError:
+            raise ValueError("待办请求必须为有效 JSON") from None
+        if not isinstance(body, dict) or set(body) != {"title"}:
+            raise ValueError("必须且只能提供 title")
+        return body["title"]
+
+    @app.post("/v1/todos")
+    async def create_todo(request: Request):
+        who = await principal(request)
+        title = await todo_title_argument(request)
+        return {"item": await app.state.todo_store.create_todo(who.account_id, title)}
+
+    @app.patch("/v1/todos/{todo_id}")
+    async def update_todo_title(todo_id: str, request: Request):
+        who = await principal(request)
+        todo_id = uuid_string(todo_id, "todo_id")
+        title = await todo_title_argument(request)
+        return {"item": await app.state.todo_store.update_todo_title(who.account_id, todo_id, title)}
+
+    @app.delete("/v1/todos/{todo_id}")
+    async def delete_todo(todo_id: str, request: Request):
+        who = await principal(request)
+        # Return the pre-delete snapshot so clients can animate the removal.
+        return {"item": await app.state.todo_store.delete_todo(who.account_id, uuid_string(todo_id, "todo_id"))}
 
     @app.get("/v1/todos/reminders/due")
     async def due_reminders(request: Request):
-        return {"items": await app.state.service.due_reminders(await principal(request))}
+        who = await principal(request)
+        return {"items": await app.state.todo_store.due_reminders(who.account_id)}
 
     @app.put("/v1/todos/{todo_id}/reminder")
     async def set_todo_reminder(todo_id: str, request: Request):
@@ -125,17 +160,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except ValueError:
             raise ValueError("提醒请求必须为有效 JSON") from None
         target, expected = reminder_arguments(body)
-        return {"item": await app.state.service.set_todo_reminder(who, todo_id, target, expected)}
+        return {"item": await app.state.todo_store.set_todo_reminder(who.account_id, todo_id, target, expected)}
 
     @app.post("/v1/todos/{todo_id}/complete")
     async def complete_todo(todo_id: str, request: Request):
         who = await principal(request)
-        return {"item": await app.state.service.complete_todo(who, uuid_string(todo_id, "todo_id"))}
+        return {"item": await app.state.todo_store.complete_todo(who.account_id, uuid_string(todo_id, "todo_id"))}
 
     @app.post("/v1/todos/{todo_id}/reopen")
     async def reopen_todo(todo_id: str, request: Request):
         who = await principal(request)
-        return {"item": await app.state.service.reopen_todo(who, uuid_string(todo_id, "todo_id"))}
+        return {"item": await app.state.todo_store.reopen_todo(who.account_id, uuid_string(todo_id, "todo_id"))}
 
     async def websocket_auth(ws: WebSocket, role: str):
         # This application does not accept browser-originated credentialed sockets.

@@ -48,9 +48,9 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         svc.store = SimpleNamespace(history=AsyncMock(return_value=([], '[]')),
                                     append_delta=AsyncMock(), finish_run=AsyncMock(),
                                     heartbeat=AsyncMock(), LEASE_SECONDS=30)
-        svc.tools = SimpleNamespace(execute=AsyncMock(return_value={
+        svc.plugins = SimpleNamespace(execute=AsyncMock(return_value={
             'status': 'completed', 'result': {'items': []}, 'error': None,
-        }))
+        }), model_tools=[])
         run = dict(id=str(uuid4()), session_id=str(uuid4()), account_id=str(uuid4()),
                    input_text='查询待办', ordinal=1, created_at=datetime.now(timezone.utc))
         return svc, run
@@ -58,7 +58,7 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
     async def test_streamed_tool_loop_and_checkpoint(self):
         svc, run = self.service([[tool_chunk()], [AIMessageChunk(content='当前'), AIMessageChunk(content='没有待办。')]])
         await svc._run_graph(run, 'owner')
-        self.assertEqual(svc.tools.execute.await_count, 1)
+        self.assertEqual(svc.plugins.execute.await_count, 1)
         self.assertEqual([call.args[2] for call in svc.store.append_delta.await_args_list], ['当前', '没有待办。'])
         second_input = svc.model.inputs[1]
         self.assertEqual(second_input[-1].type, 'tool')
@@ -91,7 +91,7 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
                 expected.append(('human', '创建代办'))
                 self.assertEqual(messages[0].type, 'system')
                 self.assertEqual([(message.type, message.content) for message in messages[1:]], expected)
-                svc.tools.execute.assert_not_awaited()
+                svc.plugins.execute.assert_not_awaited()
 
     async def test_model_receives_current_clock_and_original_acceptance_time(self):
         svc, run = self.service([[AIMessageChunk(content='测试响应')]])
@@ -125,7 +125,7 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
     async def test_model_failure_keeps_successful_tool_result(self):
         svc, run = self.service([[tool_chunk()], [RuntimeError('provider secret must not escape')]])
         await svc._execute(run, 'owner')
-        self.assertEqual(svc.tools.execute.await_count, 1)
+        self.assertEqual(svc.plugins.execute.await_count, 1)
         finished = svc.store.finish_run.await_args
         self.assertEqual(finished.args[2], 'failed')
         self.assertNotIn('secret', finished.args[3])
@@ -136,11 +136,11 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(StepLimit):
             await svc._run_graph(run, 'owner')
         self.assertEqual(len(svc.model.inputs), 1)
-        self.assertEqual(svc.tools.execute.await_count, 1)
+        self.assertEqual(svc.plugins.execute.await_count, 1)
 
     async def test_tool_failure_is_error_tool_message_not_success(self):
         svc, run = self.service([[tool_chunk()], [AIMessageChunk(content='查询失败。')]])
-        svc.tools.execute.return_value = {'status': 'failed', 'result': None, 'error': '查询失败'}
+        svc.plugins.execute.return_value = {'status': 'failed', 'result': None, 'error': '查询失败'}
         await svc._run_graph(run, 'owner')
         self.assertEqual(svc.model.inputs[1][-1].status, 'error')
         self.assertIn('error', svc.model.inputs[1][-1].content)

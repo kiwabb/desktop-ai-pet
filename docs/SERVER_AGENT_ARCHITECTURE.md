@@ -38,6 +38,7 @@
 | D10 | Redis 实时协调 | 在线租约、路由元数据、热点缓存与进程间通知；真实连接由网关进程持有 |
 | D11 | 单主智能体 + 多工具 | 每次任务独立上下文和状态；单角色不等于全服务串行 |
 | D12 | 持久任务 + 后台执行器 | 任务先写 PostgreSQL，执行不依赖 WebSocket 存活；结果不明的副作用不盲目重试 |
+| D13 | 能力插件 seam | 可声明内容（工具 schema、名映射、提示词片段、错误文案）收敛为共享 `plugin.json`；双端循环只依赖插件注册表接口，待办是首个范例插件 |
 
 Python/Rig 语言对比已收敛：本项目选择服务端 Python 的 LangChain/LangGraph 体系。
 此前讨论的“每台设备运行 Python Sidecar”和“Rust/Rig 作为智能体核心”不属于后续默认实现方向。
@@ -76,6 +77,25 @@ flowchart TB
 ```
 
 图中的提醒调度和设备自动化是目标边界；本次 MVP 的实际交付清单以 PRD 为准。
+
+## 能力插件：如何新增一个插件
+
+核心 agent 循环不硬编码任何工具域；新能力 = 新增一个插件包，而不是在双端循环里散落修改。可声明化的内容集中在共享描述文件 `plugins/<名称>/plugin.json`（仓库根，双端单一事实源；Rust 端 `include_str!` 编译期嵌入，Python 端运行时加载同文件）：
+
+- `tools`：工具定义数组（name/version/description/input_schema/permission/execution_location/handler_key；`handler_key` 即模型侧下划线名，`name_mapping` 声明模型名 ↔ 业务名）。
+- `prompt_fragments`：有序片段数组（`[{key, text}]`）；声明顺序即核心固定布局（核心头 → 片段槽 → 核心中段 → 片段槽 → 核心尾）的填槽顺序，槽位数不符启动即拒绝。
+- `validation_messages`：参数校验错误文案表（双端校验器共用文案）。
+- `affects`：该插件确认的副作用触发哪些前端刷新组（如 `todo-list`）。
+- `rest_endpoints`：声明性端点清单；路由仍由核心挂载，不做动态注册。
+
+各端落地清单（以 todo 为范例）：
+
+1. **服务端**：建 `server/app/plugins/<名称>/` 包——`manifest.py`（加载共享 plugin.json）、`store.py`（领域存储方法；事务/事件骨架留 `runtime_store.py`）、`tools.py`（`<名称>Plugin`：`definitions` / `model_tools` / `prompt_fragments` / `validate` / `execute_in_tx`）。把实例加入 `app/plugin_runtime.py` 的 `builtin_plugins()`（显式有序清单，非文件系统扫描）。执行骨架（幂等 start_tool → 注册中心校验 → 事务内业务 + 结果同提交 → 错误消毒）在 `PluginRegistry`，插件不重复实现。
+2. **Rust 单机模式**：建 `src-tauri/src/local_agent/plugins/<名称>/`（`manifest.rs` / `store.rs` / `mod.rs` 对称结构），实现 `ToolPlugin` trait 并注册进 `plugin_runtime.rs` 的 `builtin_plugins()`；直连命令在 `backend/mod.rs` 挂载点经 `<名称>Store::new(&store)` 调用。
+3. **前端**：建 `src/lib/<名称>/presentation.ts`（返回 `{ name, status, text }` 的展示函数 + `affects` 声明，工具名/刷新组可直接 import 共享 plugin.json 派生），在 `src/lib/tool-plugins.ts` 的显式清单注册一行。ChatPanel 只查通用展示表；未注册的工具降级为通用展示而不报错。
+4. **测试**：双端等价性（从同一 plugin.json 产出的模型工具 schema 相等）、提示词全文快照 + 填槽顺序/计数拒绝、执行骨架行为矩阵（幂等重放、参数错误、冲突消毒）、前端注册表降级与 affects 派发。新增插件的加载能力由双端 dummy 插件测试（仅声明 + 空 handler，核心零改动）背书。
+
+设备端能力仍未开放：`capabilities` 必须为空数组的校验保持不变。
 
 ## 工具注册与执行
 

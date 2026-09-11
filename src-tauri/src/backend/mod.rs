@@ -359,6 +359,62 @@ pub async fn agent_complete_todo(
 }
 
 #[tauri::command]
+pub async fn agent_create_todo(app: AppHandle, title: String) -> Result<TodoCompletionView, String> {
+    let title = validate_todo_title(&title)?;
+    let (source, generation) = begin_todo_write(&app)?;
+    let result = match source {
+        TodoSource::Server(config) => server::create_todo_http(&config, &title).await,
+        TodoSource::Local(store) => crate::local_agent::plugins::todo::TodoStore::new(&store)
+            .create_todo(&title)
+            .map_err(|error| error.message()),
+    };
+    finish_todo_write(&app, generation, result)
+}
+
+#[tauri::command]
+pub async fn agent_update_todo(app: AppHandle, todo_id: String, title: String) -> Result<TodoCompletionView, String> {
+    let title = validate_todo_title(&title)?;
+    let (source, generation) = begin_todo_write(&app)?;
+    let result = match source {
+        TodoSource::Server(config) => server::update_todo_title_http(&config, &todo_id, &title).await,
+        TodoSource::Local(store) => {
+            let todo_id = uuid::Uuid::parse_str(&todo_id)
+                .map_err(|_| "待办标识不正确".to_owned())?
+                .to_string();
+            crate::local_agent::plugins::todo::TodoStore::new(&store)
+                .update_todo_title(&todo_id, &title)
+                .map_err(|error| error.message())
+        }
+    };
+    finish_todo_write(&app, generation, result)
+}
+
+#[tauri::command]
+pub async fn agent_delete_todo(app: AppHandle, todo_id: String) -> Result<TodoCompletionView, String> {
+    let (source, generation) = begin_todo_write(&app)?;
+    let result = match source {
+        TodoSource::Server(config) => server::delete_todo_http(&config, &todo_id).await,
+        TodoSource::Local(store) => {
+            let todo_id = uuid::Uuid::parse_str(&todo_id)
+                .map_err(|_| "待办标识不正确".to_owned())?
+                .to_string();
+            crate::local_agent::plugins::todo::TodoStore::new(&store)
+                .delete_todo(&todo_id)
+                .map_err(|error| error.message())
+        }
+    };
+    finish_todo_write(&app, generation, result)
+}
+
+/// Shared client-side title rule so both modes fail identically before any I/O.
+fn validate_todo_title(title: &str) -> Result<String, String> {
+    if title.trim().is_empty() || title.chars().count() > 2000 {
+        return Err("待办标题需为 1 到 2000 个字符".into());
+    }
+    Ok(title.trim().to_owned())
+}
+
+#[tauri::command]
 pub async fn agent_reopen_todo(app: AppHandle, todo_id: String) -> Result<TodoCompletionView, String> {
     update_todo(app, todo_id, server::TodoAction::Reopen).await
 }
@@ -372,8 +428,8 @@ async fn update_todo(app: AppHandle, todo_id: String, action: server::TodoAction
                 .map_err(|_| "待办标识不正确".to_owned())?
                 .to_string();
             match action {
-                server::TodoAction::Complete => store.complete_todo(&todo_id),
-                server::TodoAction::Reopen => store.reopen_todo(&todo_id),
+                server::TodoAction::Complete => crate::local_agent::plugins::todo::TodoStore::new(&store).complete_todo(&todo_id),
+                server::TodoAction::Reopen => crate::local_agent::plugins::todo::TodoStore::new(&store).reopen_todo(&todo_id),
             }
             .map_err(|error| error.message())
         }
@@ -437,7 +493,7 @@ fn local_set_reminder(store: &crate::local_agent::store::Store, todo_id: &str, r
     };
     let target = parse(remind_at)?;
     let expected = parse(expected_remind_at)?;
-    store
+    crate::local_agent::plugins::todo::TodoStore::new(store)
         .set_todo_reminder(&todo_id, target, expected)
         .map_err(|error| match error {
             crate::local_agent::store::StoreError::Conflict(_) => "待办或提醒已被修改，请刷新后重试".into(),
@@ -474,7 +530,9 @@ pub async fn agent_list_todos(app: AppHandle) -> Result<TodoListView, String> {
     };
     let items = match source {
         TodoSource::Server(config) => server::fetch_todos(&config).await?,
-        TodoSource::Local(store) => store.list_todos().map_err(|error| error.message())?,
+        TodoSource::Local(store) => crate::local_agent::plugins::todo::TodoStore::new(&store)
+            .list_todos()
+            .map_err(|error| error.message())?,
     };
     let state = app.state::<AgentState>();
     let inner = state.lock();

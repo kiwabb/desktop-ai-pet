@@ -5,7 +5,6 @@
 //! transaction; `agent_sessions.seq` is the strictly increasing watermark and
 //! `request_id` uniqueness makes submissions idempotent across restarts.
 use crate::agent_protocol::{Envelope, Message, Role, Run, RunStatus, Snapshot, ToolCall, ToolStatus};
-use crate::backend::{Todo, TodoStatus};
 use chrono::{DateTime, SecondsFormat, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde_json::{json, Value};
@@ -140,7 +139,7 @@ pub fn parse_reminder_time(value: &Value) -> Result<Option<DateTime<Utc>>, Store
     }
 }
 
-fn uuid_text(value: &str) -> Result<String, StoreError> {
+pub(crate) fn uuid_text(value: &str) -> Result<String, StoreError> {
     uuid::Uuid::parse_str(value)
         .map(|id| id.to_string())
         .map_err(|_| StoreError::Validation("标识必须为有效 UUID".into()))
@@ -235,20 +234,6 @@ fn tool_from_row(row: &Row) -> rusqlite::Result<ToolCall> {
         status: parse_tool_status(&row.get::<_, String>("status")?),
         result: result.and_then(|text| serde_json::from_str(&text).ok()),
         error: row.get("error")?,
-    })
-}
-
-fn todo_from_row(row: &Row) -> rusqlite::Result<Todo> {
-    Ok(Todo {
-        id: row.get("id")?,
-        title: row.get("title")?,
-        status: if row.get::<_, String>("status")? == "completed" {
-            TodoStatus::Completed
-        } else {
-            TodoStatus::Pending
-        },
-        created_at: row.get("created_at")?,
-        remind_at: row.get("remind_at")?,
     })
 }
 
@@ -363,67 +348,6 @@ fn terminal_tx(
     let kind = format!("run.{}", run_status_name(status));
     envelopes.push(event(conn, &finished, &kind, json!({"run": finished.view()}))?);
     Ok(envelopes)
-}
-
-fn create_todo_tx(conn: &Connection, title: &str, source_tool_call_id: Option<&str>) -> Result<Todo, StoreError> {
-    Ok(conn.query_row(
-        "INSERT INTO todos(id, title, source_tool_call_id, created_at) VALUES (?1, ?2, ?3, ?4) RETURNING *",
-        params![uuid::Uuid::new_v4().to_string(), title, source_tool_call_id, now_stamp()],
-        todo_from_row,
-    )?)
-}
-
-/// Shared setter/CAS (runtime_store.set_todo_reminder_in_transaction).
-fn set_reminder_tx(
-    conn: &Connection,
-    todo_id: &str,
-    target: Option<DateTime<Utc>>,
-    expected: Option<DateTime<Utc>>,
-) -> Result<Todo, StoreError> {
-    let todo = conn
-        .query_row("SELECT * FROM todos WHERE id = ?1", params![todo_id], todo_from_row)
-        .optional()?
-        .ok_or_else(|| StoreError::NotFound("未找到待办，请刷新核对".into()))?;
-    if todo.status != TodoStatus::Pending {
-        return Err(StoreError::Conflict("待办已完成，请刷新核对".into()));
-    }
-    let target = target.map(normalize_instant);
-    // A lost-response retry may arrive after its target time has passed.
-    if todo.remind_at == target {
-        return Ok(todo);
-    }
-    if todo.remind_at != expected.map(normalize_instant) {
-        return Err(StoreError::Conflict("提醒已被修改，请刷新后重试".into()));
-    }
-    if let Some(target) = &target {
-        // The real clock is authoritative, matching the server's database clock.
-        if target.as_str() <= now_stamp().as_str() {
-            return Err(StoreError::Validation("提醒时间必须晚于当前时间".into()));
-        }
-    }
-    Ok(conn.query_row(
-        "UPDATE todos SET remind_at = ?1 WHERE id = ?2 RETURNING *",
-        params![target, todo_id],
-        todo_from_row,
-    )?)
-}
-
-fn complete_todo_tx(conn: &Connection, todo_id: &str) -> Result<Todo, StoreError> {
-    conn.query_row(
-        "UPDATE todos SET status = 'completed', remind_at = NULL WHERE id = ?1 RETURNING *",
-        params![todo_id],
-        todo_from_row,
-    )
-    .optional()?
-    .ok_or_else(|| StoreError::NotFound("未找到可完成的待办，请重新查询并确认事项".into()))
-}
-
-fn todos_tx(conn: &Connection) -> Result<Vec<Todo>, StoreError> {
-    let mut statement = conn.prepare("SELECT * FROM todos ORDER BY created_at, id")?;
-    let todos = statement
-        .query_map([], todo_from_row)?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(todos)
 }
 
 #[derive(Debug)]
@@ -747,7 +671,10 @@ impl Store {
         Ok(Some(StartedTool::Fresh(view, envelope)))
     }
 
-    fn tool_outcome(
+    /// Runs `effect` and the tool-result finish in one transaction; plugins
+    /// compose their business effect through this skeleton (runtime_store's
+    /// executing + finish_tool).
+    pub(crate) fn tool_outcome(
         &self,
         run_id: &str,
         tool_id: &str,
@@ -771,55 +698,13 @@ impl Store {
         }
     }
 
-    /// todo.create: the todo, its optional reminder and the tool result commit
-    /// atomically; a failed schedule leaves no orphan todo.
-    pub fn tool_create_todo(
+    /// Read/transaction-free domain access for plugins (direct operations).
+    pub(crate) fn with_conn<R>(
         &self,
-        run_id: &str,
-        tool_id: &str,
-        title: &str,
-        remind_at: Option<DateTime<Utc>>,
-    ) -> Result<(ToolCall, Envelope), StoreError> {
-        self.tool_outcome(run_id, tool_id, |tx| {
-            let todo = create_todo_tx(tx, title, Some(tool_id))?;
-            let item = match remind_at {
-                Some(target) => set_reminder_tx(tx, &todo.id, Some(target), None)?,
-                None => todo,
-            };
-            Ok(json!({"item": item}))
-        })
-    }
-
-    pub fn tool_set_reminder(
-        &self,
-        run_id: &str,
-        tool_id: &str,
-        todo_id: &str,
-        target: Option<DateTime<Utc>>,
-        expected: Option<DateTime<Utc>>,
-    ) -> Result<(ToolCall, Envelope), StoreError> {
-        self.tool_outcome(run_id, tool_id, |tx| {
-            Ok(json!({"item": set_reminder_tx(tx, todo_id, target, expected)?}))
-        })
-    }
-
-    pub fn tool_complete_todo(
-        &self,
-        run_id: &str,
-        tool_id: &str,
-        todo_id: &str,
-    ) -> Result<(ToolCall, Envelope), StoreError> {
-        self.tool_outcome(run_id, tool_id, |tx| {
-            Ok(json!({"item": complete_todo_tx(tx, todo_id)?}))
-        })
-    }
-
-    pub fn tool_list_todos(
-        &self,
-        run_id: &str,
-        tool_id: &str,
-    ) -> Result<(ToolCall, Envelope), StoreError> {
-        self.tool_outcome(run_id, tool_id, |tx| Ok(json!({"items": todos_tx(tx)?})))
+        f: impl FnOnce(&Connection) -> Result<R, StoreError>,
+    ) -> Result<R, StoreError> {
+        let conn = self.conn();
+        f(&conn)
     }
 
     /// Records a business failure as the tool result in its own transaction
@@ -922,53 +807,6 @@ impl Store {
             .collect::<Result<Vec<_>, _>>()?;
         Ok((messages, unresolved))
     }
-
-    pub fn list_todos(&self) -> Result<Vec<Todo>, StoreError> {
-        let conn = self.conn();
-        todos_tx(&conn)
-    }
-
-    /// Pending rows due at or before `now`; reading never consumes (due GET analog).
-    pub fn due_reminders(&self, now: DateTime<Utc>) -> Result<Vec<Todo>, StoreError> {
-        let conn = self.conn();
-        let mut statement = conn.prepare(
-            "SELECT * FROM todos WHERE status = 'pending' AND remind_at IS NOT NULL \
-             AND remind_at <= ?1 ORDER BY remind_at, id",
-        )?;
-        let todos = statement
-            .query_map(params![normalize_instant(now)], todo_from_row)?
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(todos)
-    }
-
-    pub fn set_todo_reminder(
-        &self,
-        todo_id: &str,
-        target: Option<DateTime<Utc>>,
-        expected: Option<DateTime<Utc>>,
-    ) -> Result<Todo, StoreError> {
-        let todo_id = uuid_text(todo_id)?;
-        let conn = self.conn();
-        set_reminder_tx(&conn, &todo_id, target, expected)
-    }
-
-    pub fn complete_todo(&self, todo_id: &str) -> Result<Todo, StoreError> {
-        let todo_id = uuid_text(todo_id)?;
-        let conn = self.conn();
-        complete_todo_tx(&conn, &todo_id)
-    }
-
-    pub fn reopen_todo(&self, todo_id: &str) -> Result<Todo, StoreError> {
-        let todo_id = uuid_text(todo_id)?;
-        let conn = self.conn();
-        conn.query_row(
-            "UPDATE todos SET status = 'pending' WHERE id = ?1 RETURNING *",
-            params![todo_id],
-            todo_from_row,
-        )
-        .optional()?
-        .ok_or_else(|| StoreError::NotFound("未找到可恢复的待办，请重新查询并确认事项".into()))
-    }
 }
 
 fn existing_json(conn: &Connection, tool_id: &str) -> Result<Value, StoreError> {
@@ -983,7 +821,15 @@ fn existing_json(conn: &Connection, tool_id: &str) -> Result<Value, StoreError> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::backend::TodoStatus;
+    use crate::local_agent::plugins::todo::TodoStore;
     use chrono::Duration;
+
+    /// Domain operations moved to the todo plugin; tests exercise them through
+    /// the same plugin store handle used by command mounting.
+    fn todos(store: &Store) -> TodoStore<'_> {
+        TodoStore::new(store)
+    }
 
     fn session(store: &Store) -> String {
         store.create_session().unwrap()
@@ -1110,7 +956,7 @@ mod tests {
         else {
             panic!("fresh tool expected")
         };
-        let (done, _) = store
+        let (done, _) = todos(&store)
             .tool_create_todo(&run.id, &tool.id, "喝水", None)
             .unwrap();
         assert_eq!(done.status, ToolStatus::Completed);
@@ -1121,7 +967,7 @@ mod tests {
             panic!("existing tool expected")
         };
         assert_eq!(repeated.status, ToolStatus::Completed);
-        assert_eq!(store.list_todos().unwrap().len(), 1);
+        assert_eq!(todos(&store).list_todos().unwrap().len(), 1);
         let conflict = store
             .start_tool(&run.id, "call_1", "todo.create", &json!({"title": "别的"}))
             .unwrap_err();
@@ -1144,7 +990,7 @@ mod tests {
             panic!("fresh tool expected")
         };
         let target = future(3);
-        let (done, _) = store
+        let (done, _) = todos(&store)
             .tool_create_todo(&run.id, &tool.id, "喝水", Some(target))
             .unwrap();
         let item = &done.result.as_ref().unwrap()["item"];
@@ -1152,10 +998,10 @@ mod tests {
         assert!(item["remind_at"].is_string());
 
         // Idempotent retry with the same target succeeds even with a stale expected.
-        let same = store.set_todo_reminder(&todo_id, Some(target), None).unwrap();
+        let same = todos(&store).set_todo_reminder(&todo_id, Some(target), None).unwrap();
         assert!(same.remind_at.is_some());
         // Stale CAS is a conflict; completed todos reject reminders.
-        let conflict = store
+        let conflict = todos(&store)
             .set_todo_reminder(&todo_id, Some(future(4)), None)
             .unwrap_err();
         assert_eq!(conflict, StoreError::Conflict("提醒已被修改，请刷新后重试".into()));
@@ -1163,7 +1009,7 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
         // Past targets are rejected against the real clock.
-        let past = store
+        let past = todos(&store)
             .set_todo_reminder(
                 &todo_id,
                 Some(Utc::now() - Duration::minutes(1)),
@@ -1172,16 +1018,16 @@ mod tests {
             .unwrap_err();
         assert_eq!(past, StoreError::Validation("提醒时间必须晚于当前时间".into()));
         // Cancel is explicit and clearing again is a no-op retry.
-        let cleared = store.set_todo_reminder(&todo_id, None, Some(current)).unwrap();
+        let cleared = todos(&store).set_todo_reminder(&todo_id, None, Some(current)).unwrap();
         assert!(cleared.remind_at.is_none());
-        let cleared_again = store.set_todo_reminder(&todo_id, None, Some(current)).unwrap();
+        let cleared_again = todos(&store).set_todo_reminder(&todo_id, None, Some(current)).unwrap();
         assert!(cleared_again.remind_at.is_none());
         // Completion clears the reminder atomically and is idempotent.
-        let completed = store.complete_todo(&todo_id).unwrap();
+        let completed = todos(&store).complete_todo(&todo_id).unwrap();
         assert_eq!(completed.status, TodoStatus::Completed);
         assert!(completed.remind_at.is_none());
-        assert_eq!(store.complete_todo(&todo_id).unwrap().status, TodoStatus::Completed);
-        let completed_target = store
+        assert_eq!(todos(&store).complete_todo(&todo_id).unwrap().status, TodoStatus::Completed);
+        let completed_target = todos(&store)
             .set_todo_reminder(&todo_id, Some(future(5)), None)
             .unwrap_err();
         assert_eq!(
@@ -1189,15 +1035,15 @@ mod tests {
             StoreError::Conflict("待办已完成，请刷新核对".into())
         );
         // Reopen restores pending without restoring the cleared reminder.
-        let reopened = store.reopen_todo(&todo_id).unwrap();
+        let reopened = todos(&store).reopen_todo(&todo_id).unwrap();
         assert_eq!(reopened.status, TodoStatus::Pending);
         assert!(reopened.remind_at.is_none());
         assert_eq!(
-            store.complete_todo(&uuid::Uuid::new_v4().to_string()).unwrap_err(),
+            todos(&store).complete_todo(&uuid::Uuid::new_v4().to_string()).unwrap_err(),
             StoreError::NotFound("未找到可完成的待办，请重新查询并确认事项".into())
         );
         assert_eq!(
-            store.set_todo_reminder(&uuid::Uuid::new_v4().to_string(), None, None).unwrap_err(),
+            todos(&store).set_todo_reminder(&uuid::Uuid::new_v4().to_string(), None, None).unwrap_err(),
             StoreError::NotFound("未找到待办，请刷新核对".into())
         );
     }
@@ -1214,11 +1060,11 @@ mod tests {
         else {
             panic!("fresh tool expected")
         };
-        let error = store
+        let error = todos(&store)
             .tool_create_todo(&run.id, &tool.id, "喝水", Some(Utc::now() - Duration::minutes(5)))
             .unwrap_err();
         assert_eq!(error, StoreError::Validation("提醒时间必须晚于当前时间".into()));
-        assert!(store.list_todos().unwrap().is_empty());
+        assert!(todos(&store).list_todos().unwrap().is_empty());
         let (failed, _) = store.fail_tool(&run.id, &tool.id, &error.message()).unwrap().unwrap();
         assert_eq!(failed.status, ToolStatus::Failed);
         assert_eq!(failed.error.as_deref(), Some("提醒时间必须晚于当前时间"));
@@ -1241,7 +1087,7 @@ mod tests {
             else {
                 panic!("fresh tool expected")
             };
-            store
+            todos(&store)
                 .tool_create_todo(
                     &run.id,
                     &tool.id,
@@ -1252,16 +1098,16 @@ mod tests {
         }
         // Two hours later the +0.5h and +1.5h rows are due, ordered by time.
         let later = Utc::now() + Duration::hours(2);
-        let due = store.due_reminders(later).unwrap();
+        let due = todos(&store).due_reminders(later).unwrap();
         assert_eq!(due.len(), 2);
         assert_eq!(due[0].title, "半小时后");
         assert_eq!(due[1].title, "一小时后");
         // Completing one removes it from the due list without consuming reads.
-        store.complete_todo(&due[0].id).unwrap();
-        let due = store.due_reminders(later).unwrap();
+        todos(&store).complete_todo(&due[0].id).unwrap();
+        let due = todos(&store).due_reminders(later).unwrap();
         assert_eq!(due.len(), 1);
         assert_eq!(due[0].title, "一小时后");
-        assert!(store.due_reminders(Utc::now()).unwrap().is_empty());
+        assert!(todos(&store).due_reminders(Utc::now()).unwrap().is_empty());
     }
 
     #[test]
@@ -1294,7 +1140,7 @@ mod tests {
         else {
             panic!("fresh tool expected")
         };
-        store.tool_create_todo(&run.id, &tool.id, "已保存", None).unwrap();
+        todos(&store).tool_create_todo(&run.id, &tool.id, "已保存", None).unwrap();
         store
             .finish_run(&run.id, RunStatus::Failed, Some("模型或任务执行失败"))
             .unwrap();
@@ -1305,6 +1151,56 @@ mod tests {
         assert!(unresolved.iter().all(|record| record["result"].is_object() || record["result"].is_null()));
         assert!(unresolved.iter().any(|record| record["name"] == "todo.create"
             && record["result"]["item"]["title"] == "已保存"));
+    }
+
+    #[test]
+    fn direct_todo_writes_validate_and_scope_like_the_server() {
+        let store = Store::open_memory();
+        // Create validates and strips exactly like the tool/server rule.
+        assert_eq!(
+            todos(&store).create_todo("   ").unwrap_err(),
+            StoreError::Validation("待办标题需为 1 到 2000 个字符".into())
+        );
+        assert_eq!(
+            todos(&store).create_todo(&"长".repeat(2001)).unwrap_err(),
+            StoreError::Validation("待办标题需为 1 到 2000 个字符".into())
+        );
+        let created = todos(&store).create_todo("  买牛奶  ").unwrap();
+        assert_eq!(created.title, "买牛奶");
+        assert_eq!(created.status, TodoStatus::Pending);
+        assert!(created.remind_at.is_none());
+        assert_eq!(todos(&store).create_todo(&"长".repeat(2000)).unwrap().title.chars().count(), 2000);
+        // Title edits also apply to completed rows; missing/foreign ids share one message.
+        let renamed = todos(&store).update_todo_title(&created.id, " 新标题 ").unwrap();
+        assert_eq!(renamed.title, "新标题");
+        todos(&store).complete_todo(&created.id).unwrap();
+        assert_eq!(
+            todos(&store).update_todo_title(&created.id, "完成后改名").unwrap().status,
+            TodoStatus::Completed
+        );
+        let missing = uuid::Uuid::new_v4().to_string();
+        assert_eq!(
+            todos(&store).update_todo_title(&missing, "x").unwrap_err(),
+            StoreError::NotFound("待办不存在或已删除".into())
+        );
+        assert_eq!(
+            todos(&store).update_todo_title("../bad", "x").unwrap_err(),
+            StoreError::Validation("标识必须为有效 UUID".into())
+        );
+        // Delete is hard: the row is gone and a repeat reports not-found.
+        let deleted = todos(&store).delete_todo(&created.id).unwrap();
+        assert_eq!(deleted.id, created.id);
+        assert!(todos(&store).list_todos().unwrap().iter().all(|todo| todo.id != created.id));
+        for target in [created.id.as_str(), missing.as_str()] {
+            assert_eq!(
+                todos(&store).delete_todo(target).unwrap_err(),
+                StoreError::NotFound("待办不存在或已删除".into())
+            );
+        }
+        assert_eq!(
+            todos(&store).delete_todo("../bad").unwrap_err(),
+            StoreError::Validation("标识必须为有效 UUID".into())
+        );
     }
 
     #[test]

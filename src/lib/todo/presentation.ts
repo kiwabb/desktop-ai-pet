@@ -1,4 +1,6 @@
-import type { ToolCall } from './agent'
+import type { ToolCall } from '../agent'
+import manifest from '../../../plugins/todo/plugin.json'
+import { registerToolPresentation, toolStatusText, type ToolPresentationPlugin } from '../tool-presentation'
 
 function toolKind(name: string) {
   if (name === 'todo.create' || name === 'todo_create') return 'create'
@@ -33,7 +35,7 @@ function reminderTime(item: object | null) {
   }).format(date)
 }
 
-export function todoToolPresentation(tool: ToolCall) {
+function todoToolPresentation(tool: ToolCall) {
   const kind = toolKind(tool.name)
   const item = resultItem(tool)
   const title = titleOf(item)
@@ -41,7 +43,7 @@ export function todoToolPresentation(tool: ToolCall) {
   const cleared = item !== null && 'remind_at' in item && item.remind_at === null
   const hasReminderValue = item !== null && 'remind_at' in item && item.remind_at !== null
   let name = kind === 'create' ? '记录待办' : kind === 'complete' ? '完成待办' : kind === 'list' ? '查询待办' : kind === 'reminder' ? '调整提醒' : tool.name
-  let status = { running: '执行中', completed: '已完成', failed: '失败', needs_reconciliation: '待核实' }[tool.status]
+  let status = toolStatusText(tool.status)
   let text = ''
   if (tool.status !== 'completed') return { name, status, text }
 
@@ -79,9 +81,20 @@ export function todoToolPresentation(tool: ToolCall) {
 }
 
 /** Stable across streamed text, snapshot object identity and tool ordering. */
-export function todoToolEffectsFingerprint(tools: ToolCall[]) {
-  return JSON.stringify(tools.filter(tool => tool.status === 'completed' && ['create', 'complete', 'reminder'].includes(toolKind(tool.name) ?? '')).map(tool => {
+function todoEffectsFingerprint(tools: ToolCall[]) {
+  return tools.filter(tool => tool.status === 'completed' && ['create', 'complete', 'reminder'].includes(toolKind(tool.name) ?? '')).map(tool => {
     const item = resultItem(tool)
     return [tool.id, item && 'id' in item ? item.id : null, item && 'status' in item ? item.status : null, item && 'remind_at' in item ? item.remind_at : null]
-  }).sort((left, right) => String(left[0]).localeCompare(String(right[0]))))
+  }).sort((left, right) => String(left[0]).localeCompare(String(right[0])))
 }
+
+/** Tool names (business + model) and refresh groups come straight from the
+ * shared manifest, so the presentation registry cannot drift from it. */
+export const todoPresentationPlugin: ToolPresentationPlugin = {
+  toolNames: manifest.tools.flatMap(tool => [tool.name, tool.handler_key]),
+  affects: manifest.affects,
+  present: todoToolPresentation,
+  effectsFingerprint: todoEffectsFingerprint,
+}
+
+registerToolPresentation(todoPresentationPlugin)

@@ -5,7 +5,8 @@ import type { FormEvent } from 'react'
 import { connectionLabel, saveAgentSettings } from '../lib/agent'
 import type { AgentMode, AgentView, ToolCall } from '../lib/agent'
 import { shouldSubmitComposer } from '../lib/chat-interaction'
-import { todoToolEffectsFingerprint, todoToolPresentation } from '../lib/todo-tool-presentation'
+import { presentTool, toolEffectsFingerprint } from '../lib/tool-presentation'
+import '../lib/tool-plugins'
 import { MessageContent } from './MessageContent'
 import { useChatReading } from './useChatReading'
 import { ChatBubbleFrame } from './ChatBubbleFrame'
@@ -73,8 +74,9 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
   const messageListRef = reading.listRef
   const inputRef = useRef<HTMLTextAreaElement>(null)
   // Model tools do not advance the native direct-write revision. Track their
-  // confirmed effects separately, keeping streamed message updates inert here.
-  const todoRefreshKey = JSON.stringify([status?.generation ?? 0, status?.snapshot.session_id ?? null, status?.todo_revision ?? 0, todoToolEffectsFingerprint(tools)])
+  // confirmed effects separately, dispatched by the plugins' declared affects,
+  // keeping streamed message updates inert here.
+  const todoRefreshKey = JSON.stringify([status?.generation ?? 0, status?.snapshot.session_id ?? null, status?.todo_revision ?? 0, toolEffectsFingerprint(tools, 'todo-list')])
   const lastTodoRefreshKeyRef = useRef(todoRefreshKey)
   const [todoRefreshVersion, setTodoRefreshVersion] = useState(0)
 
@@ -416,7 +418,7 @@ export function ChatPanel({ attached = false, expanded, visible = true, animateE
                 {message.content ? <MessageContent content={message.content} /> : (message.pending && <LoaderCircle className="spinner" aria-label="正在生成回复" />)}
               </div>
               {message.role === 'assistant' && tools.filter(tool => tool.run_id === message.runId).map(tool => {
-                const presentation = todoToolPresentation(tool)
+                const presentation = presentTool(tool)
                 return (
                   <div className="agent-tool-result" key={tool.id} role="status">
                     <strong>{presentation.name} · {presentation.status}</strong>

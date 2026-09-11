@@ -18,7 +18,7 @@ class TracingRuntimeTests(unittest.IsolatedAsyncioTestCase):
         for name in ('start_model_trace', 'update_model_trace', 'finish_model_trace',
                      'link_tool_trace', 'finalize_run_trace', 'mark_trace_gap'):
             setattr(svc.store, name, AsyncMock())
-        svc.tools.execute.return_value['id'] = 'tool-row-id'
+        svc.plugins.execute.return_value['id'] = 'tool-row-id'
         return svc, run
 
     async def drain(self, svc):

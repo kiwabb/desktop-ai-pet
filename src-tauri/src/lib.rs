@@ -1,8 +1,11 @@
+#[cfg(debug_assertions)]
+mod motion_diagnostics;
 mod agent_protocol;
 mod backend;
 mod llm;
 mod local_agent;
 use serde::{Deserialize, Serialize};
+use std::sync::{Mutex, atomic::{AtomicBool, Ordering}};
 use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition};
 
 #[cfg(target_os = "macos")]
@@ -29,7 +32,11 @@ fn make_visible_on_every_space(
         .to_panel::<DesktopPetPanel>()
         .map_err(|error| format!("将窗口转换为 macOS NSPanel 失败：{error}"))?;
 
-    panel.set_level(PanelLevel::Floating.value());
+    // Keyboard focus may reorder windows within a level. Keep the one real
+    // cat in a permanently higher band than its chat dock, without making the
+    // cat key or preventing the chat composer from receiving keyboard input.
+    let level = PanelLevel::Floating.value() + if window.label() == "main" { 1 } else { 0 };
+    panel.set_level(level);
     let style_mask = if accepts_keyboard_input {
         StyleMask::empty().borderless()
     } else {
@@ -53,7 +60,6 @@ fn make_visible_on_every_space(
 
 const WINDOW_EDGE_MARGIN: f64 = 24.0;
 const PET_BOTTOM_MARGIN: f64 = 80.0;
-const WINDOW_GAP: f64 = 14.0;
 const PET_POSITION_FILE: &str = "pet-position.json";
 const PET_LEGACY_CLOSED_WIDTH: f64 = 184.0;
 const PET_LEGACY_CLOSED_HEIGHT: f64 = 300.0;
@@ -64,14 +70,8 @@ const PET_CLOSED_HEIGHT: f64 = 380.9;
 // The compact state uses the same 1672 × 941 reference canvas as the closed
 // cat, uniformly scaled to 0.852941 in CSS. The native surface is therefore
 // 713 × 401 logical pixels and the cat keeps the exact closed-state scale.
-const PET_CHAT_COMPACT_WIDTH: f64 = 713.0;
-const PET_CHAT_COMPACT_HEIGHT: f64 = 401.0;
 const PET_CHAT_EXPANDED_WIDTH: f64 = 940.0;
 const PET_CHAT_EXPANDED_HEIGHT: f64 = 760.0;
-const CHAT_COMPACT_WIDTH: f64 = 360.0;
-const CHAT_COMPACT_HEIGHT: f64 = 164.0;
-const CHAT_EXPANDED_WIDTH: f64 = 448.0;
-const CHAT_EXPANDED_HEIGHT: f64 = 520.0;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct StoredPetPosition {
@@ -200,7 +200,16 @@ fn save_pet_position(app: AppHandle, mut position: StoredPetPosition) -> Result<
 
 #[tauri::command]
 fn reset_pet_position(app: AppHandle) -> Result<(), String> {
+    let origin = pet_drag_origin(app.clone(), app.get_webview_window("main").ok_or("找不到桌宠窗口")?, "reset".to_owned())?;
     let position = position_pet_at_default(&app)?;
+    // Reset moves both windows by the same physical delta, independently of
+    // AppKit parent/child relations (which hide/order operations can change).
+    if let Some(chat) = app.get_webview_window("chat") {
+        chat.set_position(PhysicalPosition::new(
+            origin.chat_x + position.x - origin.main_x,
+            origin.chat_y + position.y - origin.main_y,
+        )).map_err(|error| error.to_string())?;
+    }
 
     // Persist the reset immediately. The normal onMoved debounce will also
     // observe this move, but the command must use the calculated destination
@@ -220,142 +229,105 @@ fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
-fn position_chat_next_to_pet(app: &AppHandle) -> Result<(), String> {
-    let pet = app
-        .get_webview_window("main")
-        .ok_or_else(|| "找不到桌宠窗口".to_owned())?;
-    let chat = app
-        .get_webview_window("chat")
-        .ok_or_else(|| "找不到聊天窗口".to_owned())?;
-    let monitor = pet
-        .current_monitor()
-        .map_err(|error| format!("无法获取桌宠所在屏幕：{error}"))?
-        .or_else(|| pet.primary_monitor().ok().flatten())
-        .ok_or_else(|| "未检测到可用屏幕".to_owned())?;
-    let pet_position = pet
-        .outer_position()
-        .map_err(|error| format!("无法获取桌宠位置：{error}"))?;
-    let pet_size = pet
-        .outer_size()
-        .map_err(|error| format!("无法获取桌宠尺寸：{error}"))?;
-    let chat_size = chat
-        .outer_size()
-        .map_err(|error| format!("无法获取聊天窗口尺寸：{error}"))?;
-    let monitor_position = monitor.position();
-    let monitor_size = monitor.size();
-    let margin = physical_pixels(WINDOW_EDGE_MARGIN, monitor.scale_factor());
-    let bottom_margin = physical_pixels(PET_BOTTOM_MARGIN, monitor.scale_factor());
-    let gap = physical_pixels(WINDOW_GAP, monitor.scale_factor());
-    let monitor_left = monitor_position.x + margin;
-    let monitor_right = monitor_position.x + monitor_size.width as i32 - margin;
-    let monitor_top = monitor_position.y + margin;
-    let monitor_bottom = monitor_position.y + monitor_size.height as i32 - bottom_margin;
-
-    let left_of_pet = pet_position.x - chat_size.width as i32 - gap;
-    let right_of_pet = pet_position.x + pet_size.width as i32 + gap;
-    let x = if left_of_pet >= monitor_left {
-        left_of_pet
-    } else if right_of_pet + chat_size.width as i32 <= monitor_right {
-        right_of_pet
-    } else {
-        monitor_right - chat_size.width as i32
-    };
-    let y = (monitor_bottom - chat_size.height as i32).max(monitor_top);
-
-    chat.set_position(PhysicalPosition::new(x, y))
-        .map_err(|error| format!("无法设置聊天窗口位置：{error}"))
+#[derive(Clone, Copy, Default, Deserialize)]
+struct ChatHitBounds { x: f64, y: f64, width: f64, height: f64 }
+#[derive(Default)]
+struct ChatHitState {
+    bounds: Mutex<ChatHitBounds>,
+    visible: AtomicBool,
+    dragging: AtomicBool,
+    poll_pending: AtomicBool,
+    drag_id: Mutex<String>,
 }
 
-fn resize_chat_window(app: &AppHandle, expanded: bool) -> Result<(), String> {
-    let chat = app
-        .get_webview_window("chat")
-        .ok_or_else(|| "找不到聊天窗口".to_owned())?;
-    let (width, height) = if expanded {
-        (CHAT_EXPANDED_WIDTH, CHAT_EXPANDED_HEIGHT)
-    } else {
-        (CHAT_COMPACT_WIDTH, CHAT_COMPACT_HEIGHT)
-    };
-    chat.set_size(LogicalSize::new(width, height))
-        .map_err(|error| format!("无法调整聊天窗口尺寸：{error}"))
+#[cfg(target_os = "macos")]
+fn update_chat_pointer_policy(app: &AppHandle) -> Result<(), String> {
+    let state = app.state::<ChatHitState>();
+    let panel = app.get_webview_panel("chat").map_err(|error| format!("无法获取聊天面板：{error:?}"))?;
+    let bounds = *state.bounds.lock().map_err(|_| "聊天命中区域不可用")?;
+    let accepts = if !state.visible.load(Ordering::Relaxed) { false }
+        else if state.dragging.load(Ordering::Relaxed) { true }
+        else {
+            unsafe {
+                let mouse: tauri_nspanel::NSPoint = tauri_nspanel::objc2::msg_send![tauri_nspanel::objc2::class!(NSEvent), mouseLocation];
+                let frame: tauri_nspanel::NSRect = tauri_nspanel::objc2::msg_send![panel.as_panel(), frame];
+                let x = mouse.x - frame.origin.x;
+                let y = frame.origin.y + frame.size.height - mouse.y;
+                x >= bounds.x && x < bounds.x + bounds.width && y >= bounds.y && y < bounds.y + bounds.height
+            }
+        };
+    panel.set_ignores_mouse_events(!accepts);
+    Ok(())
 }
 
 #[tauri::command]
-fn set_pet_chat_mode(app: AppHandle, mode: String) -> Result<(), String> {
-    let pet = app
-        .get_webview_window("main")
-        .ok_or_else(|| "找不到桌宠窗口".to_owned())?;
-    let (width, height) = match mode.as_str() {
-        "closed" => (PET_CLOSED_WIDTH, PET_CLOSED_HEIGHT),
-        "compact" => (PET_CHAT_COMPACT_WIDTH, PET_CHAT_COMPACT_HEIGHT),
-        "expanded" => (PET_CHAT_EXPANDED_WIDTH, PET_CHAT_EXPANDED_HEIGHT),
-        _ => return Err(format!("不支持的桌宠对话模式：{mode}")),
+fn set_chat_hit_bounds(app: AppHandle, window: tauri::WebviewWindow, bounds: ChatHitBounds) -> Result<(), String> {
+    if window.label() != "chat" { return Err("仅聊天窗口可更新命中区域".to_owned()); }
+    if ![bounds.x, bounds.y, bounds.width, bounds.height].iter().all(|value| value.is_finite()) {
+        return Err("聊天命中区域无效".to_owned());
+    }
+    let x = bounds.x.clamp(0.0, 940.0);
+    let y = bounds.y.clamp(0.0, 760.0);
+    *app.state::<ChatHitState>().bounds.lock().map_err(|_| "聊天命中区域不可用")? = ChatHitBounds {
+        x, y, width: bounds.width.clamp(0.0, 940.0 - x), height: bounds.height.clamp(0.0, 760.0 - y),
     };
-    let scale_factor = pet
-        .scale_factor()
-        .map_err(|error| format!("无法获取窗口缩放比例：{error}"))?;
-    let current_position = pet
-        .outer_position()
-        .map_err(|error| format!("无法获取桌宠位置：{error}"))?;
-    let current_size = pet
-        .outer_size()
-        .map_err(|error| format!("无法获取桌宠尺寸：{error}"))?;
-    let anchor_x = current_position.x + current_size.width as i32;
-    let anchor_y = current_position.y + current_size.height as i32;
-    // AppKit exposes integral point bounds for these borderless panels. The
-    // subpixel closed height can therefore receive one transparent backing
-    // row; account for that rounding before calculating the shared anchor.
-    let next_width = physical_window_pixels(width, scale_factor);
-    let next_height = physical_window_pixels(height, scale_factor);
+    #[cfg(target_os = "macos")]
+    update_chat_pointer_policy(&app)?;
+    Ok(())
+}
 
+#[tauri::command]
+fn end_pet_group_drag(app: AppHandle, drag_id: String) -> Result<(), String> {
+    let state = app.state::<ChatHitState>();
+    if *state.drag_id.lock().map_err(|_| "拖动状态不可用")? == drag_id {
+        state.dragging.store(false, Ordering::Relaxed);
+        #[cfg(target_os = "macos")]
+        update_chat_pointer_policy(&app)?;
+    }
+    Ok(())
+}
+
+// Only the chat surface changes size. The cat's transparent backing is fixed.
+#[tauri::command]
+fn set_pet_chat_mode(app: AppHandle, mode: String) -> Result<(), String> {
+    let pet = app.get_webview_window("main").ok_or("找不到桌宠窗口")?;
+    let chat = app.get_webview_window("chat").ok_or("找不到聊天窗口")?;
+    if mode == "closed" {
+        let state = app.state::<ChatHitState>();
+        state.visible.store(false, Ordering::Relaxed);
+        state.dragging.store(false, Ordering::Relaxed);
+        #[cfg(target_os = "macos")]
+        update_chat_pointer_policy(&app)?;
+        return chat.hide().map_err(|error| format!("无法隐藏聊天窗口：{error}"));
+    }
+    if mode != "compact" && mode != "expanded" { return Err(format!("不支持的桌宠对话模式：{mode}")); }
+    #[cfg(target_os = "macos")]
+    let (width, height) = (PET_CHAT_EXPANDED_WIDTH, PET_CHAT_EXPANDED_HEIGHT);
+    #[cfg(not(target_os = "macos"))]
+    let (width, height) = if mode == "compact" { (713.0, 401.0) } else { (940.0, 760.0) };
+    let scale = pet.scale_factor().map_err(|error| error.to_string())?;
+    let position = pet.outer_position().map_err(|error| error.to_string())?;
+    let size = pet.outer_size().map_err(|error| error.to_string())?;
+    let x = position.x + size.width as i32 - physical_window_pixels(width, scale);
+    let y = position.y + size.height as i32 - physical_window_pixels(height, scale);
     #[cfg(target_os = "macos")]
     {
-        // One atomic AppKit frame update. Do not ask AppKit to display here:
-        // WKWebView has not painted the new viewport yet, so display=true
-        // presents its stale backing frame and creates a visible flash. React
-        // keeps the resize guard mounted until the first new-size paint.
-        let primary = pet
-            .primary_monitor()
-            .map_err(|error| format!("无法获取主屏幕：{error}"))?
-            .ok_or_else(|| "未检测到主屏幕".to_owned())?;
-        let primary_height_points = primary.size().height as f64 / primary.scale_factor();
-        let top_left_x = (anchor_x - next_width) as f64 / scale_factor;
-        let top_left_y = (anchor_y - next_height) as f64 / scale_factor;
+        let primary = pet.primary_monitor().map_err(|error| error.to_string())?.ok_or("未检测到主屏幕")?;
+        let primary_height = primary.size().height as f64 / primary.scale_factor();
         let frame = tauri_nspanel::NSRect::new(
-            tauri_nspanel::NSPoint::new(top_left_x, primary_height_points - top_left_y - height),
+            tauri_nspanel::NSPoint::new(x as f64 / scale, primary_height - y as f64 / scale - height),
             tauri_nspanel::NSSize::new(width, height),
         );
-        let panel = app
-            .get_webview_panel("main")
-            .map_err(|error| format!("无法获取桌宠面板：{error:?}"))?;
-        unsafe {
-            let _: () =
-                tauri_nspanel::objc2::msg_send![panel.as_panel(), setFrame: frame, display: false];
-        }
+        let panel = app.get_webview_panel("chat").map_err(|error| format!("无法获取聊天面板：{error:?}"))?;
+        // Native dimensions are fixed in configuration. Reposition only when
+        // reopening after the cat moved, never resize a visible backing.
+        unsafe { let _: () = tauri_nspanel::objc2::msg_send![panel.as_panel(), setFrameOrigin: frame.origin]; }
     }
     #[cfg(not(target_os = "macos"))]
     {
-        pet.set_size(LogicalSize::new(width, height))
-            .map_err(|error| format!("无法调整桌宠对话尺寸：{error}"))?;
-        pet.set_position(PhysicalPosition::new(
-            anchor_x - next_width,
-            anchor_y - next_height,
-        ))
-        .map_err(|error| format!("无法保持桌宠位置：{error}"))?;
+        chat.set_size(LogicalSize::new(width, height)).map_err(|error| error.to_string())?;
+        chat.set_position(PhysicalPosition::new(x, y)).map_err(|error| error.to_string())?;
     }
-
-    if mode != "closed" {
-        #[cfg(target_os = "macos")]
-        {
-            let panel = app
-                .get_webview_panel("main")
-                .map_err(|error| format!("无法获取桌宠面板：{error:?}"))?;
-            panel.show_and_make_key();
-        }
-        #[cfg(not(target_os = "macos"))]
-        pet.set_focus()
-            .map_err(|error| format!("无法聚焦桌宠对话：{error}"))?;
-    }
-
     Ok(())
 }
 
@@ -367,17 +339,81 @@ fn make_visible_on_every_space(
     Ok(())
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+struct PetDragOrigin {
+    main_x: i32,
+    main_y: i32,
+    chat_x: i32,
+    chat_y: i32,
+    scale: f64,
+}
+
+#[tauri::command]
+fn pet_drag_origin(app: AppHandle, window: tauri::WebviewWindow, drag_id: String) -> Result<PetDragOrigin, String> {
+    *app.state::<ChatHitState>().drag_id.lock().map_err(|_| "拖动状态不可用")? = drag_id;
+    app.state::<ChatHitState>().dragging.store(window.label() == "chat", Ordering::Relaxed);
+    let main = app.get_webview_window("main").ok_or("找不到桌宠窗口")?;
+    let chat = app.get_webview_window("chat").ok_or("找不到聊天窗口")?;
+    let a = main.outer_position().map_err(|error| error.to_string())?;
+    let b = chat.outer_position().map_err(|error| error.to_string())?;
+    Ok(PetDragOrigin { main_x: a.x, main_y: a.y, chat_x: b.x, chat_y: b.y,
+        scale: main.scale_factor().map_err(|error| error.to_string())? })
+}
+
+#[tauri::command]
+async fn move_pet_group(app: AppHandle, origin: PetDragOrigin, delta_x: f64, delta_y: f64) -> Result<(), String> {
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    let current = app.clone();
+    app.run_on_main_thread(move || {
+        let _ = sender.send(move_pet_group_on_main(current, origin, delta_x, delta_y));
+    }).map_err(|error| error.to_string())?;
+    receiver.await.map_err(|_| "拖动窗口操作未完成".to_owned())?
+}
+
+fn move_pet_group_on_main(app: AppHandle, origin: PetDragOrigin, delta_x: f64, delta_y: f64) -> Result<(), String> {
+    if !delta_x.is_finite() || !delta_y.is_finite() || !origin.scale.is_finite() || origin.scale <= 0.0 {
+        return Err("拖动坐标无效".to_owned());
+    }
+    let dx = (delta_x * origin.scale).round() as i32;
+    let dy = (delta_y * origin.scale).round() as i32;
+    // Both origins are from one pointer-down; no move operation resizes a view.
+    for (label, x, y) in [("main", origin.main_x + dx, origin.main_y + dy), ("chat", origin.chat_x + dx, origin.chat_y + dy)] {
+        let window = app.get_webview_window(label).ok_or("找不到桌宠窗口")?;
+        #[cfg(target_os = "macos")]
+        {
+            let panel = app.get_webview_panel(label).map_err(|error| format!("无法获取面板：{error:?}"))?;
+            let primary = window.primary_monitor().map_err(|error| error.to_string())?.ok_or("未检测到主屏幕")?;
+            let primary_height = primary.size().height as f64 / primary.scale_factor();
+            // These two NSPanel writes execute in this single synchronous IPC
+            // callback; no independent Tauri position queues or resize calls.
+            unsafe {
+                let frame: tauri_nspanel::NSRect = tauri_nspanel::objc2::msg_send![panel.as_panel(), frame];
+                let point = tauri_nspanel::NSPoint::new(x as f64 / origin.scale, primary_height - y as f64 / origin.scale - frame.size.height);
+                let _: () = tauri_nspanel::objc2::msg_send![panel.as_panel(), setFrameOrigin: point];
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        window.set_position(PhysicalPosition::new(x, y)).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn show_chat_window(app: AppHandle) -> Result<(), String> {
-    resize_chat_window(&app, false)?;
-    position_chat_next_to_pet(&app)?;
-
+    app.state::<ChatHitState>().visible.store(true, Ordering::Relaxed);
+    #[cfg(target_os = "macos")]
+    update_chat_pointer_policy(&app)?;
     #[cfg(target_os = "macos")]
     {
         let panel = app
             .get_webview_panel("chat")
             .map_err(|error| format!("无法获取聊天面板：{error:?}"))?;
         panel.show_and_make_key();
+        // Making the chat key orders it above its parent. Restore the cat's
+        // visual order without taking keyboard focus away from the composer.
+        let pet = app.get_webview_panel("main")
+            .map_err(|error| format!("无法获取桌宠面板：{error:?}"))?;
+        pet.order_front_regardless();
         return Ok(());
     }
 
@@ -398,8 +434,7 @@ fn show_chat_window(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn set_chat_window_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
-    resize_chat_window(&app, expanded)?;
-    position_chat_next_to_pet(&app)
+    set_pet_chat_mode(app, if expanded { "expanded" } else { "compact" }.to_owned())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -410,7 +445,10 @@ pub fn run() {
     let builder = builder.plugin(tauri_nspanel::init());
 
     builder
+        .manage(ChatHitState::default())
         .setup(|app| {
+            #[cfg(debug_assertions)]
+            motion_diagnostics::install(app.handle());
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
@@ -419,14 +457,34 @@ pub fn run() {
                     make_visible_on_every_space(window, true)?;
                 }
             }
+            if let Some(pet) = app.get_webview_window("main") {
+                pet.set_size(LogicalSize::new(PET_CLOSED_WIDTH, PET_CLOSED_HEIGHT))?;
+            }
             position_pet_at_bottom_right(app.handle())?;
-            position_chat_next_to_pet(app.handle())?;
+            set_pet_chat_mode(app.handle().clone(), "compact".to_owned())?;
             #[cfg(target_os = "macos")]
             if let Ok(panel) = app.get_webview_panel("main") {
                 // The window is converted to NSPanel during setup, so its
                 // original `visible: true` state is not reliable on relaunch.
                 panel.show();
                 panel.order_front_regardless();
+            }
+            // Explicitly hide the empty chat surface so it cannot intercept desktop input.
+            if let Some(chat) = app.get_webview_window("chat") { chat.hide()?; }
+            #[cfg(target_os = "macos")]
+            {
+                update_chat_pointer_policy(app.handle())?;
+                let handle = app.handle().clone();
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(std::time::Duration::from_millis(16));
+                    let state = handle.state::<ChatHitState>();
+                    if !state.visible.load(Ordering::Relaxed) || state.poll_pending.swap(true, Ordering::Relaxed) { continue; }
+                    let current = handle.clone();
+                    if handle.run_on_main_thread(move || {
+                        let _ = update_chat_pointer_policy(&current);
+                        current.state::<ChatHitState>().poll_pending.store(false, Ordering::Relaxed);
+                    }).is_err() { break; }
+                });
             }
             Ok(())
         })
@@ -439,12 +497,19 @@ pub fn run() {
             backend::agent_complete_todo,
             backend::agent_reopen_todo,
             backend::agent_set_todo_reminder,
+            backend::agent_create_todo,
+            backend::agent_update_todo,
+            backend::agent_delete_todo,
             save_pet_position,
             reset_pet_position,
             quit_app,
             set_pet_chat_mode,
             set_chat_window_expanded,
-            show_chat_window
+            show_chat_window,
+            pet_drag_origin,
+            move_pet_group,
+            set_chat_hit_bounds,
+            end_pet_group_drag
         ])
         .run(tauri::generate_context!())
         .expect("error while running desktop AI pet");

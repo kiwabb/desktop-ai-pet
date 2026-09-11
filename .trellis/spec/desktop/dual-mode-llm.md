@@ -1,7 +1,7 @@
 # Spec: 服务端 / 单机双模式 LLM（desktop）
 
 > 来源任务：`.trellis/tasks/09-08-llm-dual-mode/`（design.md + research/ 三份调研为完整上下文）。
-> 蓝本：服务端行为以 `server/app/agent_service.py` / `runtime_store.py` / `todo_tools.py` 为准。
+> 蓝本：服务端行为以 `server/app/agent_service.py` / `runtime_store.py` / `plugins/todo/`（todo 插件包）为准。
 
 ## 1. Scope / Trigger
 

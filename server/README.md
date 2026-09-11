@@ -42,7 +42,7 @@ uv run python -m app.cli revoke-device --device-id DEVICE_UUID
 - `/v1/control/ws` 只接受控制消息；`/v1/node/ws` 只接受节点注册与心跳。认证在接受连接之前完成。
 - 节点注册提交 `capabilities: []`，未知能力明确拒绝。心跳 15 秒、TTL 45 秒；连接标识防止旧连接删除新连接租约。
 - 会话打开先发送带水位的快照，再轮询持久事件。重复的 `run.accepted` 使用会话 `seq` 去重；断开连接不会取消已保存任务。
-- 工具目录由实际 `todo_tools.TOOL_DEFINITIONS/TOOL_HANDLERS` 注册；调用时再次验证白名单与持久执行实例。
+- 工具目录由各插件共享 manifest（`plugins/<名称>/plugin.json`）在启动时聚合注册（`register_server_tools(plugins)`）；调用时再次验证白名单与持久执行实例（`resolve_server`）。
 
 完整线上协议见 [并行合同](../.trellis/tasks/09-07-server-agent-todo-mvp/research/parallel-contract.md)。
 
