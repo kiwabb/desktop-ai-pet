@@ -12,7 +12,7 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-编辑 `.env`：设置独立数据库密码和相匹配的 URL；模型配置只能在服务端填写。配置内容不能提交、截图或输出到日志。模型密钥或模型名缺失时允许查询，模型任务应明确拒绝。端口预设为本项目 PostgreSQL `15434`、Redis `16380`、API `18081`，启动前确认没有占用。
+编辑 `.env`：设置与共享 PostgreSQL 相匹配的 URL；模型配置只能在服务端填写。配置内容不能提交、截图或输出到日志。模型密钥或模型名缺失时允许查询，模型任务应明确拒绝。PostgreSQL 使用本机共享实例 `shared-postgres`（`127.0.0.1:15433`，库/角色均为 `pet_agent`），不在本 compose 项目内；本项目 compose 只管 Redis `16380`，API 端口 `18081`，启动前确认没有占用。
 
 ```bash
 docker compose config --quiet
@@ -21,7 +21,7 @@ uv run python -m app.cli migrate
 uv run uvicorn app.main:app --host 127.0.0.1 --port 18081 --no-access-log
 ```
 
-迁移按 `migrations/*.sql` 文件名顺序执行，已执行版本写入 `schema_migrations`；应用启动也会检查迁移。进程启动要求数据库可连接；Redis故障使节点注册不可用，已持久的控制事件通过数据库轮询恢复。`/health` 分别报告数据库、Redis和模型配置；模型已配置不等于真实模型调用成功。PostgreSQL数据卷属于 Compose 项目 `desktop-pet-agent`，不复用其他项目数据库。不要使用 `docker compose down -v` 清理真实数据。
+迁移按 `migrations/*.sql` 文件名顺序执行，已执行版本写入 `schema_migrations`；应用启动也会检查迁移。进程启动要求数据库可连接；Redis故障使节点注册不可用，已持久的控制事件通过数据库轮询恢复。`/health` 分别报告数据库、Redis和模型配置；模型已配置不等于真实模型调用成功。PostgreSQL 数据存于共享实例的 `pet_agent` 库，备份/清理由共享实例统一管理；Redis 属本 compose 项目，随时可重建。
 
 ## 配置真实账号与设备
 

@@ -1,20 +1,5 @@
 name: desktop-pet-agent
 services:
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: pet_agent
-      POSTGRES_USER: pet_agent
-      POSTGRES_PASSWORD: ${PET_AGENT_POSTGRES_PASSWORD:?Set a private database password in .env}
-    ports:
-      - "127.0.0.1:15434:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pet_agent -d pet_agent"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
   redis:
     image: redis:7.4-alpine
     ports:
@@ -25,5 +10,3 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-volumes:
-  postgres_data:
