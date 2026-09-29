@@ -934,3 +934,25 @@ AssistantSettings 全量 token 化：硬编码色值/字号/字重收敛至 :roo
 ### Status
 
 [OK] **Completed**
+
+
+## Session 32: worker 唤醒信号按执行器隔离与计时口径修正
+<!-- trellis-session: v=2 fp=105d5e8e2c92501b -->
+
+**Date**: 2026-09-29
+**Task**: worker 唤醒信号按执行器隔离与计时口径修正
+**Branch**: `codex/companion-product-refactor`
+
+### Summary
+
+修复上轮复核三个 P2：双 worker 共享 asyncio.Event 交叉清除改为每 worker 独立事件（submit/stop 通知全部，worker 只清自己的，finally 注销）；verify-agent-timing 计时口径拆分 first_response_at（可为工具调用 chunk）与 first_visible_text_at，不再 coalesce；重连验证先查快照终态，断线期间已完成则走 reconnect_snapshot 分支不再等事件，新增 --disconnect-delay 参数。验证：pytest 167 全绿（新增双 worker 回归测试，临时还原共享事件实测如期失败）；真实模型两次端到端——event_pump 分支（首任务提交→领取 15ms，工具响应 2657ms/正文 5089ms 分列）与 45 秒断线的 reconnect_snapshot 分支均通过。trellis-check 复核仅修两处 docstring 口径。spec server-agent.md 同步。任务已归档。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `485710f` | fix: isolate worker wake events and correct timing metrics |
+
+### Status
+
+[OK] **Completed**
