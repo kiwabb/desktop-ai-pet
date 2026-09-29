@@ -191,5 +191,79 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('secret', execution_error(error))
 
 
+class WorkerWakeTests(unittest.IsolatedAsyncioTestCase):
+    """A submission arriving during the store scan must wake the next wait."""
+
+    async def test_submission_during_scan_wakes_without_fallback_timeout(self):
+        svc, run = GraphTests.service(self, [])
+        scanned = asyncio.Event()
+        claims = 0
+
+        class Store:
+            LEASE_SECONDS = 30
+
+            async def recover_expired(self):
+                pass
+
+            async def claim(self, owner):
+                nonlocal claims
+                claims += 1
+                if claims == 1:
+                    scanned.set()
+                    await asyncio.sleep(0.05)  # the submission lands mid-scan
+                    return None
+                return run
+
+        svc.store = Store()
+        executed = asyncio.Event()
+
+        async def fake_execute(claimed, owner):
+            executed.set()
+            svc._stopping = True
+
+        svc._execute = fake_execute
+        worker = asyncio.create_task(svc._worker())
+        try:
+            await asyncio.wait_for(scanned.wait(), 2)
+            svc._wake.set()  # AgentService.submit() during the in-flight scan
+            await asyncio.wait_for(executed.wait(), 0.5)
+        finally:
+            worker.cancel()
+            await asyncio.gather(worker, return_exceptions=True)
+        self.assertEqual(claims, 2)
+
+    async def test_fallback_scan_still_finds_task_without_wake_signal(self):
+        svc, run = GraphTests.service(self, [])
+        claims = 0
+
+        class Store:
+            LEASE_SECONDS = 30
+
+            async def recover_expired(self):
+                pass
+
+            async def claim(self, owner):
+                nonlocal claims
+                claims += 1
+                return run if claims >= 2 else None
+
+        svc.store = Store()
+        executed = asyncio.Event()
+
+        async def fake_execute(claimed, owner):
+            executed.set()
+            svc._stopping = True
+
+        svc._execute = fake_execute
+        worker = asyncio.create_task(svc._worker())
+        try:
+            # No wake is ever set: only the one-second fallback scan may deliver.
+            await asyncio.wait_for(executed.wait(), 5)
+        finally:
+            worker.cancel()
+            await asyncio.gather(worker, return_exceptions=True)
+        self.assertGreaterEqual(claims, 2)
+
+
 if __name__ == '__main__':
     unittest.main()

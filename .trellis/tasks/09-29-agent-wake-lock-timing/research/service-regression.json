@@ -1,0 +1,87 @@
+{
+  "evidence": "real_service_and_real_model",
+  "created_demo_data": false,
+  "health": {
+    "status": "ok",
+    "database": true,
+    "redis": true,
+    "model": "gpt-5.6-luna",
+    "model_configured": true
+  },
+  "status": {
+    "account_id": "d6e897b2-b2be-47c3-bfe5-29206a943613",
+    "device_id": "90c6ef39-fc2e-48e4-86e5-f660f9bf6375",
+    "model": "gpt-5.6-luna",
+    "model_configured": true
+  },
+  "unauthenticated_rejected": true,
+  "initial_todo_count": 2,
+  "session_id": "2ee6797d-7b0d-4609-915f-c67701a3670b",
+  "run_id": "9b78f1b3-e07f-4476-9dd3-58a9c4043bb4",
+  "request_id": "0cb3c056-574f-47c5-b029-919876d23591",
+  "event_types": [
+    "run.accepted",
+    "run.started",
+    "tool.started",
+    "tool.finished",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "message.delta",
+    "run.completed"
+  ],
+  "stream_delta_count": 23,
+  "tool_calls": [
+    {
+      "id": "23ac528b-256e-574d-b962-ab94af5c6d72",
+      "run_id": "9b78f1b3-e07f-4476-9dd3-58a9c4043bb4",
+      "name": "todo.list",
+      "status": "completed",
+      "result": {
+        "items": [
+          {
+            "id": "3801041e-4a0b-4334-8bff-bd350550b1ac",
+            "title": "晚上6.30面试",
+            "status": "completed",
+            "remind_at": null,
+            "created_at": "2026-09-07T05:21:39.142823+00:00"
+          },
+          {
+            "id": "c6f4de0d-3e44-4ae1-aabc-048ad2e7cf0f",
+            "title": "喝水",
+            "status": "completed",
+            "remind_at": null,
+            "created_at": "2026-09-07T07:32:56.418541+00:00"
+          }
+        ]
+      },
+      "error": null
+    }
+  ],
+  "final_todo_count": 2,
+  "duplicate_submission_reused_run": true,
+  "reconnect_snapshot_matches": true,
+  "ordered_events_verified": true,
+  "completed_expected_tool": "todo.list",
+  "desktop_ui_verified": false,
+  "create_todo_verified": false
+}

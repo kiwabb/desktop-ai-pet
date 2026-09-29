@@ -252,21 +252,35 @@ class AgentService:
     async def _worker(self):
         owner = str(uuid4())
         while not self._stopping:
+            # Clear BEFORE scanning: a submission arriving during the scan sets
+            # the event and must still wake the wait below. The timeout stays
+            # as the fallback scan so no queued task is ever missed.
+            self._wake.clear()
             try:
                 await self.store.recover_expired()
                 run = await self.store.claim(owner)
                 if run:
+                    self._log_claim_delay(run)
                     await self._execute(run, owner)
                     continue
             except asyncio.CancelledError:
                 raise
             except Exception:
                 logger.error('任务执行器暂时不可用，等待下次数据库扫描')
-            self._wake.clear()
             try:
                 await asyncio.wait_for(self._wake.wait(), timeout=1.0)
             except TimeoutError:
                 pass
+
+    @staticmethod
+    def _log_claim_delay(run):
+        created = run.get('created_at')
+        try:
+            submitted = reminder_time(created) if isinstance(created, str) else created
+            delay_ms = max(0, int((datetime.now(timezone.utc) - submitted).total_seconds() * 1000))
+        except Exception:
+            return
+        logger.info('任务 %s 提交到领取延迟 %dms', run.get('id'), delay_ms)
 
     async def _renew(self, run, owner):
         while True:

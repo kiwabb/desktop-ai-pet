@@ -2,6 +2,8 @@
 
 Every visible mutation locks the session and commits its event in the same
 transaction. A snapshot takes the same lock, so its sequence is a true watermark.
+Update polling (events_after) only validates ownership; it never takes the
+session lock, so reads cannot block streaming writes.
 Worker leases fence writes; crashed running tasks are never automatically replayed.
 """
 from __future__ import annotations
@@ -68,6 +70,18 @@ class RuntimeStore:
             raise PermissionError('无权访问该会话')
         return row
 
+    async def _session_read(self, conn, session_id, account_id):
+        # Read paths validate existence and ownership without FOR UPDATE, so
+        # polling never queues behind the session's streaming writes.
+        row = await (await conn.execute(
+            'SELECT account_id FROM agent_sessions WHERE id = %s',
+            (uuid_text(session_id),),
+        )).fetchone()
+        if row is None:
+            raise LookupError('会话不存在')
+        if str(row['account_id']) != str(account_id):
+            raise PermissionError('无权访问该会话')
+
     async def _event(self, conn, run, kind, payload):
         row = await (await conn.execute(
             'UPDATE agent_sessions SET seq = seq + 1 WHERE id = %s RETURNING seq',
@@ -111,8 +125,10 @@ class RuntimeStore:
     async def events_after(self, account_id, session_id, after_seq):
         if not isinstance(after_seq, int) or isinstance(after_seq, bool) or after_seq < 0:
             raise ValueError('事件水位必须为非负整数')
-        async with self.db.pool.connection() as conn, conn.transaction():
-            await self._session(conn, session_id, account_id)
+        # Read-only: no session lock, no explicit transaction. Event rows are
+        # committed atomically with their seq bump, so one SELECT is consistent.
+        async with self.db.pool.connection() as conn:
+            await self._session_read(conn, session_id, account_id)
             rows = await (await conn.execute(
                 'SELECT envelope FROM agent_events WHERE session_id=%s AND seq>%s ORDER BY seq LIMIT 200',
                 (session_id, after_seq),
