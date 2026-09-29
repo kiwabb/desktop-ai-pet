@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 30
-- **Last Active**: 2026-09-11
+- **Total Sessions**: 31
+- **Last Active**: 2026-09-29
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~914 | Active |
+| `journal-1.md` | ~936 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 31 | 2026-09-29 | 服务端读写锁分离与任务唤醒时序修复（约1秒间隔消除） | `f26c9a3` | `codex/companion-product-refactor` |
 | 30 | 2026-09-11 | 设置页视觉收口（colorize/token 化） | `63c8fcb` | `feat/settings-colorize` |
 | 29 | 2026-09-11 | UI 质感提升：Impeccable 诊断与全量打磨 | `33b2bb3` | `feat/ui-polish` |
 | 28 | 2026-09-11 | 待办能力插件化（DeepSeek Harness 式插件 seam） | `fb4fefb`, `53d2b92` | `feat/todo-as-plugin` |

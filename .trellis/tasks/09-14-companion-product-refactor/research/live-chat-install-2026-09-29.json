@@ -1,0 +1,15 @@
+{
+  "installed_path": "/Applications/橘伴.app",
+  "installed_sha256": "3b27d2fbe88f7b987c6eea9a8a16800d569c2fc10f438411093922622d1eac61",
+  "backup_path": "/Users/zhoujiaangyao/Library/Application Support/desktop-ai-pet/app-backups/20260929-144238/橘伴.app",
+  "backup_sha256": "e06f92fd1569e783459f2fe9a33c68b651788198cad23374c0e0a16d7570ba56",
+  "source_bundle": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src-tauri/target/debug/bundle/macos/橘伴.app",
+  "installed_at": "2026-09-29T14:42:38.589765+08:00",
+  "method": "ditto to staging; hash verification; old app preserved; final rename",
+  "running_verification": {
+    "installed_hash": "3b27d2fbe88f7b987c6eea9a8a16800d569c2fc10f438411093922622d1eac61",
+    "process": "69465 /Applications/橘伴.app/Contents/MacOS/desktop-ai-pet",
+    "frozen_paths": 14,
+    "frozen_changed": []
+  }
+}

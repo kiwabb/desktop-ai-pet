@@ -912,3 +912,25 @@ AssistantSettings 全量 token 化：硬编码色值/字号/字重收敛至 :roo
 ### Status
 
 [OK] **Completed**
+
+
+## Session 31: 服务端读写锁分离与任务唤醒时序修复（约1秒间隔消除）
+<!-- trellis-session: v=2 fp=1bf0da7f4b8e7f99 -->
+
+**Date**: 2026-09-29
+**Task**: 服务端读写锁分离与任务唤醒时序修复（约1秒间隔消除）
+**Branch**: `codex/companion-product-refactor`
+
+### Summary
+
+定位服务端聊天约1秒间隔的两个成因并修复：events_after 改走 _session_read 只校验归属不再 FOR UPDATE 会话行（submit/claim/写入/snapshot 锁保留）；_worker 把 _wake.clear() 移到 recover/claim 扫描之前，扫描期间通知不再被清掉，1秒超时兜底保留。补齐四点计时：提交(agent_runs.created_at)/领取(run.started 事件)/模型开始与收到正文(model_call_traces)，worker 记录领取延迟日志，新增 tools/verify-agent-timing.py 真实验证（三连发+断线重连+服务端时间线核对）。验证：pytest 166 全绿（新增 WorkerWakeTests 2 项，旧代码复验如期失败）；真实模型证据 timing-after.json——首个任务提交到领取 14ms（客户端视角 118ms），约1秒间隔消失，三任务按序完成、seq 无跳跃、断线后从水位恢复；verify-agent-service.py 原回归通过。trellis-check 复核无缺陷。spec server-agent.md 增补读写锁分离与唤醒时序合同。任务 09-29 已归档。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f26c9a3` | fix: split session read lock and repair worker wake timing |
+
+### Status
+
+[OK] **Completed**

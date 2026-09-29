@@ -1,0 +1,30 @@
+# Cat-matched warm companion theme — 2026-09-26
+
+## User direction and authority
+The user rejects the delivered graphite/gray tool aesthetic: it does not match the approved cat and is insufficiently cute/Q. This is an explicit correction, not another gray-interface polish. Preserve the approved cat and the recently verified navigation/interaction structure. The pinned visual authority is the actual white cat: creamy fur, apricot markings, rosy ears, amber bell and soft rounded proportions. This brief supersedes graphite color, square/underline navigation and austere visual requirements from the prior interface brief and DESIGN.md. Other behavior contracts continue.
+
+Mode: Operate, with the warmth and recognizable personality of a desktop pet. Success: cat and controls/panels look like one product at first glance; compact Chat is visibly soft, friendly and cute without making dense reading or actual errors hard to understand.
+
+## Committed visual system
+- Milk/cream surfaces, honey/apricot interactive areas, warm cocoa text, restrained peach detail. No charcoal primary controls, green-gray surfaces, cool gray inactive text or black underline tabs.
+- Core tokens (check actual contrast, adjust within hue if needed): ink #6c4631; muted #8b6753; surface #fffaf4; chrome #fff0dd; line #eed8bf; accent #a45b2b; action #f4bd7e; action text #704021; hover #efb174 (readable action-ink contrast4.59:1); focus #ae6739; selected #ffe4bf. Warm brown offset shadows; no gray cast.
+- Rounded system type (ui-rounded/SF Pro Rounded with PingFang SC fallback), friendly600 emphasis for identity/headings, restrained400/500 content. No font download/network dependency.
+- Outer companion panel24px corners, soft pearl/cream body;20px input/editor corners; small capsule/pillow controls. The explicit cute/Q direction earns these larger radii. Desktop geometry stays420×380 compact,720×680 backing; no pet geometry/motion changes.
+- A small Lucide PawPrint brand mark may live with the title/empty greeting, never a second cat illustration. Use existing Lucide system only; no emoji or handmade cartoon scene. No decorative pet ears or overlays on the accepted animal.
+- Replace black underlined navigation with three soft icon+label capsule destinations. The active one has a honey/apricot fill and cocoa label; inactive controls are readable warm text without a gray segmented outer container. Keep labels Chat/待办/备忘录 and stable actual selection semantics.
+- Compact empty state is a small friendly greeting composition, not a corporate heading plus wide dead zone. Example invitation: 我在呀，慢慢说。 Existing draft suggestions become soft outlined/cream rounded chips. Decorative glyphs are aria-hidden. No fake message or seeded content.
+- Composer becomes a cream writing surface with warm border and clear but restrained focus. Soft peach user bubbles; reading remains uncluttered. Send uses apricot fill with cocoa icon, including a visibly disabled state. Connection causes remain truthful and inspectable without filling the screen with red. No removal of safety/error detail.
+- Pet action buttons, Todo/Memo controls, settings toggles/status/form, reminder summaries and menus must share the same material and hues. Todo/Memo may have one concise friendly helper line if it adds personality; retain precise action names and actual states.
+- Hover/press may feel soft with a subtle1px displacement or color/shadow transition; retain reduced-motion. Do not add continuous decoration/animation or change the cat motion.
+
+## Frozen interactions and scope
+No backend, model calls, business data, API, App, Rust, navigation state machine, draft ownership, focus contracts, reading behavior, pet artwork/expression/motion changes. Preserve confirmed current-page/pending navigation cancellation, settings origin, resize, close/reopen draft, inline Memo draft and reminder error semantics. Markup-only class/icon/copy additions are allowed where needed. No second service/fixture/demo/data to fill empty content. Current service is offline.
+
+## Ownership
+Panel owner: design-tokens.css companion tokens; ChatBubbleFrame.css/TSX only presentation; ChatInteraction.css; ConversationFeed.tsx empty presentation; ChatPanel.tsx only nav icons/presentation; ChatComposer.tsx only presentation. Utility owner: TodoList/MemoList/AssistantSettings/TodoReminders/MemoReviewReminders CSS and necessary presentational TSX, desktop-shell.css action/menu presentation only. Main: docs/specs/native build/install/QA. Checker: independent scoped theme/cohesion/contrast/behavior-preservation review.
+
+## Acceptance and bounded verification
+Use the installed real app and actual offline state. One complete new theme batch, one visual pass covering cat+compact chat, expanded reading, Todo, Memo editor, settings and pet menu; fix all material observations once, then at most one final confirmation. No repeated palette microloops. Native send/model stream remain unavailable and are not claimed. CSS-only/presentational work does not need new mirror tests; reuse focused actual handler tests if changed markup interacts with them. One final coherent native build is needed to deliver the application. Keep a reversible installed backup.
+
+## Follow-up: restore the previous paw identity
+The user prefers the former paw mark. Replace only the current Lucide PawPrint header mark with the existing ReferencePawBadge filled cream/apricot sticker contours. Preserve its125:139 viewBox ratio and3 toe pads, remove the generic rounded square behind it, size it to fit the current header, and do not restore the legacy giant corner badge/frame/tail. All other current warm presentation and every interaction remain unchanged. The user preference explicitly supersedes the Lucide-only brand-mark choice above; ordinary interface icons remain Lucide. Main owns source snapshot, one coherent package/installation, bounded actual header verification and metadata; implement/check owners should perform only scope/shape/static validation, no new tests for this harmless decorative swap.

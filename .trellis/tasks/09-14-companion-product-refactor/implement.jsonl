@@ -1,0 +1,19 @@
+{"file":".trellis/tasks/09-14-companion-product-refactor/research/audit.md","reason":"Current source gaps and owner boundaries"}
+{"file":"PRODUCT.md","reason":"Actual product and approved assets"}
+{"file":"DESIGN.md","reason":"Visual identity and rejected interactions"}
+{"file":".trellis/spec/frontend/component-guidelines.md","reason":"React and shell contracts"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"Snapshot/draft/reminder correctness"}
+{"file":".trellis/spec/frontend/native-pet-windows.md","reason":"Fixed cat/layering/drag/native checks"}
+{"file":".trellis/spec/frontend/type-safety.md","reason":"Strict typed boundaries"}
+{"file":".trellis/spec/desktop/dual-mode-llm.md","reason":"Frozen APIs and mode compatibility"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/companion-experience-design.md", "reason": "User-approved current experience revision superseding legacy full-PNG and attached-dock constraints"}
+{"file": ".trellis/spec/frontend/companion-experience.md", "reason": "Current executable companion commands, reveal ordering and user-approved desktop behavior"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/visual-refinement-2026-09-26.md", "reason": "Approved visual refinement within accepted companion interaction direction"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/interface-rework-2026-09-26.md", "reason": "Current user accepted pet; substantially rework non-pet controls and panel architecture"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/warm-companion-theme-2026-09-26.md", "reason": "Latest explicit user rejection of graphite; cat-matched cute cream/apricot presentation with frozen behavior"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/companion-panel-link-2026-09-26.md", "reason": "Latest accepted warm design needs a cat-facing speech relation without restoring rejected shared platform"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/companion-tail-shadow-2026-09-26.md", "reason": "User rejects previous faint speech corner and clipped/mismatched shadow; replace decorative silhouette within frozen native/pet contracts"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/companion-distance-2026-09-26.md", "reason": "User requests reduced panel-cat distance; only native signed adjacency spacing may change"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/ux-polish-2026-09-29.md", "reason": "Installed offline refinement and utility draft through settings contract to preserve"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/live-chat-polish-2026-09-29.md", "reason": "Current scope: real conversation visual hierarchy, genuine pending states and readable Markdown"}
+{"file": ".trellis/tasks/09-14-companion-product-refactor/research/live-chat-design-2026-09-29.md", "reason": "Fresh native short and long response design findings using actual model output"}

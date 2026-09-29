@@ -1,0 +1,1096 @@
+[
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/AssistantSettings.css",
+    "line": 36,
+    "snippet": "Undocumented color #884423 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#884423",
+    "importedBy": [
+      "AssistantSettings.test.tsx",
+      "AssistantSettings.tsx",
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 58,
+    "snippet": "Undocumented color rgba(39, 31, 25, 0.14) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(39, 31, 25, 0.14)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 58,
+    "snippet": "Undocumented color rgba(39, 31, 25, 0.07) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(39, 31, 25, 0.07)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 127,
+    "snippet": "Undocumented color #fdb378 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fdb378",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 132,
+    "snippet": "Undocumented color #fea76f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fea76f",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 133,
+    "snippet": "Undocumented color #fdb177 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fdb177",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 152,
+    "snippet": "font-size: 9px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "9px",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 163,
+    "snippet": "Undocumented color rgba(39, 31, 25, 0.16) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(39, 31, 25, 0.16)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 163,
+    "snippet": "Undocumented color rgba(39, 31, 25, 0.08) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(39, 31, 25, 0.08)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 173,
+    "snippet": "Undocumented color rgba(240, 199, 158, 0.95) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(240, 199, 158, 0.95)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 174,
+    "snippet": "Undocumented color rgba(99, 62, 38, 0.18) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(99, 62, 38, 0.18)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 174,
+    "snippet": "Undocumented color rgba(99, 62, 38, 0.07) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(99, 62, 38, 0.07)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 197,
+    "snippet": "Undocumented color rgba(240, 199, 158, 0.95) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(240, 199, 158, 0.95)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 242,
+    "snippet": "Undocumented color #3d2f25 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#3d2f25",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 277,
+    "snippet": "Undocumented color #a3653f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#a3653f",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 277,
+    "snippet": "Undocumented color rgba(203, 168, 136, 0.45) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(203, 168, 136, 0.45)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 288,
+    "snippet": "Undocumented color #f6aa73 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f6aa73",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 326,
+    "snippet": "border-radius: 32px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "32px",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 342,
+    "snippet": "Undocumented color rgba(226, 196, 174, 0.45) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(226, 196, 174, 0.45)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 367,
+    "snippet": "Undocumented color #a3653f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#a3653f",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 368,
+    "snippet": "Undocumented color rgba(203, 168, 136, 0.45) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(203, 168, 136, 0.45)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 372,
+    "snippet": "font-size: 18px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "18px",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 388,
+    "snippet": "Undocumented color rgba(240, 199, 158, 0.95) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(240, 199, 158, 0.95)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 467,
+    "snippet": "font-size: 20px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "20px",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 470,
+    "snippet": "Undocumented color #594032 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#594032",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 490,
+    "snippet": "Undocumented color #a3653f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#a3653f",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 491,
+    "snippet": "Undocumented color rgba(203, 168, 136, 0.45) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(203, 168, 136, 0.45)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 506,
+    "snippet": "Undocumented color #b26b39 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#b26b39",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 506,
+    "snippet": "Undocumented color rgba(255,230,207,.6) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(255,230,207,.6)",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatBubbleFrame.css",
+    "line": 590,
+    "snippet": "font-size: 17px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "17px",
+    "importedBy": [
+      "ChatPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/ChatInteraction.css",
+    "line": 103,
+    "snippet": "Undocumented color #f1c9c3 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f1c9c3"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/MemoList.css",
+    "line": 27,
+    "snippet": "Undocumented color #884423 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#884423",
+    "importedBy": [
+      "ChatPanel.tsx",
+      "MemoList.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/MemoList.css",
+    "line": 41,
+    "snippet": "Undocumented color #ebc5be is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ebc5be",
+    "importedBy": [
+      "ChatPanel.tsx",
+      "MemoList.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/MessageContent.css",
+    "line": 15,
+    "snippet": "Undocumented color rgba(151,112,76,.09) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(151,112,76,.09)",
+    "importedBy": [
+      "ConversationFeed.tsx",
+      "MessageContent.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/MessageContent.css",
+    "line": 15,
+    "snippet": "border-radius: 4px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "4px",
+    "importedBy": [
+      "ConversationFeed.tsx",
+      "MessageContent.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/PetExpression.css",
+    "line": 11,
+    "snippet": "Undocumented color #8e7157 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#8e7157",
+    "importedBy": [
+      "PetExpression.tsx",
+      "PetStage.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/PetLiveStatus.css",
+    "line": 30,
+    "snippet": "Undocumented color #a76b1f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#a76b1f",
+    "importedBy": [
+      "PetLiveStatus.tsx",
+      "PetStage.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/PetLiveStatus.css",
+    "line": 31,
+    "snippet": "Undocumented color #32834a is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#32834a",
+    "importedBy": [
+      "PetLiveStatus.tsx",
+      "PetStage.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/PetLiveStatus.css",
+    "line": 32,
+    "snippet": "Undocumented color #b35440 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#b35440",
+    "importedBy": [
+      "PetLiveStatus.tsx",
+      "PetStage.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/PetLiveStatus.css",
+    "line": 48,
+    "snippet": "font-size: 9px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "9px",
+    "importedBy": [
+      "PetLiveStatus.tsx",
+      "PetStage.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/TodoList.css",
+    "line": 21,
+    "snippet": "Undocumented color #884423 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#884423",
+    "importedBy": [
+      "ChatPanel.tsx",
+      "TodoList.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/TodoList.css",
+    "line": 39,
+    "snippet": "Undocumented color #ebc5be is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ebc5be",
+    "importedBy": [
+      "ChatPanel.tsx",
+      "TodoList.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/TodoList.css",
+    "line": 62,
+    "snippet": "Undocumented color #ebc5be is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ebc5be",
+    "importedBy": [
+      "ChatPanel.tsx",
+      "TodoList.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/components/pet-shell-geometry.ts",
+    "line": 47,
+    "snippet": "Undocumented color #ffc693 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ffc693",
+    "importedBy": [
+      "ChatBubbleFrame.tsx",
+      "ChatBubbleShell.tsx",
+      "pet-shell-geometry.test.ts",
+      "useFrameMorph.ts"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 47,
+    "snippet": "Undocumented color #3a2417 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#3a2417",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 47,
+    "snippet": "Undocumented color rgba(244, 168, 111, 0.42) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(244, 168, 111, 0.42)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 92,
+    "snippet": "border-radius: 15px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "15px",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 92,
+    "snippet": "border-radius: 4px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "4px",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 93,
+    "snippet": "Undocumented color rgba(67, 20, 7, 0.2) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(67, 20, 7, 0.2)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 184,
+    "snippet": "Undocumented color rgba(67, 20, 7, 0.12) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(67, 20, 7, 0.12)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 196,
+    "snippet": "Undocumented color #16a34a is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#16a34a",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 197,
+    "snippet": "Undocumented color rgba(22, 163, 74, 0.12) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(22, 163, 74, 0.12)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 202,
+    "snippet": "font-size: 8px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "8px",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 205,
+    "snippet": "Undocumented color rgba(15, 125, 145, 0.14) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(15, 125, 145, 0.14)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 213,
+    "snippet": "Undocumented color rgba(67, 20, 7, 0.7) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(67, 20, 7, 0.7)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 214,
+    "snippet": "font-size: 9px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "9px",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 248,
+    "snippet": "Undocumented color rgba(181, 111, 70, 0.1) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(181, 111, 70, 0.1)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 249,
+    "snippet": "Undocumented color rgba(181, 111, 70, 0.14) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(181, 111, 70, 0.14)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 252,
+    "snippet": "Undocumented color #45a76f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#45a76f",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 252,
+    "snippet": "Undocumented color rgba(69, 167, 111, 0.12) is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "rgba(69, 167, 111, 0.12)",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 253,
+    "snippet": "Undocumented color #3b342f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#3b342f",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 275,
+    "snippet": "Undocumented color #fff7de is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fff7de",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 276,
+    "snippet": "Undocumented color #ffad43 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ffad43",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 280,
+    "snippet": "Undocumented color #f06c70 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f06c70",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 301,
+    "snippet": "border-radius: 3px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "3px",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 314,
+    "snippet": "Undocumented color #f39a57 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f39a57",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 331,
+    "snippet": "Undocumented color #fff5c4 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fff5c4",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 332,
+    "snippet": "Undocumented color #ffc338 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ffc338",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 352,
+    "snippet": "Undocumented color #ff9f70 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ff9f70",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 355,
+    "snippet": "Undocumented color #ff7583 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ff7583",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 363,
+    "snippet": "Undocumented color #ff8492 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#ff8492",
+    "importedBy": [
+      "main.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src/styles.css",
+    "line": 364,
+    "snippet": "Undocumented color #f16f7f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f16f7f",
+    "importedBy": [
+      "main.tsx"
+    ]
+  }
+]

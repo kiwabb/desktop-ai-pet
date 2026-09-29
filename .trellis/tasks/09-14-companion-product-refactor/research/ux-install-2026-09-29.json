@@ -1,0 +1,8 @@
+{
+  "installed": "/Applications/橘伴.app",
+  "sha256": "e06f92fd1569e783459f2fe9a33c68b651788198cad23374c0e0a16d7570ba56",
+  "backup": "/Users/zhoujiaangyao/Library/Application Support/desktop-ai-pet/app-backups/20260929-133901/橘伴.app",
+  "source": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src-tauri/target/debug/bundle/macos/橘伴.app",
+  "frozen_files_verified": 14,
+  "evidence": "Real installed native UI with unavailable localhost service; no model call or seeded persistent records."
+}

@@ -1,0 +1,24 @@
+# Interface rework — 2026-09-26
+
+## Authority
+User: “现在宠物可以了 其他的操作按钮 聊天面板等都需要大量的优化”. Freeze the approved cat artwork, masking, expression, pose, motion and pet behavior. Substantially refine the non-pet controls and application layout within the accepted warm-white/graphite desktop direction. This supersedes presentation details in the preceding visual pass; native lifecycle, app data and model semantics remain binding. No additional concept approval is needed for this authorized continuation.
+
+## Current problems observed
+The large equal-weight tool strip has no explicit chat home. Settings competes with daily tools; clicking a selected tool returns elsewhere. “阅读记录” is a size toggle with misleading language. Empty chat is dominated by connection errors. Every expanded route repeats two reminder-sync errors above its own failure. The composer resembles a focused settings field. Memo's always-open large form dominates its list. Pet controls still read as a white container of equal-weight buttons.
+
+## Design decisions
+- Keep pet pixels/motion untouched. Restyle only its action buttons: a compact graphite primary chat button and quieter menu action, consistent32px targets, explicit label, keyboard focus, no enclosing redundant card or animation changes.
+- Panel retains warm-white/graphite identity, system sans including PingFang SC, regular16px corners. Use deliberate hierarchy instead of another color-only refinement.
+- Compact content target420×380 within unchanged720×680 backing, existing side/edge clamps and12px gap. Separate slim title bar, stable text navigation, flexible reading area and a composed multiline-capable input area. Expanded reading uses the same hierarchy and readable measure.
+- Navigation: explicit 聊天/待办/备忘录, clear active state with minimal line/tab treatment rather than a giant segmented background. Clicking the current page stays there. Put settings in title-bar actions, accessible name and discoverable tooltip. Preserve return/Escape and focus contracts; avoid duplicate labelled back+chat actions.
+- Name dimension controls 展开阅读 / 收起阅读 (accessible labels may preserve compatibility where necessary), keep close distinct. No user-facing promise of a separate history browser for a resize control.
+- Chat empty state is a small warm invitation and useful existing draft suggestions, never a fabricated message. Show actual unavailable connection once near input with actionable settings, preserving full known reason/accessible description. Do not duplicate it in the title and empty body. Message/stream/tool/run errors remain attached to actual content.
+- Composer: dedicated writing area with text above a modest bottom action row, graphite send/ArrowUp action, keyboard shortcut hint where it fits. Clear restrained focus indication, no heavy brown capsule. Keep actual textarea/refs, IME handling, acceptance/next-draft/selection behavior.
+- Reminder errors belong to a compact summary with inspectable details, not repeated large red page bands. Preserve true due reminder actions and all actual error information. Settings/list failures remain in their relevant page. Never silently discard errors to beautify offline mode.
+- Utilities: compact consistent toolbar, purposeful section hierarchy and aligned input/buttons. Todo quick-entry remains easy; Memo creation becomes an explicit inline expandable editor so records own the page. Preserve unfinished draft while closed and Escape/return discipline; no new modal. Settings labels/help/connection status remain readable and naturally scrollable, with restrained grouping.
+
+## Ownership
+Coordinator: brief/docs/assets freeze/evidence/build/install. Panel implementer: ChatPanel/ChatBubbleFrame/ChatComposer/ConversationFeed/ChatInteraction/MessageContent and companion tokens only, plus tests for affected flow. Utility implementer: TodoList/MemoList/AssistantSettings/TodoReminders/MemoReviewReminders TSX+CSS, pet action styling only in desktop-shell.css and compact host420×380. No pet source/art/native/App changes. Coordinate reminder ownership and shared styles before edits. No child agents from implement/check roles. Everyone preserves parallel/pre-existing work.
+
+## Acceptance
+Use current installed native evidence as baseline. One integrated new build; batch native chat/empty/offline, input/draft, expansion, navigation, utility editor, settings, close/reopen and composed layout checks. Fix demonstrated issues as one batch then confirm. No backend startup, fake model, seeded messages/records or demo server. Existing unit fixtures stay unit evidence only. Current live service is offline; retain that limitation. Frozen pet source/art hashes must match the turn baseline. Preserve scale1.0/alwaysOnToptrue and do not repeat unchanged size/tray QA. Scope does not complete the original broad task matrix.
