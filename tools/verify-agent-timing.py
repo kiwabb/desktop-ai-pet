@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Real-model timing verification: submit -> claim -> model start -> first text.
+"""Real-model timing: submit -> claim -> model start -> first response/visible text.
 
 Uses an existing issued device credential and the currently configured real
 model. All prompts are read-only queries; no business data is created.
 
 Checks:
 - submit -> run.started interval stays well below the old ~1s fallback floor;
+- first response (may be a tool-call-only chunk) and first visible text are
+  recorded as separate timeline points;
 - three back-to-back submissions all execute, in order, with gapless seq;
-- a mid-run disconnect + reconnect resumes from the persisted watermark;
+- a mid-run disconnect + reconnect resumes from the persisted watermark,
+  accepting a terminal state already present in the reconnect snapshot;
 - server-side timeline (agent_runs / agent_events / model_call_traces) matches.
 
 Run from anywhere:  server/.venv/bin/python tools/verify-agent-timing.py
@@ -39,6 +42,8 @@ def arguments():
     parser.add_argument('--base-url', default='http://127.0.0.1:18081')
     parser.add_argument('--credential-file', type=Path, default=SERVER_DIR / '.local' / 'device.json')
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--disconnect-delay', type=float, default=2,
+                        help='断线后等待秒数；大于任务执行时长可覆盖“断线期间已完成”分支')
     return parser.parse_args()
 
 
@@ -51,11 +56,11 @@ async def open_session(ws, session_id=None):
     initial = json.loads(await asyncio.wait_for(ws.recv(), 20))
     assert initial['type'] == 'session.snapshot', initial.get('type')
     assert initial['seq'] == initial['payload']['seq'], 'Snapshot watermark mismatch'
-    return initial['payload']['session_id'], initial['seq']
+    return initial['payload']['session_id'], initial['seq'], initial['payload']
 
 
 def server_timeline(run_ids):
-    """Four durable timestamps per run, read through the server's own Settings."""
+    """Five durable timestamps per run, read through the server's own Settings."""
     from app.config import Settings
     import psycopg
 
@@ -67,14 +72,16 @@ def server_timeline(run_ids):
                  WHERE e.run_id = r.id AND e.type = 'run.started') AS claimed_at,
                (SELECT min(c.started_at) FROM model_call_traces c
                  WHERE c.run_id = r.id) AS model_started_at,
-               (SELECT min(coalesce(c.first_visible_text_at, c.first_response_at))
-                  FROM model_call_traces c WHERE c.run_id = r.id) AS first_text_at
+               (SELECT min(c.first_response_at) FROM model_call_traces c
+                 WHERE c.run_id = r.id AND c.first_response_at IS NOT NULL) AS first_response_at,
+               (SELECT min(c.first_visible_text_at) FROM model_call_traces c
+                 WHERE c.run_id = r.id AND c.first_visible_text_at IS NOT NULL) AS first_text_at
         FROM agent_runs r WHERE r.id = ANY(%s::uuid[]) ORDER BY r.ordinal
     """
     with psycopg.connect(settings.database_url) as conn:
         rows = conn.execute(query, (run_ids,)).fetchall()
     timeline = []
-    for run_id, submitted, claimed, model_started, first_text in rows:
+    for run_id, submitted, claimed, model_started, first_response, first_text in rows:
         def ms(later, earlier):
             if later is None or earlier is None:
                 return None
@@ -84,10 +91,13 @@ def server_timeline(run_ids):
             'submitted_at': submitted.isoformat(),
             'claimed_at': claimed.isoformat() if claimed else None,
             'model_started_at': model_started.isoformat() if model_started else None,
-            'first_text_at': first_text.isoformat() if first_text else None,
+            'first_response_at': first_response.isoformat() if first_response else None,
+            'first_visible_text_at': first_text.isoformat() if first_text else None,
             'submit_to_claim_ms': ms(claimed, submitted),
             'submit_to_model_start_ms': ms(model_started, submitted),
-            'model_start_to_first_text_ms': ms(first_text, model_started),
+            # 首次响应可能只是纯工具调用 chunk；可见正文单独记录。
+            'model_start_to_first_response_ms': ms(first_response, model_started),
+            'model_start_to_first_visible_text_ms': ms(first_text, model_started),
         })
     return timeline
 
@@ -139,7 +149,7 @@ async def verify(args):
 
     # Phase 1: three back-to-back submissions on one socket.
     async with connect(ws_url, additional_headers=headers, max_size=4 * 1024 * 1024) as ws:
-        session_id, cursor = await open_session(ws)
+        session_id, cursor, _ = await open_session(ws)
         for text in prompts:
             request_id = str(uuid.uuid4())
             submitted[request_id] = time.monotonic()
@@ -164,7 +174,7 @@ async def verify(args):
 
     # Phase 2: mid-run disconnect, then reconnect and resume from the watermark.
     async with connect(ws_url, additional_headers=headers, max_size=4 * 1024 * 1024) as ws:
-        same_session, cursor = await open_session(ws, session_id)
+        same_session, cursor, _ = await open_session(ws, session_id)
         assert same_session == session_id
         request_id = str(uuid.uuid4())
         submitted[request_id] = time.monotonic()
@@ -183,16 +193,25 @@ async def verify(args):
                 reconnect_run = event.get('run_id')
                 break
         assert reconnect_run, '断线测试的任务未开始'
+        runs.setdefault(reconnect_run, {'run_id': reconnect_run})
         # 任务执行中断开连接；服务端任务不依赖连接存活。
-    await asyncio.sleep(2)
+    await asyncio.sleep(args.disconnect_delay)
     pre_reconnect_cursor = cursor
+    record = runs[reconnect_run]
     async with connect(ws_url, additional_headers=headers, max_size=4 * 1024 * 1024) as ws:
-        _, snap_seq = await open_session(ws, session_id)
+        _, snap_seq, snapshot = await open_session(ws, session_id)
         cursor = snap_seq
         assert snap_seq >= pre_reconnect_cursor, '重连快照水位回退'
-        deadline = time.monotonic() + 240
-        await pump(ws, lambda: terminal_order.count(reconnect_run) == 1, deadline)
-    assert runs[reconnect_run]['terminal_type'] == 'run.completed'
+        # 任务可能在断线期间已完成：终态包含在重连快照里，完成事件不会再补发。
+        snap_status = next((r['status'] for r in snapshot['runs'] if r['id'] == reconnect_run), None)
+        if snap_status in ('completed', 'failed', 'interrupted'):
+            record['terminal_type'] = f'run.{snap_status}'
+            record['terminal_source'] = 'reconnect_snapshot'
+        else:
+            deadline = time.monotonic() + 240
+            await pump(ws, lambda: terminal_order.count(reconnect_run) == 1, deadline)
+            record['terminal_source'] = 'event_pump'
+    assert record['terminal_type'] == 'run.completed'
 
     run_ids = [record['run_id'] for record in runs.values()]
     report['runs'] = list(runs.values())

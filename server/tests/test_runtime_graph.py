@@ -225,7 +225,7 @@ class WorkerWakeTests(unittest.IsolatedAsyncioTestCase):
         worker = asyncio.create_task(svc._worker())
         try:
             await asyncio.wait_for(scanned.wait(), 2)
-            svc._wake.set()  # AgentService.submit() during the in-flight scan
+            svc._notify_workers()  # AgentService.submit() during the in-flight scan
             await asyncio.wait_for(executed.wait(), 0.5)
         finally:
             worker.cancel()
@@ -263,6 +263,57 @@ class WorkerWakeTests(unittest.IsolatedAsyncioTestCase):
             worker.cancel()
             await asyncio.gather(worker, return_exceptions=True)
         self.assertGreaterEqual(claims, 2)
+
+    async def test_one_worker_never_consumes_another_workers_wake(self):
+        """Two workers each own a wake event; a shared event lets the fast
+        worker clear the signal before the slow worker reaches its wait."""
+        svc, run = GraphTests.service(self, [])
+        both_seen = asyncio.Event()
+        executed = asyncio.Event()
+        order = []
+        claims = {}
+
+        # Distinguish roles by arrival order: the first worker to appear scans
+        # fast and always finds nothing; the second is slow on its first scan
+        # (the run commits while its claim statement is in flight).
+        class Store:
+            LEASE_SECONDS = 30
+
+            async def recover_expired(self):
+                pass
+
+            async def claim(self, owner):
+                if owner not in order:
+                    order.append(owner)
+                count = claims[owner] = claims.get(owner, 0) + 1
+                if len(order) == 2:
+                    both_seen.set()
+                if order.index(owner) == 0:
+                    return None
+                if count == 1:
+                    await asyncio.sleep(0.15)
+                    return None
+                return run
+
+        svc.store = Store()
+
+        async def fake_execute(claimed, owner):
+            executed.set()
+            svc._stopping = True
+
+        svc._execute = fake_execute
+        workers = [asyncio.create_task(svc._worker()), asyncio.create_task(svc._worker())]
+        try:
+            await asyncio.wait_for(both_seen.wait(), 2)
+            svc._notify_workers()  # submit lands while the slow worker scans
+            # With one shared event the fast worker clears it first; the slow
+            # worker then waits out the full one-second fallback.
+            await asyncio.wait_for(executed.wait(), 0.5)
+        finally:
+            for worker in workers:
+                worker.cancel()
+            await asyncio.gather(*workers, return_exceptions=True)
+        self.assertEqual(len(svc._wake_events), 0)  # deregistered on exit
 
 
 if __name__ == '__main__':

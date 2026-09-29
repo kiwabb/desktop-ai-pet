@@ -136,7 +136,9 @@ class AgentService:
         self.model = None
         self._workers = []
         self._cleanup_task = None
-        self._wake = asyncio.Event()
+        # One wake event per worker: a shared event lets one worker clear a
+        # notification another worker has not consumed yet.
+        self._wake_events = set()
         self._stopping = False
         self._trace_writer = None
 
@@ -189,7 +191,7 @@ class AgentService:
 
     async def stop(self):
         self._stopping = True
-        self._wake.set()
+        self._notify_workers()
         for task in self._workers:
             task.cancel()
         await asyncio.gather(*self._workers, return_exceptions=True)
@@ -235,9 +237,14 @@ class AgentService:
         if not await self.configuration_available():
             raise ValueError('服务端尚未配置模型，无法提交智能体任务')
         envelope = await self.store.submit(principal.account_id, request_id, session_id, text)
-        self._wake.set()
+        self._notify_workers()
         await self._notify(principal.account_id, session_id)
         return envelope
+
+    def _notify_workers(self):
+        # The acceptance is already durable; every worker gets its own signal.
+        for wake in self._wake_events:
+            wake.set()
 
     async def events_after(self, principal, session_id, after_seq):
         return await self.store.events_after(principal.account_id, session_id, after_seq)
@@ -251,26 +258,32 @@ class AgentService:
 
     async def _worker(self):
         owner = str(uuid4())
-        while not self._stopping:
-            # Clear BEFORE scanning: a submission arriving during the scan sets
-            # the event and must still wake the wait below. The timeout stays
-            # as the fallback scan so no queued task is ever missed.
-            self._wake.clear()
-            try:
-                await self.store.recover_expired()
-                run = await self.store.claim(owner)
-                if run:
-                    self._log_claim_delay(run)
-                    await self._execute(run, owner)
-                    continue
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                logger.error('任务执行器暂时不可用，等待下次数据库扫描')
-            try:
-                await asyncio.wait_for(self._wake.wait(), timeout=1.0)
-            except TimeoutError:
-                pass
+        wake = asyncio.Event()
+        self._wake_events.add(wake)
+        try:
+            while not self._stopping:
+                # Clear only this worker's event, BEFORE scanning: a submission
+                # arriving during the scan sets it again and must still wake the
+                # wait below. The timeout stays as the fallback scan so no
+                # queued task is ever missed.
+                wake.clear()
+                try:
+                    await self.store.recover_expired()
+                    run = await self.store.claim(owner)
+                    if run:
+                        self._log_claim_delay(run)
+                        await self._execute(run, owner)
+                        continue
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.error('任务执行器暂时不可用，等待下次数据库扫描')
+                try:
+                    await asyncio.wait_for(wake.wait(), timeout=1.0)
+                except TimeoutError:
+                    pass
+        finally:
+            self._wake_events.discard(wake)
 
     @staticmethod
     def _log_claim_delay(run):

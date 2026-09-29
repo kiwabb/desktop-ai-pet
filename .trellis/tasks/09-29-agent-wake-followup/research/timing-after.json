@@ -1,0 +1,105 @@
+{
+  "evidence": "real_service_and_real_model",
+  "created_demo_data": false,
+  "first_run_submit_to_started_ms": 108,
+  "runs": [
+    {
+      "run_id": "34dea9de-86ae-45c7-8b1f-7ea280569832",
+      "accepted_at": 80231.817069625,
+      "request_id": "d63503dc-2eb3-4326-a679-2ee930adc1f2",
+      "started_at": 80231.869674375,
+      "first_delta_at": 80236.985937416,
+      "terminal_at": 80237.497785333,
+      "terminal_type": "run.completed",
+      "client_submit_to_started_ms": 108,
+      "client_submit_to_first_delta_ms": 5225
+    },
+    {
+      "run_id": "350e7fa7-7c42-4f92-b225-820c9c265129",
+      "accepted_at": 80231.869704166,
+      "request_id": "c62e4c4e-6208-448e-8170-36241ab3a6b8",
+      "started_at": 80237.497833416,
+      "first_delta_at": 80243.365417875,
+      "terminal_at": 80243.621121125,
+      "terminal_type": "run.completed",
+      "client_submit_to_started_ms": 5736,
+      "client_submit_to_first_delta_ms": 11604
+    },
+    {
+      "run_id": "cb3afffd-4672-44bb-b21e-970827ccc3fc",
+      "accepted_at": 80231.88611225,
+      "request_id": "db9e802f-43dc-41a6-8f3e-29576b6bc879",
+      "started_at": 80243.621166916,
+      "first_delta_at": 80247.751706041,
+      "terminal_at": 80248.011539458,
+      "terminal_type": "run.completed",
+      "client_submit_to_started_ms": 11860,
+      "client_submit_to_first_delta_ms": 15990
+    },
+    {
+      "run_id": "bf980d9a-918d-4c34-b700-058a37b2732e",
+      "first_delta_at": 80253.998866458,
+      "terminal_at": 80254.265640083,
+      "terminal_type": "run.completed",
+      "terminal_source": "event_pump"
+    }
+  ],
+  "server_timeline": [
+    {
+      "run_id": "34dea9de-86ae-45c7-8b1f-7ea280569832",
+      "submitted_at": "2026-09-29T08:28:11.516982+00:00",
+      "claimed_at": "2026-09-29T08:28:11.532423+00:00",
+      "model_started_at": "2026-09-29T08:28:11.560168+00:00",
+      "first_response_at": "2026-09-29T08:28:14.217599+00:00",
+      "first_visible_text_at": "2026-09-29T08:28:16.649390+00:00",
+      "submit_to_claim_ms": 15,
+      "submit_to_model_start_ms": 43,
+      "model_start_to_first_response_ms": 2657,
+      "model_start_to_first_visible_text_ms": 5089
+    },
+    {
+      "run_id": "350e7fa7-7c42-4f92-b225-820c9c265129",
+      "submitted_at": "2026-09-29T08:28:11.540046+00:00",
+      "claimed_at": "2026-09-29T08:28:17.093099+00:00",
+      "model_started_at": "2026-09-29T08:28:17.112307+00:00",
+      "first_response_at": "2026-09-29T08:28:19.474513+00:00",
+      "first_visible_text_at": "2026-09-29T08:28:22.952460+00:00",
+      "submit_to_claim_ms": 5553,
+      "submit_to_model_start_ms": 5572,
+      "model_start_to_first_response_ms": 2362,
+      "model_start_to_first_visible_text_ms": 5840
+    },
+    {
+      "run_id": "cb3afffd-4672-44bb-b21e-970827ccc3fc",
+      "submitted_at": "2026-09-29T08:28:11.588595+00:00",
+      "claimed_at": "2026-09-29T08:28:23.195949+00:00",
+      "model_started_at": "2026-09-29T08:28:23.224601+00:00",
+      "first_response_at": "2026-09-29T08:28:24.780424+00:00",
+      "first_visible_text_at": "2026-09-29T08:28:27.421608+00:00",
+      "submit_to_claim_ms": 11607,
+      "submit_to_model_start_ms": 11636,
+      "model_start_to_first_response_ms": 1555,
+      "model_start_to_first_visible_text_ms": 4197
+    },
+    {
+      "run_id": "bf980d9a-918d-4c34-b700-058a37b2732e",
+      "submitted_at": "2026-09-29T08:28:27.752980+00:00",
+      "claimed_at": "2026-09-29T08:28:27.770561+00:00",
+      "model_started_at": "2026-09-29T08:28:27.788435+00:00",
+      "first_response_at": "2026-09-29T08:28:30.253963+00:00",
+      "first_visible_text_at": "2026-09-29T08:28:33.542521+00:00",
+      "submit_to_claim_ms": 17,
+      "submit_to_model_start_ms": 35,
+      "model_start_to_first_response_ms": 2465,
+      "model_start_to_first_visible_text_ms": 5754
+    }
+  ],
+  "submit_to_started_ms": [
+    108,
+    5736,
+    11860
+  ],
+  "event_seq_gapless": true,
+  "terminal_order_matches_submit_order": true,
+  "reconnect_resumed_from_watermark": true
+}
