@@ -1,0 +1,702 @@
+/* ChatBubbleFrame — self-contained bubble shell.
+ *
+ * Everything here is scoped to the component root `.chat-panel` and its own
+ * markup (header, body/footer slots, badge, tail, paw trail). No pet-shell /
+ * pet-chat-* / chat-window-app ancestor is required. The host keeps desktop
+ * attachment and available-space layout in src/desktop-shell.css; shared
+ * layers come from design-tokens.css. Chat/settings content belongs to its
+ * component styles and may key off the root state classes
+ * `.is-compact` / `.is-expanded` / `.is-attached` / `.is-standalone`.
+ *
+ * State semantics:
+ * - `.is-hidden` (visible=false): laid out but invisible, non-interactive and
+ *   unfocusable — used by the host while AppKit resizes the native surface.
+ * - `.is-entering` (animateEntrance): plays the entrance motion only; the
+ *   frame is fully visible without it.
+ */
+
+.chat-panel,
+.chat-panel *,
+.chat-panel::before,
+.chat-panel::after,
+.chat-panel *::before,
+.chat-panel *::after { box-sizing: border-box; }
+
+.chat-panel {
+  --pet-ink: #493b31;
+  --pet-muted: #796959;
+  --pet-accent: #a45831;
+  --pet-surface: #fffdfa;
+  --pet-rule: #eadfd4;
+  --pet-focus: #a45831;
+  --chat-frame-corner-radius: 72px;
+  --chat-frame-top-right-radius: 24px;
+  --chat-frame-bottom-right-radius: 24px;
+  --chat-frame-bottom-left-radius: 24px;
+  --chat-frame-border-width: 1px;
+  /* Both axes must accommodate adjacent radii even with empty slots. The
+   * root additionally reserves its border so the inner surface is not smaller
+   * than the arc sums and cannot trigger CSS radius normalization. */
+  --chat-frame-min-width: max(calc(var(--chat-frame-corner-radius) + var(--chat-frame-top-right-radius)), calc(var(--chat-frame-bottom-left-radius) + var(--chat-frame-bottom-right-radius)));
+  --chat-frame-min-height: max(calc(var(--chat-frame-corner-radius) + var(--chat-frame-bottom-left-radius)), calc(var(--chat-frame-top-right-radius) + var(--chat-frame-bottom-right-radius)));
+  --chat-frame-rows: auto minmax(0, 1fr) auto;
+  position: relative;
+  min-width: calc(var(--chat-frame-min-width) + 2 * var(--chat-frame-border-width));
+  min-height: calc(var(--chat-frame-min-height) + 2 * var(--chat-frame-border-width));
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  /* Without an explicit column the single implicit one is `auto`, i.e. sized to
+   * the widest child's max-content — a nowrap subtitle would push the header
+   * and chip rows past the panel's right edge. Clamp it. */
+  grid-template-columns: minmax(0, 1fr);
+  overflow: visible;
+  color: #2f2925;
+  font-family: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 245, 241, 0.94));
+  border: var(--chat-frame-border-width) solid rgba(255, 255, 255, 0.86);
+  border-radius: var(--chat-frame-corner-radius) var(--chat-frame-top-right-radius) var(--chat-frame-bottom-right-radius) var(--chat-frame-bottom-left-radius);
+  box-shadow: 0 18px 44px rgba(39, 31, 25, 0.14), 0 2px 8px rgba(39, 31, 25, 0.07), inset 0 0 0 1px rgba(122, 99, 83, 0.07);
+  -webkit-backdrop-filter: blur(24px) saturate(1.12);
+  backdrop-filter: blur(24px) saturate(1.12);
+  user-select: text;
+}
+
+.chat-panel::before,
+.chat-panel::after { display: none; }
+
+.chat-panel.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* One full-height painted surface owns clipping for short-header modes. A 72px
+ * corner on a 48px header would be reduced by CSS radius normalization;
+ * clipping the entire surface preserves the arc through header AND body.
+ * Badge and tail remain outside this layer and never get clipped. */
+.chat-panel > .chat-panel-surface {
+  display: grid;
+  grid-template-rows: var(--chat-frame-rows);
+  grid-template-columns: minmax(0, 1fr);
+  min-width: var(--chat-frame-min-width);
+  min-height: var(--chat-frame-min-height);
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+/* --- Header ------------------------------------------------------------- */
+
+.chat-panel .chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 10px 10px 8px 69.3px;
+  border-bottom: 1px solid rgba(98, 79, 67, 0.08);
+  cursor: default;
+}
+
+.chat-panel .chat-header[data-tauri-drag-region] { cursor: grab; }
+
+.chat-panel .assistant-identity { min-width: 0; pointer-events: none; }
+.chat-panel .assistant-identity h1 { margin: 0; color: #2f2925; font-size: 16px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+.chat-panel .assistant-identity p { max-width: 260px; margin: 3px 0 0; overflow: hidden; color: var(--pet-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.chat-panel .header-actions { display: flex; align-items: center; gap: 0; }
+
+/* Paw badge: viewBox is 125x139 (the ink bbox), so width/height must keep that
+ * 0.899 aspect or the paw distorts. Colours sampled off the master: sticker
+ * cream #fdf9f5, stroke #fdb378, toe pads #fea76f, main pad #fdb177 — the
+ * main pad is LIGHTER than the toes, not darker. */
+/* A single corner anchor for every appearance, variant and content type.
+ * Offsets use the frame padding edge: its border adds approximately 1px,
+ * placing the ink at x≈5.12 / y≈-4 relative to the outer frame edge. */
+.chat-panel > .assistant-paw-badge {
+  position: absolute;
+  top: -5px;
+  left: 4.12px;
+  z-index: 6;
+  width: 53.3px;
+  height: 59.27px;
+  overflow: visible;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 5px 6px rgba(191, 103, 47, 0.3))
+    drop-shadow(0 1px 2px rgba(191, 103, 47, 0.2));
+}
+.chat-panel .paw-sticker {
+  fill: #fdf9f5;
+  stroke: #fdb378;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chat-panel .paw-pad { fill: #fea76f; }
+.chat-panel .paw-main-pad { fill: #fdb177; }
+
+/* --- Stable slots --------------------------------------------------------- */
+
+.chat-panel .chat-panel-body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.chat-panel .chat-panel-footer { display: grid; }
+
+/* --- Compact variant (both appearances) ----------------------------------- */
+
+.chat-panel.is-compact .chat-header {
+  min-height: 48px;
+  padding: 5px 6px 4px 69.3px;
+}
+.chat-panel.is-compact .assistant-identity h1 { font-size: 14px; }
+.chat-panel.is-compact .assistant-identity p { max-width: 105px; margin-top: 1px; font-size: 9px; }
+.chat-panel.is-compact .icon-button { min-width: 38px; min-height: 38px; }
+.chat-panel.is-compact .icon-button svg { width: 16px; height: 16px; }
+
+/* --- Standalone appearance -------------------------------------------------- */
+
+.chat-panel.is-standalone.is-compact {
+  --chat-frame-rows: 48px auto auto;
+  --chat-frame-top-right-radius: 20px;
+  --chat-frame-bottom-right-radius: 20px;
+  --chat-frame-bottom-left-radius: 20px;
+  box-shadow: 0 14px 36px rgba(39, 31, 25, 0.16), 0 2px 8px rgba(39, 31, 25, 0.08), inset 0 0 0 1px rgba(122, 99, 83, 0.06);
+}
+
+/* --- Attached appearance (bubble next to the pet) --------------------------- */
+
+/* Refined chat surface: one quiet bubble, one primary action, no decorative chrome. */
+.chat-panel.is-attached {
+  --chat-frame-border-width: 1.5px;
+  color: #443a34;
+  background: linear-gradient(155deg, rgba(255, 252, 246, 0.99), rgba(255, 239, 222, 0.98));
+  border: var(--chat-frame-border-width) solid rgba(240, 199, 158, 0.95);
+  box-shadow: 0 18px 44px rgba(99, 62, 38, 0.18), 0 2px 8px rgba(99, 62, 38, 0.07), inset 0 0 0 2px rgba(255, 255, 255, 0.66);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+/* Position and size come from the typed tail prop resolved on the root.
+ * top always anchors the SVG's vertical center; both variants share this rule
+ * so caller overrides cannot lose to a more specific mode selector. */
+.chat-panel .chat-bubble-tail {
+  position: absolute;
+  top: var(--chat-tail-top);
+  right: var(--chat-tail-right);
+  z-index: 5;
+  width: var(--chat-tail-width);
+  height: var(--chat-tail-height);
+  transform: translateY(-50%);
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(2px 3px 3px rgba(79, 53, 37, 0.06));
+}
+.chat-panel .chat-bubble-tail-fill { fill: #faf0e2; }
+.chat-panel .chat-bubble-tail-outline {
+  fill: none;
+  stroke: rgba(240, 199, 158, 0.95);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Compact attached panel — interior pixel-measured on the 1672×941 reference
+ * master, CSS = master × 0.426435 (713×401 surface). Host geometry (475×222
+ * anchored left of the cat) stays in styles.css; the per-corner radii are
+ * least-squares circle fits on the master alpha edge:
+ *   top-left 72.5  top-right 59.7  bottom-left 56.1  bottom-right 70.5 */
+.chat-panel.is-attached.is-compact {
+  --chat-frame-rows: 84px auto auto;
+  --chat-frame-top-right-radius: 60px;
+  --chat-frame-bottom-right-radius: 70px;
+  --chat-frame-bottom-left-radius: 56px;
+  transform-origin: 100% 80%;
+}
+
+/* This header is transparent and its 84px row fully covers the 72px corner
+ * zone. Only the root paints that arc, so no inner clip is necessary. Keep
+ * overflow visible here: real inline errors increase body height in the fixed
+ * 222px native frame and must not make the quick-prompt controls disappear. */
+.chat-panel.is-attached.is-compact > .chat-panel-surface { overflow: visible; }
+
+/* Footer holds composer row + quick-prompt chips at the measured 90px / 48px. */
+.chat-panel.is-attached.is-compact .chat-panel-footer {
+  grid-template-rows: 90px 48px;
+}
+
+.chat-panel.is-attached.is-compact .chat-header {
+  min-height: 0;
+  padding: 0 23px 0 69.3px;
+  align-items: flex-start;
+  background: transparent;
+  border-bottom: 0;
+}
+
+/* Preserve the approved compact title's x≈70.3 / y≈27 placement after
+ * removing the badge from header flow. All header modes reserve the same
+ * 69.3px left padding so text cannot overlap the shared corner badge. */
+.chat-panel.is-attached.is-compact .assistant-identity > div { padding-top: 26px; }
+
+.chat-panel.is-attached.is-compact .assistant-identity h1 {
+  color: #3d2f25;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.chat-panel.is-attached.is-compact .assistant-identity p {
+  max-width: none;
+  margin-top: 5px;
+  color: var(--pet-muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Header icon glyphs center at panel-relative y≈38 (master 231-264 → CSS
+ * 98.5-112.6); they sit on the title line, not down at the subtitle.
+ * Reference glyph centres are 37px apart (master 895/981/1070), so the compact
+ * hit areas are 33px + 4px gap instead of the roomier 44px used elsewhere.
+ * The button language matches the expanded header: framed warm-white tile. */
+.chat-panel.is-attached.is-compact .header-actions { margin-top: 20px; gap: 4px; }
+.chat-panel.is-attached.is-compact .header-actions .pin-indicator { width: 22px; height: 22px; }
+.chat-panel.is-attached.is-compact .icon-button {
+  min-width: 33px;
+  min-height: 33px;
+  width: 33px;
+  height: 33px;
+  color: #8e7b70;
+  background: linear-gradient(145deg, #fffefa, #fcf7ef);
+  border: 1px solid var(--pet-rule);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 5px rgba(126, 79, 40, 0.04);
+  touch-action: manipulation;
+}
+.chat-panel.is-attached.is-compact .icon-button:hover,
+.chat-panel.is-attached.is-compact .icon-button.is-active { color: #a3653f; border-color: rgba(203, 168, 136, 0.45); background: linear-gradient(145deg, #fffaf1, #f9ecdc); }
+.chat-panel.is-attached.is-compact .icon-button svg { width: 17px; height: 17px; }
+
+.chat-panel .compact-paw-trail {
+  position: absolute;
+  top: 77px;
+  right: 34px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  color: #f6aa73;
+  opacity: 0.24;
+  pointer-events: none;
+  transform: rotate(12deg);
+}
+.chat-panel .compact-paw-trail svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+.chat-panel .compact-paw-trail svg:last-child {
+  width: 14px;
+  height: 14px;
+  transform: translateY(8px) rotate(13deg);
+}
+
+/* --- Attached expanded variant ---------------------------------------------- */
+
+.chat-panel.is-attached.is-expanded {
+  --chat-frame-top-right-radius: 28px;
+  --chat-frame-bottom-right-radius: 28px;
+  --chat-frame-bottom-left-radius: 28px;
+}
+
+/* Cat-ear decorations, currently disabled; kept with the frame so enabling
+ * them again is a one-property change. */
+.chat-panel.is-attached.is-expanded::before,
+.chat-panel.is-attached.is-expanded::after {
+  position: absolute;
+  top: -58px;
+  z-index: 0;
+  display: none;
+  width: 116px;
+  height: 92px;
+  content: '';
+  background: #ffd9bc;
+  border: 0;
+  border-radius: 32px 32px 10px 10px;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 2px rgba(207, 126, 73, 0.92)) drop-shadow(0 -6px 12px rgba(128, 79, 46, 0.12));
+  transform: none;
+}
+.chat-panel.is-attached.is-expanded::before { left: 28px; }
+.chat-panel.is-attached.is-expanded::after { right: 28px; }
+
+.chat-panel.is-attached.is-expanded .chat-header,
+.chat-panel.is-attached.is-expanded .chat-panel-body,
+.chat-panel.is-attached.is-expanded .chat-panel-footer { position: relative; z-index: 1; }
+
+.chat-panel.is-attached.is-expanded .chat-header {
+  min-height: 68px;
+  padding: 10px 12px 9px 69.3px;
+  background: rgba(255, 252, 248, 0.94);
+  border-bottom: 1px solid rgba(226, 196, 174, 0.45);
+}
+.chat-panel.is-attached.is-expanded .header-actions {
+  position: static;
+  gap: 6px;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.chat-panel.is-attached.is-expanded .header-actions::before { display: none; }
+.chat-panel.is-attached.is-expanded .header-actions button { position: relative; z-index: 1; }
+.chat-panel.is-attached.is-expanded .header-actions .icon-button {
+  min-width: 44px;
+  min-height: 44px;
+  background: linear-gradient(145deg, #fffefa, #fcf7ef);
+  border: 1px solid var(--pet-rule);
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 5px rgba(126, 79, 40, 0.04);
+  touch-action: manipulation;
+}
+.chat-panel.is-attached.is-expanded .header-actions .icon-button:hover,
+.chat-panel.is-attached.is-expanded .header-actions .icon-button.is-active {
+  color: #a3653f;
+  border-color: rgba(203, 168, 136, 0.45);
+  background: linear-gradient(145deg, #fffaf1, #f9ecdc);
+}
+.chat-panel.is-attached.is-expanded .header-actions .icon-button svg { width: 19px; height: 19px; }
+.chat-panel.is-attached.is-expanded .assistant-identity h1 { color: #4e4038; font-size: 18px; }
+.chat-panel.is-attached.is-expanded .assistant-identity p {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 3px;
+  padding: 0;
+  color: var(--pet-muted);
+  background: transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chat-panel.is-attached.is-expanded > .chat-bubble-tail { filter: none; }
+.chat-panel.is-attached.is-expanded > .chat-bubble-tail .chat-bubble-tail-fill { fill: #fff8f0; }
+.chat-panel.is-attached.is-expanded > .chat-bubble-tail .chat-bubble-tail-outline {
+  stroke: rgba(240, 199, 158, 0.95);
+  stroke-width: 1;
+}
+
+/* --- Entrance motion ---------------------------------------------------------- */
+
+@keyframes component-chat-bloom {
+  from { opacity: 0; transform: translate(24px, 10px) scale(0.92); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+
+@keyframes pet-chat-expand { from { transform: translate(22px, 12px) scale(0.94); } to { transform: translate(0, 0) scale(1); } }
+
+.chat-panel.is-attached.is-compact.is-entering {
+  animation: component-chat-bloom var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+
+.chat-panel.is-attached.is-expanded.is-entering {
+  animation: pet-chat-expand var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+
+.chat-panel.is-standalone.is-entering {
+  animation: pet-chat-expand var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel.is-attached.is-compact.is-entering,
+  .chat-panel.is-attached.is-expanded.is-entering,
+  .chat-panel.is-standalone.is-entering { animation: none; }
+}
+
+/* Approved continuous shell. Keep the transparent layout border: the shared
+ * paw's padding-edge anchor must not move when SVG replaces CSS paint. */
+.chat-panel.is-attached.is-integrated {
+  --chat-frame-border-width: 1px;
+  --chat-frame-bottom-left-radius: 28px;
+  min-width: max(132px, calc(var(--chat-frame-min-width) + 2 * var(--chat-frame-border-width)));
+  min-height: max(132px, calc(var(--chat-frame-min-height) + 2 * var(--chat-frame-border-width)));
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.chat-panel > .chat-bubble-shell {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  z-index: 0;
+  max-width: none;
+  overflow: visible;
+  pointer-events: none;
+}
+.chat-panel.is-integrated > .chat-panel-surface { position: relative; z-index: 1; }
+.chat-panel.is-attached.is-integrated.is-compact {
+  --chat-frame-rows: 88px min-content auto;
+}
+/* Native inner-height 276: header88 + composer78 + gap14 + actions72 +
+ * bottom24. A populated body retains its natural height; the occupied-slot
+ * rules reclaim spacing without coupling the frame to an error component. */
+.chat-panel.is-attached.is-integrated.is-compact > .chat-panel-surface {
+  align-content: start;
+  padding-bottom: 24px;
+}
+.chat-panel.is-attached.is-integrated.is-compact .chat-panel-body { display: flow-root; }
+.chat-panel.is-attached.is-integrated.is-compact .chat-panel-footer {
+  grid-template-rows: auto auto;
+  row-gap: 14px;
+}
+.chat-panel.is-attached.is-integrated.is-compact:has(.compact-error) {
+  --chat-frame-rows: 84px min-content auto;
+}
+.chat-panel.is-attached.is-integrated.is-compact:has(.compact-error) > .chat-panel-surface {
+  padding-bottom: 20px;
+}
+.chat-panel.is-attached.is-integrated.is-compact:has(.compact-error) .chat-panel-footer {
+  row-gap: 8px;
+}
+.chat-panel.is-attached.is-integrated.is-compact .assistant-identity h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: #594032;
+}
+.chat-panel.is-attached.is-integrated.is-compact .assistant-identity p {
+  margin-top: 5px;
+  font-size: 11px;
+  letter-spacing: 0.025em;
+  color: #796959;
+}
+.chat-panel.is-attached.is-integrated.is-compact .header-actions .icon-button {
+  color: #8e7662;
+  border: 1px solid var(--pet-rule);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #fffefa, #fcf7ef);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 5px rgba(126, 79, 40, 0.04);
+}
+.chat-panel.is-attached.is-integrated.is-compact .header-actions .icon-button svg {
+  stroke-width: 1.7;
+}
+.chat-panel.is-attached.is-integrated.is-compact .header-actions .icon-button:hover,
+.chat-panel.is-attached.is-integrated.is-compact .header-actions .icon-button.is-active {
+  color: #a3653f;
+  border-color: rgba(203, 168, 136, 0.45);
+  background: linear-gradient(145deg, #fffaf1, #f9ecdc);
+  box-shadow: inset 0 1px 0 #fff;
+}
+.chat-panel.is-integrated .chat-header {
+  color: #5a2b16;
+  border-bottom-color: var(--pet-rule);
+}
+.chat-panel.is-integrated.is-expanded .chat-header {
+  background: linear-gradient(120deg, rgba(255,253,250,.94), rgba(255,254,253,.8));
+}
+.chat-panel.is-integrated .assistant-identity h1 { color: var(--pet-ink); font-weight: 700; letter-spacing: -0.025em; }
+.chat-panel.is-integrated .assistant-identity p { color: var(--pet-muted); }
+.chat-panel.is-integrated .header-actions .icon-button { color: var(--pet-muted); }
+.chat-panel.is-integrated .header-actions .icon-button:hover,
+.chat-panel.is-integrated .header-actions .icon-button.is-active { color: #b26b39; background: rgba(255,230,207,.6); }
+
+.chat-panel.is-attached.is-integrated.is-expanded .message-list,
+.chat-panel.is-attached.is-integrated.is-expanded .composer { background: transparent; border-radius: 0; }
+
+.chat-panel.is-attached.is-integrated.is-expanded .header-actions .icon-button {
+  border: 1px solid var(--pet-rule);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #fffefa, #fcf7ef);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 2px 5px rgba(126,79,40,.04);
+}
+
+/* Motion stays on content so the shared paw and pet platform remain anchored. */
+.chat-panel button {
+  transition: background-color var(--motion-fast, 120ms) ease, box-shadow var(--motion-fast, 120ms) ease, transform var(--motion-fast, 120ms) var(--ease-out, cubic-bezier(.16,1,.3,1));
+}
+.chat-panel button:active:not(:disabled) { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel .chat-panel-body { animation: none; }
+  .chat-panel button { transition: none; }
+  .chat-panel button:active:not(:disabled) { transform: none; }
+}
+
+
+/* One paint of the continuous perimeter: a luminance mask fades only its
+ * bubble region, leaving the right-hand platform fully painted and stationary. */
+@keyframes integrated-shell-dissolve {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes integrated-content-arrive {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes integrated-content-dissolve {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.chat-panel.is-attached.is-integrated.is-entering { animation: none; }
+.chat-panel.is-attached.is-integrated.is-entering .shell-bubble-entrance-mask {
+  animation: integrated-shell-dissolve var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+.chat-panel.is-attached.is-integrated.is-entering > .assistant-paw-badge {
+  animation: integrated-content-dissolve var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+.chat-panel.is-attached.is-integrated.is-entering > .chat-panel-surface {
+  animation: integrated-content-arrive var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel.is-attached.is-integrated.is-entering .shell-bubble-entrance-mask {
+    animation: none !important;
+  }
+  .chat-panel.is-attached.is-integrated.is-entering > .assistant-paw-badge,
+  .chat-panel.is-attached.is-integrated.is-entering > .chat-panel-surface {
+    animation: none !important;
+  }
+}
+
+/* Frame-morph cost relief: while useFrameMorph sets data-frame-morphing, the
+ * destination shell fades in with its static backdrop-filter/shadow still
+ * attached, which forces WebKit to re-evaluate the backdrop per frame. These
+ * effects are stripped for the 300ms dissolve and restore automatically when
+ * the attribute is removed. This mirrors the settled no-backdrop precedents
+ * above (.is-expanded .header-actions, .is-integrated). Placed last so it
+ * wins the specificity tie against `.chat-panel.is-attached`. The integrated
+ * root already has no backdrop/shadow; this covers the plain attached variant
+ * and the paw badge's drop-shadows. */
+.chat-panel[data-frame-morphing] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.chat-panel[data-frame-morphing] > .assistant-paw-badge { filter: none; }
+.chat-panel[data-frame-morphing] > .chat-bubble-tail { filter: none; }
+
+/* A narrow desktop work area keeps actions available in a second header row.
+   Container width describes the usable panel, independently of display DPI. */
+.chat-panel { container: companion-frame / inline-size; }
+@container companion-frame (max-width: 430px) {
+  .chat-panel .chat-header { flex-wrap: wrap; row-gap: 4px; padding-right: 12px; }
+  .chat-panel .assistant-identity { flex: 1 1 100%; }
+  .chat-panel .header-actions { margin: 0 0 0 auto; }
+  .chat-panel.is-attached.is-compact .header-actions { margin-top: 0; }
+  .chat-panel.is-attached.is-compact .assistant-identity > div { padding-top: 15px; }
+  .chat-panel.is-attached.is-compact .assistant-identity h1 { font-size: 17px; }
+  .chat-panel.is-attached.is-compact .assistant-identity p { margin-top: 3px; font-size: 11px; }
+  .chat-panel.is-attached.is-compact .chat-header { padding-bottom: 4px; }
+  .chat-panel.is-attached.is-expanded .chat-header { min-height: 96px; }
+}
+
+/* Independent companion surface. The frame owns the readable rectangle;
+   its desktop host owns placement and the continuous speech silhouette. */
+/* The companion surface owns its palette locally. Legacy frame appearances
+   and their reference geometry continue to use the original shared values. */
+.chat-panel.is-companion {
+  --pet-ink: var(--companion-ink, #6c4631);
+  --pet-muted: var(--companion-muted, #8b6753);
+  --pet-accent: var(--companion-accent, #a45b2b);
+  --pet-surface: var(--companion-surface, #fffaf4);
+  --pet-rule: var(--companion-line, #eed8bf);
+  --pet-focus: var(--companion-focus, #ae6739);
+  --ink: var(--pet-ink);
+  --ink-deep: var(--pet-ink);
+  --muted: var(--pet-muted);
+  --muted-soft: var(--pet-muted);
+  --surface-base: var(--pet-surface);
+  --surface-raised: var(--pet-surface);
+  --surface-soft: var(--companion-chrome, #fff0dd);
+  --surface-user: var(--companion-user, #ffeadb);
+  --rule: var(--pet-rule);
+  --rule-strong: var(--pet-rule);
+  --primary: var(--companion-action, #f4bd7e);
+  --primary-hi: var(--primary);
+  --primary-strong: var(--companion-action-hover, #efb174);
+  --focus-accent: var(--pet-focus);
+  --input-bg: var(--pet-surface);
+  --input-rule: var(--pet-rule);
+  --input-focus: var(--pet-focus);
+  --input-focus-ring: rgba(174, 103, 57, 0.16);
+  --shadow-control: none;
+  --shadow-surface: none;
+  --chat-frame-corner-radius: 24px;
+  --chat-frame-top-right-radius: 24px;
+  --chat-frame-bottom-right-radius: 24px;
+  --chat-frame-bottom-left-radius: 24px;
+  --chat-frame-min-width: 0px;
+  --chat-frame-min-height: 0px;
+  --chat-frame-rows: auto minmax(0, 1fr) auto;
+  color: var(--pet-ink);
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  background: var(--pet-surface);
+  border: 1px solid transparent;
+  box-shadow: var(--companion-shadow-panel, 0 3px 4px rgba(116, 68, 32, .10));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.chat-panel.is-companion ::selection { color: var(--pet-ink); background: var(--companion-selection, #ffe4bf); }
+.chat-panel.is-companion input, .chat-panel.is-companion textarea { caret-color: var(--pet-ink); }
+.chat-panel.is-companion ::-webkit-scrollbar { width: 6px; height: 6px; }
+.chat-panel.is-companion ::-webkit-scrollbar-thumb { background: var(--pet-rule); border-radius: 3px; }
+.chat-panel.is-companion ::-webkit-scrollbar-thumb:hover { background: var(--pet-muted); }
+.chat-panel.is-companion.has-navigation { --chat-frame-rows: auto auto minmax(0, 1fr) auto; }
+.chat-panel.is-companion .chat-header {
+  min-height: 48px;
+  padding: 8px 12px 8px 18px;
+  flex-wrap: nowrap;
+  gap: 10px;
+  border-bottom: 0;
+}
+.chat-panel.is-companion.is-compact .chat-header { min-height: 48px; }
+.chat-panel.is-companion .assistant-identity { display: flex; align-items: center; flex: 1 1 auto; gap: 8px; }
+.chat-panel.is-companion .assistant-identity h1 { color: var(--pet-ink); font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: 0; }
+.chat-panel.is-companion .companion-brand-mark { display: block; flex: none; width: 28px; height: auto; aspect-ratio: 125 / 139; }
+.chat-panel.is-companion .assistant-identity p { max-width: 100%; margin-top: 2px; font-size: 12px; font-weight: 400; line-height: 1.5; }
+.chat-panel.is-companion .header-actions { flex: none; gap: 2px; margin: 0; }
+.chat-panel.is-companion .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  gap: 5px;
+  min-width: 32px;
+  min-height: 32px;
+  width: auto;
+  height: auto;
+  padding: 6px;
+  color: var(--pet-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.chat-panel.is-companion .chat-labelled-action { padding-inline: 8px; white-space: nowrap; }
+.chat-panel.is-companion .icon-button svg { width: 15px; height: 15px; stroke-width: 1.7; }
+.chat-panel.is-companion .icon-button:hover:not(:disabled) { color: var(--pet-ink); background: var(--surface-soft); }
+.chat-panel.is-companion .icon-button.is-active { color: var(--pet-ink); background: var(--surface-soft); }
+.chat-panel.is-companion .icon-button:active:not(:disabled) { background: var(--pet-rule); }
+.chat-panel.is-companion .icon-button:disabled { opacity: .5; cursor: not-allowed; }
+.chat-panel.is-companion .icon-button:focus-visible { outline: 2px solid var(--pet-focus); outline-offset: 1px; }
+.chat-panel.is-companion .chat-panel-navigation { min-width: 0; padding: 0 16px 4px; border: 0; }
+.chat-panel.is-companion .chat-panel-footer { min-width: 0; border: 0; }
+.chat-panel.is-companion.is-entering {
+  transform-origin: var(--companion-origin-x, 100%) var(--companion-origin-y, 50%);
+  animation: companion-panel-arrive 180ms var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+@keyframes companion-panel-arrive { from { opacity: .85; transform: scale(.985); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel.is-companion.is-entering { animation: none; }
+}

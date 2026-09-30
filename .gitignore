@@ -1,0 +1,34 @@
+node_modules/
+dist/
+src-tauri/target/
+.DS_Store
+*.log
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+.env
+.env.*
+!.env.example
+
+# Local verification artifacts and runtime data
+output/
+.playwright-cli/
+**/.local/
+**/.venv/
+**/__pycache__/
+*.pyc
+
+# Impeccable engine binaries (platform-specific, re-downloaded on first run)
+.agents/skills/impeccable/scripts/bin/
+.github/skills/impeccable/scripts/bin/
+
+# Private development context and runtime storage
+.trellis/
+.agents/
+.codex/
+.impeccable/
+src-tauri/gen/
+*.db
+*.db-*
+*.sqlite*
+config.json

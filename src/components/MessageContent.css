@@ -1,0 +1,57 @@
+.chat-panel .message-markdown { min-width: 0; color: inherit; white-space: normal; overflow-wrap: anywhere; font-size: var(--text-body); line-height: var(--leading-reading); }
+.chat-panel .message-markdown > :first-child { margin-top: 0; }
+.chat-panel .message-markdown > :last-child { margin-bottom: 0; }
+.chat-panel .message-markdown p { margin: 0 0 10px; white-space: pre-wrap; }
+.chat-panel .message-markdown h1, .chat-panel .message-markdown h2, .chat-panel .message-markdown h3,
+.chat-panel .message-markdown h4, .chat-panel .message-markdown h5, .chat-panel .message-markdown h6 { margin: 16px 0 8px; font-size: 1.08em; line-height: 1.5; font-weight: 700; }
+.chat-panel .message-markdown ul, .chat-panel .message-markdown ol { margin: 8px 0 12px; padding-left: 22px; }
+.chat-panel .message-markdown li { margin: 4px 0; }
+.chat-panel .message-markdown li > p { margin-bottom: 4px; }
+.chat-panel .message-markdown blockquote { margin: 10px 0; padding: 2px 0 2px 12px; border-left: 1px solid var(--input-rule); color: var(--pet-muted); }
+.chat-panel .message-user .message-markdown blockquote { color: inherit; }
+.chat-panel .message-markdown a { color: var(--pet-accent); text-decoration: underline; text-underline-offset: 3px; }
+.chat-panel .message-user .message-markdown a { color: inherit; }
+.chat-panel .message-markdown code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
+.chat-panel .message-markdown :not(pre) > code { padding: 2px 5px; border-radius: 4px; background: rgba(151,112,76,.09); }
+.chat-panel .message-code-block { max-width: 100%; margin: 10px 0; color: var(--pet-ink); border: 1px solid var(--pet-rule); border-radius: var(--radius-sm); background: var(--surface-base); overflow: hidden; }
+.chat-panel .message-code-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 8px 4px 12px; border-bottom: 1px solid var(--pet-rule); color: var(--pet-muted); font-size: var(--text-label); }
+.chat-panel .message-code-toolbar button { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 4px 7px; color: var(--pet-ink); border: 0; border-radius: var(--radius-xs); background: transparent; font-size: var(--text-label); }
+.chat-panel .message-code-toolbar button:hover { background: var(--surface-soft); }
+.chat-panel .message-code-toolbar svg { width: 14px; height: 14px; }
+.chat-panel .message-markdown pre { max-width: 100%; margin: 0; padding: 12px; overflow-x: auto; overscroll-behavior: contain; white-space: pre; line-height: 1.6; }
+.chat-panel .message-markdown pre code { padding: 0; background: transparent; }
+.chat-panel .message-markdown .message-copy-error { margin: 0; padding: 6px 12px 10px; color: var(--danger); font-size: var(--text-label); }
+.chat-panel .message-table-scroll { min-width: 0; max-width: 100%; margin: 12px 0; overflow-x: auto; overscroll-behavior-x: contain; }
+.chat-panel .message-markdown table { width: 100%; margin: 0; border-collapse: collapse; font-size: var(--text-label); }
+.chat-panel .message-markdown th, .chat-panel .message-markdown td { padding: 6px 9px; border: 1px solid var(--input-rule); text-align: left; }
+.chat-panel .message-markdown hr { margin: 16px 0; border: 0; border-top: 1px solid var(--input-rule); }
+.chat-panel .message-image-description { font-size: var(--text-label); font-style: italic; }
+.chat-panel .message-markdown a:focus-visible, .chat-panel .message-markdown button:focus-visible { outline: 2px solid var(--focus-accent); outline-offset: 2px; }
+.chat-panel .message-table-scroll:focus-visible { outline: 2px solid var(--focus-accent); outline-offset: -2px; }
+
+.chat-panel.is-companion .message-markdown { font-size: 14px; line-height: 1.7; }
+.chat-panel.is-companion .message-markdown p { margin-bottom: 12px; }
+.chat-panel.is-companion .message-markdown h1, .chat-panel.is-companion .message-markdown h2,
+.chat-panel.is-companion .message-markdown h3, .chat-panel.is-companion .message-markdown h4,
+.chat-panel.is-companion .message-markdown h5, .chat-panel.is-companion .message-markdown h6 { margin: 18px 0 8px; color: var(--pet-ink); font-size: 15px; font-weight: 600; line-height: 1.5; }
+.chat-panel.is-companion .message-markdown h1, .chat-panel.is-companion .message-markdown h2 { font-size: 16px; }
+.chat-panel.is-companion .message-markdown h4, .chat-panel.is-companion .message-markdown h5, .chat-panel.is-companion .message-markdown h6 { font-size: 14px; }
+.chat-panel.is-companion.is-compact .message-markdown h1, .chat-panel.is-companion.is-compact .message-markdown h2 { font-size: 15px; }
+.chat-panel.is-companion .message-markdown ul, .chat-panel.is-companion .message-markdown ol { margin: 8px 0 12px; padding-left: 24px; }
+.chat-panel.is-companion .message-markdown li { margin-block: 6px; padding-left: 2px; }
+.chat-panel.is-companion .message-markdown li::marker { color: var(--pet-accent); font-weight: 600; }
+.chat-panel.is-companion .message-markdown li > p { margin-bottom: 6px; }
+.chat-panel.is-companion .message-markdown li > ul, .chat-panel.is-companion .message-markdown li > ol { margin-block: 6px; }
+.chat-panel.is-companion .message-markdown blockquote { margin-block: 14px; padding: 2px 0 2px 12px; border-color: var(--pet-rule); }
+.chat-panel.is-companion .message-markdown blockquote > :last-child, .chat-panel.is-companion .message-markdown > :last-child { margin-bottom: 0; }
+.chat-panel.is-companion .message-markdown > :first-child { margin-top: 0; }
+.chat-panel.is-companion .message-markdown strong { font-weight: 600; }
+.chat-panel.is-companion .message-markdown :not(pre) > code { background: var(--surface-soft); }
+.chat-panel.is-companion .message-code-block { border: 0; border-radius: 10px; background: var(--surface-soft); }
+.chat-panel.is-companion .message-code-toolbar { padding: 3px 6px 3px 12px; font-size: 12px; }
+.chat-panel.is-companion .message-code-toolbar button { min-height: 32px; border-radius: 7px; }
+.chat-panel.is-companion .message-code-toolbar button:hover { background: var(--pet-rule); }
+.chat-panel.is-companion .message-markdown table { font-size: 13px; line-height: 1.65; }
+.chat-panel.is-companion .message-markdown th, .chat-panel.is-companion .message-markdown td { min-width: 12em; padding: 9px 10px; border: 0; border-bottom: 1px solid var(--pet-rule); vertical-align: top; }
+.chat-panel.is-companion .message-markdown th:first-child, .chat-panel.is-companion .message-markdown td:first-child { min-width: 7em; }
+.chat-panel.is-companion .message-markdown th { color: var(--pet-ink); background: var(--surface-soft); font-weight: 600; }

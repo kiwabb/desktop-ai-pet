@@ -1,0 +1,57 @@
+/* Source interior x217/y74/242x70, scaled with the unchanged 544x893 art.
+   Paint over the existing cream interior; do not punch a separately sampled
+   hole in the art. The image retains its independent open-state disk clip. */
+.pet-stage-reference-closed .pet-live-status {
+  position: absolute;
+  left: 39.88970588%;
+  top: 8.28667413%;
+  width: 44.48529412%;
+  height: 7.8387458%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 7px;
+  padding: 0 1px;
+  overflow: hidden;
+  color: var(--ink, #493b31);
+  background: linear-gradient(180deg, #fef8ea, #fdf3e2);
+  pointer-events: none;
+  user-select: none;
+}
+
+.pet-stage-reference-closed .pet-live-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #918477;
+}
+
+.pet-stage-reference-closed .pet-live-status.is-pending .pet-live-status-dot { background: #a76b1f; }
+.pet-stage-reference-closed .pet-live-status.is-ready .pet-live-status-dot { background: #32834a; }
+.pet-stage-reference-closed .pet-live-status.is-error .pet-live-status-dot { background: #b35440; }
+
+.pet-stage-reference-closed .pet-live-status-copy {
+  display: grid;
+  min-width: 0;
+  row-gap: 1px;
+}
+
+.pet-stage-reference-closed .pet-live-status-copy strong {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.pet-stage-reference-closed .pet-live-status-copy small {
+  color: var(--muted-soft, #796959);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 12px;
+}
+
+.pet-stage-reference-closed .pet-live-status-copy > * {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

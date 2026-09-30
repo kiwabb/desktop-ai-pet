@@ -1,0 +1,176 @@
+{
+  "id": "todo",
+  "name": "待办",
+  "version": "1",
+  "description": "会话级待办与一次性提醒：创建、查询、完成待办，以及设置、修改和取消已有待办的提醒。",
+  "tools": [
+    {
+      "name": "todo.create",
+      "version": "2",
+      "description": "创建一项真实待办；新事项需要提醒时同时提供 remind_at，原子保存事项与提醒。仅在用户要求记录或提醒时使用。",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "用户要求记录的待办标题"
+          },
+          "remind_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "未来的带时区 ISO 时间；省略或 null 表示普通待办。不能仅将时间写入标题充当提醒。"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "permission": "todo.write",
+      "execution_location": "server",
+      "handler_key": "todo_create"
+    },
+    {
+      "name": "todo.list",
+      "version": "1",
+      "description": "查询当前账号的真实待办；没有记录时返回空列表。",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "permission": "todo.read",
+      "execution_location": "server",
+      "handler_key": "todo_list"
+    },
+    {
+      "name": "todo.complete",
+      "version": "1",
+      "description": "完成用户明确指定的一项已有待办；目标缺失或有歧义时先询问，不得猜测。",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "todo_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "从真实待办查询结果取得的记录 ID"
+          }
+        },
+        "required": [
+          "todo_id"
+        ],
+        "additionalProperties": false
+      },
+      "permission": "todo.write",
+      "execution_location": "server",
+      "handler_key": "todo_complete"
+    },
+    {
+      "name": "todo.reminder.set",
+      "version": "1",
+      "description": "设置、修改或取消已有待办的提醒。先查询真实 ID 和当前 remind_at；取消传 null，目标不明确先询问。",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "todo_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "从真实查询结果取得的已有待办 ID"
+          },
+          "remind_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "未来的带时区 ISO 时间；null 取消提醒"
+          },
+          "expected_remind_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "真实查询结果中的当前 remind_at，未设置为 null；不得猜测"
+          }
+        },
+        "required": [
+          "todo_id",
+          "remind_at",
+          "expected_remind_at"
+        ],
+        "additionalProperties": false
+      },
+      "permission": "todo.write",
+      "execution_location": "server",
+      "handler_key": "todo_reminder_set"
+    }
+  ],
+  "name_mapping": {
+    "todo_create": "todo.create",
+    "todo_list": "todo.list",
+    "todo_complete": "todo.complete",
+    "todo_reminder_set": "todo.reminder.set"
+  },
+  "prompt_fragments": [
+    {
+      "key": "tool_rules",
+      "text": "用户要求记录待办时必须调用 todo_create，查询时调用 todo_list。\n完成待办使用 todo_complete，必须先从真实查询结果取得已有记录 ID，并确认用户明确指定且唯一匹配的一项。\n完成目标可以来自当前消息或最近对话中用户明确指向的事项；结合上下文仍无具体目标或无法唯一匹配时，先询问，不调用完成工具；不得猜测 ID 或批量完成。\n完成工具成功后才说明已完成。查询包括待完成和已完成记录，应明确区分状态；重复完成返回当前状态。"
+    },
+    {
+      "key": "reminder_time_rules",
+      "text": "当前对话工具支持创建、查询、完成待办，以及设置、修改和取消提醒；不能删除、取消完成或操作电脑。列表界面另支持取消完成，到期提醒支持稍后10分钟。\n用户说“提醒我”即授权创建带提醒的新事项，信息齐全时直接调用 todo_create，同时传标题和 remind_at，原子保存，不分两次工具调用。仅把时间写进标题不等于设置提醒；工具失败后不得退回创建无提醒待办冒充成功。\n已有待办设置、修改、取消提醒必须先调用 todo_list 取得真实 ID、状态和 remind_at，唯一匹配用户目标后调用 todo_reminder_set。expected_remind_at 必须原样使用该记录当前时间或 null。冲突先刷新，不能强行覆盖；已完成事项不能设置提醒。\n时间以随附的真实当前时间、请求接收时间和明确默认时区为准；用户明确指定的时区优先。没有指定时区时使用默认时区，不声称知道设备本地时区。“15.15”表示15:15，不是15.15小时；仅给时刻按请求接收日期的今天解释。相对时间（如10分钟后）以请求接收时间为锚点计算，不因模型耗时而顺延。\n时间已过（包括排队或执行期间过期）、日期不明或时区转换有歧义时先询问具体未来时间，绝不自动改成明天。短句承接之前的明确事项时保留原先时间含义，不把过期旧请求改为今天的新安排。重复日程和基于习惯提醒尚不支持，先澄清一次性时间。\n创建/修改提醒成功后明确回报真实提醒日期、时刻和时区；取消成功明确说明已取消。提醒需要桌宠运行且联网，离线重连补显未处理提醒。"
+    }
+  ],
+  "validation_messages": {
+    "arguments_not_object": "工具参数必须为对象",
+    "create_requires_title": "创建待办必须提供 title，仅可附加 remind_at 参数",
+    "title_length": "待办标题需为 1 到 2000 个字符",
+    "reminder_set_keys": "设置提醒必须且只能提供 todo_id、remind_at 和 expected_remind_at",
+    "list_no_arguments": "查询待办不接受额外参数",
+    "complete_todo_id": "完成待办只接受有效的 todo_id 参数",
+    "unsupported_tool": "不支持该工具"
+  },
+  "affects": [
+    "todo-list"
+  ],
+  "rest_endpoints": [
+    {
+      "method": "GET",
+      "path": "/v1/todos"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/todos"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/todos/{todo_id}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/todos/{todo_id}"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/todos/reminders/due"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/todos/{todo_id}/reminder"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/todos/{todo_id}/complete"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/todos/{todo_id}/reopen"
+    }
+  ]
+}

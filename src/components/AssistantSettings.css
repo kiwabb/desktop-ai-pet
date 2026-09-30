@@ -1,0 +1,118 @@
+/* Saved connection and editable configuration remain separate, honest states. */
+.chat-panel.is-expanded .message-list.is-settings:has(.assistant-settings) { padding: var(--space-4) var(--space-6) var(--space-8); }
+.assistant-settings { container-type: inline-size; width: 100%; max-width: 640px; margin-inline: auto; color: var(--pet-ink); font-size: var(--text-body-sm); line-height: 1.6; }
+.assistant-settings *, .assistant-settings *::before, .assistant-settings *::after { box-sizing: border-box; }
+.assistant-settings h2, .assistant-settings p { margin: 0; }
+.assistant-settings h2 { font-size: var(--text-body); font-weight: 700; }
+.assistant-settings button, .assistant-settings summary { touch-action: manipulation; }
+.assistant-settings button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 44px; border-radius: var(--radius-sm); font-size: var(--text-body-sm); font-weight: 600; transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out), opacity var(--motion-fast) var(--ease-out); }
+.assistant-settings button svg { width: 16px; height: 16px; flex: none; }
+.assistant-settings button:disabled { opacity: .55; cursor: default; }
+.assistant-settings button:focus-visible, .assistant-settings summary:focus-visible { outline: 2px solid var(--focus-accent); outline-offset: 3px; }
+.assistant-settings .assistant-connection-card { margin: 0; padding: 0; }
+.assistant-settings-fields { display: grid; gap: var(--space-4); min-width: 0; margin: 0; padding: 0; border: 0; }
+.assistant-settings-mode { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1); padding: var(--space-1); background: var(--surface-soft); border-radius: var(--radius-md); }
+.assistant-settings-mode button { color: var(--muted-soft); background: transparent; border: 1px solid transparent; }
+.assistant-settings-mode button:hover:not(:disabled) { color: var(--pet-ink); background: var(--surface-base); }
+.assistant-settings-mode button.is-active { color: var(--pet-ink); background: var(--surface-raised); border-color: var(--pet-rule); box-shadow: var(--shadow-control); }
+.assistant-settings-intro { padding-top: var(--space-1); }
+.assistant-settings-intro h2 { font-size: var(--text-title); letter-spacing: -.02em; }
+.assistant-settings-intro p { margin-top: var(--space-1); color: var(--muted-soft); }
+.assistant-settings-field { display: grid; gap: var(--space-2); min-width: 0; }
+.assistant-settings label { font-size: var(--text-body-sm); color: var(--pet-ink); font-weight: 600; }
+.assistant-settings input { display: block; width: 100%; min-width: 0; min-height: 46px; padding: var(--space-2) var(--space-3); border: 1px solid var(--input-rule); border-radius: var(--radius-sm); outline: none; background: var(--input-bg); color: var(--pet-ink); font: inherit; font-size: var(--text-body); caret-color: var(--focus-accent); transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
+.assistant-settings input::placeholder { color: var(--muted-soft); opacity: 1; }
+.assistant-settings input:focus { border-color: var(--input-focus); box-shadow: 0 0 0 3px var(--input-focus-ring); }
+.assistant-settings input:disabled { opacity: .7; cursor: default; }
+.assistant-settings-secret, .assistant-settings-models { display: flex; min-width: 0; gap: var(--space-2); }
+.assistant-settings-secret input, .assistant-settings-models input { flex: 1; }
+.assistant-settings-secret button, .assistant-settings-models button { flex: none; width: 44px; min-height: 46px; padding: 0; color: var(--muted-soft); background: var(--surface-raised); border: 1px solid var(--pet-rule); }
+.assistant-settings-secret button:hover:not(:disabled), .assistant-settings-models button:hover:not(:disabled) { color: var(--focus-accent); background: var(--surface-soft); }
+.assistant-settings .assistant-settings-field-note { color: var(--muted-soft); font-size: var(--text-label); overflow-wrap: anywhere; }
+.assistant-settings .assistant-settings-field-note.is-error { color: var(--danger); }
+.assistant-settings-submit { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
+.assistant-settings-submit-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.assistant-settings-save { padding: var(--space-2) var(--space-4); color: #fff; border: 1px solid transparent; background: var(--focus-accent); box-shadow: var(--shadow-control); }
+.assistant-settings-save:hover:not(:disabled) { background: var(--primary-strong, #884423); }
+.assistant-settings-return { padding: var(--space-2) var(--space-3); color: var(--pet-ink); border: 1px solid var(--pet-rule); background: var(--surface-raised); }
+.assistant-settings-return:hover:not(:disabled) { background: var(--surface-soft); }
+.assistant-settings-success { display: flex; align-items: flex-start; gap: var(--space-2); color: var(--success-ink); padding: var(--space-3); border-radius: var(--radius-sm); background: var(--success-bg); font-size: var(--text-body-sm); }
+.assistant-settings-success>svg { flex: none; width: 18px; height: 18px; margin-top: 2px; }
+.assistant-settings-success strong { font-weight: 600; }
+.assistant-settings-success p { margin-top: var(--space-1); font-size: var(--text-label); }
+.assistant-settings-connection { margin-bottom: var(--space-6); padding-bottom: var(--space-5); border-bottom: 1px solid var(--pet-rule); }
+.assistant-settings-status-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.assistant-settings-status-heading>span { color: var(--muted-soft); font-size: var(--text-label); }
+.assistant-settings-status { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); color: var(--muted-soft); }
+.assistant-settings-status.is-connected { color: var(--success-ink); }
+.assistant-settings-status>svg { width: 16px; height: 16px; flex: none; }
+.assistant-settings-status strong { font-size: var(--text-body-sm); font-weight: 600; }
+.assistant-settings dl { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; font-size: var(--text-label); }
+.assistant-settings dl>div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--space-3); }
+.assistant-settings dt { color: var(--muted-soft); }
+.assistant-settings dd { margin: 0; color: var(--pet-ink); overflow-wrap: anywhere; }
+.assistant-settings .assistant-settings-error { padding: var(--space-3); color: var(--danger); background: var(--danger-bg, #fff1ee); border-radius: var(--radius-sm); font-size: var(--text-body-sm); overflow-wrap: anywhere; }
+.assistant-settings-connection .assistant-settings-error { margin-top: var(--space-3); }
+.assistant-settings-help { margin-top: var(--space-5); border-top: 1px solid var(--pet-rule); font-size: var(--text-label); }
+.assistant-settings-help summary { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; cursor: pointer; list-style: none; color: var(--pet-ink); font-weight: 600; }
+.assistant-settings-help summary::-webkit-details-marker { display: none; }
+.assistant-settings-help summary svg { width: 15px; height: 15px; flex: none; }
+.assistant-settings-help summary svg:last-child { margin-left: auto; transition: transform var(--motion-normal) var(--ease-out); }
+.assistant-settings-help[open] summary svg:last-child { transform: rotate(180deg); }
+.assistant-settings-help>div { color: var(--muted-soft); padding-bottom: var(--space-3); overflow-wrap: anywhere; }
+.assistant-settings .assistant-settings-security { display: flex; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-2); color: var(--muted-soft); font-size: var(--text-label); }
+.assistant-settings-security svg { width: 14px; height: 14px; margin-top: 3px; flex: none; }
+@container (max-width: 350px) {
+  .assistant-settings-submit-actions { flex-direction: column; }
+  .assistant-settings dl>div { grid-template-columns: 64px minmax(0, 1fr); gap: var(--space-2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-settings *, .assistant-settings *::before, .assistant-settings *::after { transition: none; animation: none; }
+}
+
+/* Status leads; a single quiet form carries the next configuration. */
+.chat-panel.is-companion.is-expanded .message-list.is-settings:has(.assistant-settings) { padding: 16px 20px 28px; }
+.chat-panel.is-companion .assistant-settings { max-width: 580px; font-size: 14px; line-height: 1.65; }
+.chat-panel.is-companion .assistant-settings h2 { font-size: 14px; font-weight: 600; }
+.chat-panel.is-companion .assistant-settings-connection { margin: 0 0 20px; padding: 16px; border: 1px solid var(--companion-line); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8); border-radius: 20px; background: var(--companion-chrome); }
+.chat-panel.is-companion .assistant-settings-status-heading > span { padding: 2px 8px; border-radius: 999px; background: var(--companion-surface); color: var(--companion-muted); font-size: 12px; }
+.chat-panel.is-companion .assistant-settings-status { margin-top: 12px; color: var(--companion-muted); }
+.chat-panel.is-companion .assistant-settings-status.is-connected { color: var(--success-ink); }
+.chat-panel.is-companion .assistant-settings-status strong { font-size: 13px; font-weight: 500; }
+.chat-panel.is-companion .assistant-settings dl { gap: 6px; margin-top: 12px; font-size: 12px; }
+.chat-panel.is-companion .assistant-settings dl > div { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
+.chat-panel.is-companion .assistant-settings-fields { gap: 16px; }
+.chat-panel.is-companion .assistant-settings-intro { padding: 0; }
+.chat-panel.is-companion .assistant-settings-intro h2 { font-size: 15px; line-height: 1.5; letter-spacing: 0; }
+.chat-panel.is-companion .assistant-settings-intro p { margin-top: 6px; font-size: 13px; }
+.chat-panel.is-companion .assistant-settings button { min-height: 36px; border-radius: 999px; font-size: 12px; font-weight: 500; box-shadow: none; }
+.chat-panel.is-companion .assistant-settings button svg { width: 15px; height: 15px; stroke-width: 1.7; }
+.chat-panel.is-companion .assistant-settings button:focus-visible,
+.chat-panel.is-companion .assistant-settings summary:focus-visible { outline-color: var(--companion-focus); outline-offset: 1px; }
+.chat-panel.is-companion .assistant-settings-mode { display: inline-flex; justify-self: start; gap: 4px; padding: 4px; border-radius: 999px; background: var(--companion-chrome); }
+.chat-panel.is-companion .assistant-settings-mode button { min-width: 84px; min-height: 32px; padding: 6px 12px; border: 1px solid transparent; border-radius: 999px; }
+.chat-panel.is-companion .assistant-settings-mode button.is-active { border-color: var(--companion-action); background: var(--companion-action); color: var(--companion-action-ink); font-weight: 600; box-shadow: none; }
+.chat-panel.is-companion .assistant-settings-field { gap: 6px; }
+.chat-panel.is-companion .assistant-settings label { font-size: 12px; font-weight: 500; }
+.chat-panel.is-companion .assistant-settings input { min-height: 40px; padding: 9px 11px; border-color: var(--companion-line); border-radius: 20px; background: var(--companion-surface); font-size: 14px; }
+.chat-panel.is-companion .assistant-settings input:focus { border-color: var(--companion-focus); box-shadow: none; outline: none; }
+.chat-panel.is-companion .assistant-settings-secret,
+.chat-panel.is-companion .assistant-settings-models { gap: 6px; }
+.chat-panel.is-companion .assistant-settings-secret button,
+.chat-panel.is-companion .assistant-settings-models button { width: 36px; min-height: 40px; border: 0; background: var(--companion-chrome); }
+.chat-panel.is-companion .assistant-settings .assistant-settings-save { padding: 8px 14px; background: var(--companion-action); color: var(--companion-action-ink); font-weight: 600; }
+.chat-panel.is-companion .assistant-settings .assistant-settings-save:hover:not(:disabled) { background: var(--companion-action-hover); color: var(--companion-action-ink); }
+.chat-panel.is-companion .assistant-settings-return { border: 0; background: var(--companion-chrome); }
+.chat-panel.is-companion .assistant-settings-return:hover:not(:disabled) { background: var(--companion-line); }
+.chat-panel.is-companion .assistant-settings-submit { gap: 12px; margin-top: 20px; }
+.chat-panel.is-companion .assistant-settings-success,
+.chat-panel.is-companion .assistant-settings .assistant-settings-error { padding: 10px 12px; border-radius: 16px; font-size: 12px; }
+.chat-panel.is-companion .assistant-settings-success { background: transparent; padding-inline: 0; }
+.chat-panel.is-companion .assistant-settings-success strong { font-size: 12px; font-weight: 500; }
+.chat-panel.is-companion .assistant-settings-help { margin-top: 24px; }
+.chat-panel.is-companion .assistant-settings-help summary { min-height: 40px; font-size: 12px; font-weight: 500; }
+.chat-panel.is-companion .assistant-settings-security { margin-top: 12px; }
+.chat-panel.is-companion .assistant-settings-connection .assistant-settings-error { margin-top: 12px; border-top: 1px solid var(--companion-line); padding: 12px 0 0; border-radius: 0; background: transparent; }
+.chat-panel.is-companion .assistant-settings .assistant-settings-save:disabled { background: var(--companion-selected); color: var(--companion-muted); opacity: 1; }
+.chat-panel.is-companion .assistant-settings-mode button:not(.is-active):hover:not(:disabled) { background: var(--companion-selected); color: var(--companion-ink); }
+.chat-panel.is-companion .assistant-settings-help { border-top: 0; padding: 0 12px; border-radius: 16px; background: var(--companion-chrome); }

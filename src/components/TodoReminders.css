@@ -1,0 +1,54 @@
+/* Reminder notice and main content share the shell's one bounded body slot. */
+.chat-panel .chat-content-with-reminders { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.chat-panel .chat-content-with-reminders>.message-list, .chat-panel .chat-content-with-reminders>.todo-list-view { flex: 1; min-height: 0; }
+.chat-panel .todo-reminders { flex: 0 1 auto; max-height: min(200px, 38%); overflow-y: auto; overscroll-behavior: contain; padding: var(--space-3) var(--space-5); background: var(--surface-soft); border-bottom: 1px solid var(--pet-rule); color: var(--pet-ink); }
+.chat-panel .todo-reminders h2 { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); font-size: var(--text-label); font-weight: 600; color: var(--focus-accent); }
+.chat-panel .todo-reminders h2>svg { width: 15px; height: 15px; flex: none; }
+.chat-panel .todo-reminders h2>span { margin-left: auto; color: var(--muted-soft); font-weight: 400; }
+.chat-panel .todo-reminder-title { margin: 0; font-size: var(--text-body); font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
+.chat-panel .todo-reminder-card time { display: block; margin-top: var(--space-1); color: var(--muted-soft); font-size: var(--text-label); font-variant-numeric: tabular-nums; }
+.chat-panel .todo-reminder-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
+.chat-panel .todo-reminder-actions button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 44px; padding: var(--space-2) var(--space-3); border: 1px solid var(--pet-rule); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--pet-ink); font: inherit; font-size: var(--text-label); font-weight: 600; cursor: pointer; touch-action: manipulation; transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out); }
+.chat-panel .todo-reminder-actions button svg { width: 15px; height: 15px; flex: none; }
+.chat-panel .todo-reminder-actions button:hover:not(:disabled) { background: var(--surface-base); color: var(--focus-accent); }
+.chat-panel .todo-reminder-actions button:active:not(:disabled) { background: var(--surface-soft); }
+.chat-panel .todo-reminder-actions button:focus-visible { outline: 2px solid var(--focus-accent); outline-offset: 2px; }
+.chat-panel .todo-reminder-actions button:disabled { opacity: .6; cursor: default; }
+.chat-panel .todo-reminder-error { margin: var(--space-2) 0 0; font-size: var(--text-label); line-height: 1.6; color: var(--danger); overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel .todo-reminders * { animation: none; transition: none; }
+}
+
+.chat-panel.is-companion .todo-reminders { padding: 12px 20px; border-bottom: 1px solid var(--companion-line); background: transparent; }
+.chat-panel.is-companion .todo-reminders h2 { margin-bottom: 8px; color: var(--companion-accent); font-size: 12px; font-weight: 600; }
+.chat-panel.is-companion .todo-reminder-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px; border: 1px solid var(--companion-line); border-radius: 18px; background: var(--companion-chrome); }
+.chat-panel.is-companion .todo-reminder-title { font-size: 14px; font-weight: 500; }
+.chat-panel.is-companion .todo-reminder-card time { grid-column: 1; margin: 0; font-size: 12px; }
+.chat-panel.is-companion .todo-reminder-actions { grid-column: 2; grid-row: 1 / span 2; gap: 6px; margin: 0; }
+.chat-panel.is-companion .todo-reminder-actions button { min-height: 32px; padding: 6px 10px; border: 0; border-radius: 999px; background: var(--companion-chrome); font-size: 12px; font-weight: 500; }
+.chat-panel.is-companion .todo-reminder-actions button:first-child { background: var(--companion-action); color: var(--companion-action-ink); font-weight: 600; }
+.chat-panel.is-companion .todo-reminder-actions button:hover:not(:disabled) { background: var(--companion-line); color: var(--companion-ink); }
+.chat-panel.is-companion .todo-reminder-actions button:first-child:hover:not(:disabled) { background: var(--companion-action-hover); color: var(--companion-action-ink); }
+.chat-panel.is-companion .todo-reminder-actions button svg { width: 14px; height: 14px; stroke-width: 1.7; }
+.chat-panel.is-companion .todo-reminder-error { grid-column: 1 / -1; }
+.chat-panel.is-companion .chat-content-with-reminders > .memo-list-view { flex: 1; min-height: 0; }
+.chat-panel .reminder-sync-notice { flex: 0 0 auto; max-height: 160px; overflow-y: auto; overscroll-behavior: contain; margin: 0; padding: 0 20px; border-bottom: 1px solid var(--pet-rule); background: transparent; color: var(--muted-soft); font-size: 12px; line-height: 1.6; }
+.chat-panel .reminder-sync-notice summary { display: flex; align-items: center; gap: 6px; min-height: 36px; list-style: none; cursor: pointer; touch-action: manipulation; }
+.chat-panel .reminder-sync-notice summary::-webkit-details-marker { display: none; }
+.chat-panel .reminder-sync-notice summary > svg { width: 14px; height: 14px; flex: none; stroke-width: 1.7; }
+.chat-panel .reminder-sync-notice summary > svg:last-child { margin-left: auto; }
+.chat-panel .reminder-sync-notice[open] summary > svg:last-child { transform: rotate(180deg); }
+.chat-panel .reminder-sync-notice summary:hover { color: var(--pet-ink); }
+.chat-panel .reminder-sync-notice summary:focus-visible { outline: 2px solid var(--pet-focus); outline-offset: -2px; border-radius: 4px; }
+.chat-panel .reminder-sync-details { display: grid; gap: 8px; padding: 2px 0 12px 20px; }
+.chat-panel .reminder-sync-details p { margin: 0; overflow-wrap: anywhere; }
+.chat-panel .reminder-sync-details strong { display: block; margin-bottom: 2px; color: var(--pet-ink); font-weight: 500; }
+@container (max-width: 480px) {
+  .chat-panel.is-companion .todo-reminder-card { grid-template-columns: minmax(0, 1fr); }
+  .chat-panel.is-companion .todo-reminder-actions { grid-column: 1; grid-row: auto; margin-top: 4px; }
+}
+.chat-panel.is-companion .todo-reminder-actions button:not(:first-child) { background: var(--companion-surface); }
+.chat-panel.is-companion .todo-reminder-actions button:disabled { background: var(--companion-selected); color: var(--companion-muted); opacity: 1; }
+.chat-panel.is-companion .reminder-sync-notice { margin: 8px 20px; padding: 0 12px; border: 1px solid var(--companion-line); border-radius: 16px; background: var(--companion-chrome); color: var(--companion-muted); }
+.chat-panel.is-companion .reminder-sync-notice summary:focus-visible { border-radius: 12px; }
+.chat-panel.is-companion .reminder-sync-details strong { color: var(--companion-ink); font-weight: 600; }
