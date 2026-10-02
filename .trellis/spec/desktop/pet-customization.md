@@ -24,13 +24,13 @@ Every appearance snapshot/event carries a monotonically ordered revision. Both w
 
 Generate base, closed-eye, happy and talking assets with a stable character identity, shared proportions and consistent ground anchor. CSS movement may complement states but cannot substitute for the promised generated state assets. Extract theme color from the character, not the reference-photo background; validate paired text/control contrast. Theme covers companion controls, compact/expanded chat, Todo, Memo, settings, hover, selection, focus and semantic status styles. Restore-default restores the complete original visual identity.
 
-## Warm custom palette contract
+## Character-matched palette contract
 
-`petTheme(accent: string)` derives display tokens without changing the stored seed or generated assets. Low-chroma fur (including gray, black and white) must produce warm cream surfaces, cocoa text and apricot action/selection colors. A chromatic seed may coordinate the accent, but must not mechanically tint all surfaces. Existing saved presets receive the same derivation on startup and preview; no regeneration or silent persistent-data migration is required.
+User rejected both full gray surfaces and blanket apricot recoloring (2026-10-03). `petTheme(accent: string)` must honor the selected color, including low-chroma hues, instead of substituting the built-in white cat's orange palette. Use near-white ivory reading surfaces, taupe text and bounded tints/shades of the selected accent for actions/selection. The built-in default theme remains separate.
 
-Keep paired text contrast at least 4.5:1 and visible focus/control indicators at least 3:1. Regression coverage must include the actual gray seed `#756a69`, neutral extremes and chromatic inputs. Preserve semantic success/error colors.
+Choose a distinctive actual character detail when dominant fur gives an unsuitable action color. Current 小虎 was manually art-directed from its real iris pixels: sampled seed `#b3a469`. This is a curated preset adjustment, not evidence that automatic extraction now detects eyes. No hardcoded gray-cat-to-green rule.
 
-Wrong: mix the fur RGB with white/black for every token and declare success because colors propagated. Correct: derive colors by UI role, then inspect the actual native pet controls, compact/expanded chat, Todo, Memo, settings and customization with real saved content. Technical checks and visual acceptance remain separate evidence.
+Keep paired text contrast at least 4.5:1 and focus/control indicators at least 3:1. Tests cover sampled iris color, low-chroma hue retention, neutral extremes and saturated inputs. Preserve semantic statuses. Native review must include cat/controls, compact and expanded chat, Todo, Memo, settings and customization with real contents or real empty states. Color propagation and contrast tests alone are not visual acceptance.
 
 ## Evidence
 

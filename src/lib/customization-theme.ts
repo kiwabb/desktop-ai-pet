@@ -11,41 +11,42 @@ export function contrast(a: string, b: string) {
   return (Math.max(x, y) + .05) / (Math.min(x, y) + .05)
 }
 export type ThemeStyle = CSSProperties & Record<`--${string}`, string>
-/** Fur provides a coordinated accent, not a paint bucket for every UI role.
- * Neutral coats keep the companion's cream/apricot/cocoa identity. This is
- * derived at render time so saved presets improve without rewriting assets.
+/** Keep custom surfaces quiet and use the selected accent for interaction.
+ * Derived at render time; saved assets and the built-in cat stay unchanged.
  */
 export function petTheme(accent: string): ThemeStyle {
   if (!/^#[\da-f]{6}$/i.test(accent)) throw new Error('主题色需要是六位十六进制颜色。')
   const seed = [1, 3, 5].map(i => parseInt(accent.slice(i, i + 2), 16)) as RGB
   const white: RGB = [255, 255, 255], black: RGB = [0, 0, 0]
-  const cream: RGB = [255, 250, 244], apricot: RGB = [244, 189, 126]
-  const cocoa: RGB = [108, 70, 49]
-  const min = Math.min(...seed), max = Math.max(...seed)
-  const chroma = (max - min) / 255
-  // Fade into hue-derived accents; tiny differences in gray fur must not
-  // turn actions slate-colored, nor cause a hard palette jump at a cutoff.
-  const colorWeight = Math.max(0, Math.min(1, (chroma - .12) / .18))
-  const hueColor = max === min ? apricot : seed.map(v => Math.round(96 + (v - min) / (max - min) * 159)) as RGB
-  const accentColor = mix(apricot, mix(hueColor, white, .35), colorWeight)
-  const surface = hex(cream)
-  const chrome = hex(mix([255, 240, 221], accentColor, .08 * colorWeight))
-  const action = hex(accentColor), hover = hex(mix(accentColor, cocoa, .08))
-  const selected = hex(mix(accentColor, cream, .53))
-  const user = hex(mix(accentColor, cream, .7))
-  const selection = hex(mix(accentColor, cream, .35))
+  const ivory: RGB = [252, 251, 247]
+  const taupe: RGB = [69, 65, 59]
+  // Tint/shade the selected color without replacing low-chroma hues. Bound
+  // brightness so very dark/light seeds still produce a distinct soft action.
+  let accentColor = mix(seed, white, .32)
+  const brightness = accentColor.reduce((sum, channel) => sum + channel, 0) / 3
+  if (brightness < 160) accentColor = mix(accentColor, white, (160 - brightness) / (255 - brightness))
+  if (brightness > 216) accentColor = mix(accentColor, black, (brightness - 216) / brightness)
+  // Blue-heavy colors can be dark despite a high RGB average. Keep every
+  // action bright enough for readable dark text, including its hover shade.
+  while (contrast(hex(mix(accentColor, black, .07)), '#000000') < 5.5) accentColor = mix(accentColor, white, .05)
+  const surface = hex(ivory)
+  const chrome = hex(mix([242, 240, 234], accentColor, .08))
+  const action = hex(accentColor), hover = hex(mix(accentColor, black, .07))
+  const selected = hex(mix(accentColor, ivory, .53))
+  const user = hex(mix(accentColor, ivory, .78))
+  const selection = hex(mix(accentColor, ivory, .35))
   const readable = (base: RGB, backgrounds: string[]) => {
     let color = base
-    while (backgrounds.some(bg => contrast(hex(color), bg) < 4.5)) color = mix(color, black, .1)
+    while (backgrounds.some(bg => contrast(hex(color), bg) < 4.5)) color = color.map(channel => Math.floor(channel * .9)) as RGB
     return hex(color)
   }
   const surfaces = [surface, chrome, action, hover, selected, user, selection]
-  const ink = readable(mix(cocoa, seed, .08), surfaces)
-  const muted = readable([139, 103, 83], [surface, chrome, selected, user])
-  const emphasis = readable(mix([164, 91, 43], seed, .6 * colorWeight), [surface, chrome, selected])
+  const ink = readable(taupe, surfaces)
+  const muted = readable([115, 110, 102], [surface, chrome, selected, user])
+  const emphasis = readable(seed, [surface, chrome, selected])
   return {
     '--companion-ink': ink, '--companion-muted': muted, '--companion-surface': surface,
-    '--companion-chrome': chrome, '--companion-line': hex(mix([238, 216, 191], accentColor, .15 * colorWeight)),
+    '--companion-chrome': chrome, '--companion-line': hex(mix([222, 218, 209], accentColor, .12)),
     '--companion-accent': emphasis, '--companion-action': action, '--companion-action-ink': ink,
     '--companion-action-hover': hover, '--companion-focus': emphasis,
     '--companion-selected': selected, '--companion-user': user,
