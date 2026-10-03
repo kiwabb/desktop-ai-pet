@@ -1,0 +1,14 @@
+{
+  "badge_job": {
+    "id": "cc33acf7-c91a-45b2-a90f-b9296c0ff8f8",
+    "preset_id": "dd84773e-3883-40d0-8077-0e5a9266606c",
+    "status": "ready",
+    "request_count": 1,
+    "result": "1937e44c-4fc1-4169-941c-ae70e36cb0ca",
+    "error": null
+  },
+  "saved_badge": "1937e44c-4fc1-4169-941c-ae70e36cb0ca",
+  "assets_unchanged": true,
+  "accent": "#b3a469",
+  "active_id": "dd84773e-3883-40d0-8077-0e5a9266606c"
+}

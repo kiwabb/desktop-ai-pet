@@ -1,0 +1,12 @@
+{
+  "state_sha256": "536041a707eedf344b4a80c6488ce203a705c6c6a3132ca3f0f7f2d23bef3231",
+  "active_id": "dd84773e-3883-40d0-8077-0e5a9266606c",
+  "request_count": 7,
+  "assets": {
+    "happy.png": "27a01a0fef579dbead92ff5fa7690a570eb91536d3245c338e687c65a4e3aa57",
+    "talk.png": "67f2342abe45a063e438879259208c91cf331547d55933edc30110448e9f27e3",
+    "closed.png": "cb6209817d41809f4c1c0e7d39948b240b10a3b2e804b697b851e400769000d8",
+    "base.png": "21bfcdc7473d9391c3aa7e965d40db1ce1bea4cd69961852c660c2285b7fccbe",
+    "reference-0.png": "345da229228a0daf63db1532b0b92d90343db25f7837c14a48bfd134b9ba83b0"
+  }
+}

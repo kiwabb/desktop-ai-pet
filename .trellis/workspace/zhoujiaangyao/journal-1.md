@@ -956,3 +956,25 @@ AssistantSettings 全量 token 化：硬编码色值/字号/字重收敛至 :roo
 ### Status
 
 [OK] **Completed**
+
+
+## Session 33: Complete self-service pet themes
+<!-- trellis-session: v=2 fp=28a5bfa108d42bbd -->
+
+**Date**: 2026-10-03
+**Task**: Complete self-service pet themes
+**Branch**: `codex/companion-product-refactor`
+
+### Summary
+
+Added six complete pet themes, local multicolor extraction with versioned cache, strength and advanced editing, draft isolation and persistent cross-window application. Native calico revealed gray-dominant extraction; corrected v2 and verified orange #cc976d. Native palette/save/restart/toolbar checks passed; assets and request counters unchanged. Assistant data still loading after rebuild, so populated business-flow acceptance remains pending. Broader customization task remains in progress; shared integration/style edits in existing parallel work remain uncommitted and no GitHub push performed.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `77358bc` | feat: add saved pet customization with complete color themes |
+
+### Status
+
+[OK] **Completed**

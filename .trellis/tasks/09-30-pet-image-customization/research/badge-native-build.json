@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-03",
+  "build_session": 66261,
+  "binary": "/Users/zhoujiaangyao/zhoujiangyao/AI/desktop-ai-pet/src-tauri/target/debug/bundle/macos/橘伴.app/Contents/MacOS/desktop-ai-pet",
+  "binary_sha256": "038d114aab96fcf273b3aae395980e2aae3491c09a031c03fd928f9efe44bd3e",
+  "sources": {
+    "src-tauri/src/customization/mod.rs": "f28f59e7eba13fb0d58b698f78f810f481e601d11ab0749cd4fc2deb8b10191c",
+    "src-tauri/src/customization/assets.rs": "1b7b055976ceee077cb438f563e7429ac82b7c466c089d73c63cfd5c680fc4c4",
+    "src-tauri/src/customization/provider.rs": "4d4c55c3cd0a219a2e1bf5173a1b81a048b9bfccb9f4ae33ff04d9f5d05aeae5",
+    "src-tauri/src/customization/storage.rs": "0a693e2286598e359ab78dccad52c3c163a2966e619604058517dcaf67edd322",
+    "src/components/CompanionBadge.tsx": "aa2f5000ee7022f467cc27379b0a49665c2057f40182cfe9d4087ca65079114c",
+    "src/components/PetCustomization.tsx": "672cb8365d2b8fe0104b3276688e5b401821824f6ec66e0748d0300cf59b8dd0",
+    "src/lib/customization.ts": "1045a777ee8496be98bebbfec7f890e617eb524f5be1ab68feeac7afed85708b",
+    "src/lib/useCustomization.tsx": "7c05c73f2be577a77055e1010c9291261c174521f89e5ac39858ea50d34ecf17"
+  },
+  "evidence": "Real native generation completed with one gpt-image-2 request; candidate preview, save, reset, reuse without another request, compact/expanded chat, todo, memo, settings and same-binary restart verified. Saved badge and original pet asset hashes checked."
+}

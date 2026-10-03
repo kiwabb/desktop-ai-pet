@@ -1,0 +1,66 @@
+{
+  "job": {
+    "id": "d771bdf2-5251-4eab-9252-766f4ef5254a",
+    "name": "三花",
+    "status": "ready",
+    "stage": "saving",
+    "completed": [
+      "base",
+      "closed",
+      "happy",
+      "talk"
+    ],
+    "request_count": 4,
+    "error": null
+  },
+  "preset_id": "d771bdf2-5251-4eab-9252-766f4ef5254a",
+  "active_id": "dd84773e-3883-40d0-8077-0e5a9266606c",
+  "images": {
+    "base": {
+      "size": [
+        768,
+        960
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    "closed": {
+      "size": [
+        768,
+        960
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    "happy": {
+      "size": [
+        768,
+        960
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    "talk": {
+      "size": [
+        768,
+        960
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    }
+  },
+  "reference_source": "https://commons.wikimedia.org/wiki/File:Calico_cat_sitting_on_the_sofa.Calico_color,_calico_breed.jpg",
+  "reference_author": "Kafun",
+  "reference_license": "CC BY-SA 4.0",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "changes": "Model-generated transparent sitting pet with four expressions from reference photograph.",
+  "verification": "Actual gpt-image-2 generation, four requests without retries. Native base/talk preview checked; base/closed/happy source images visually inspected. Kept as saved preview; previous active pet unchanged. Fine colored edge pixels visible at source size; not obvious in native preview. No new badge generated."
+}

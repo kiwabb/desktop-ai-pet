@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 32
-- **Last Active**: 2026-09-29
+- **Total Sessions**: 33
+- **Last Active**: 2026-10-03
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~958 | Active |
+| `journal-1.md` | ~980 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 33 | 2026-10-03 | Complete self-service pet themes | `77358bc` | `codex/companion-product-refactor` |
 | 32 | 2026-09-29 | worker 唤醒信号按执行器隔离与计时口径修正 | `485710f` | `codex/companion-product-refactor` |
 | 31 | 2026-09-29 | 服务端读写锁分离与任务唤醒时序修复（约1秒间隔消除） | `f26c9a3` | `codex/companion-product-refactor` |
 | 30 | 2026-09-11 | 设置页视觉收口（colorize/token 化） | `63c8fcb` | `feat/settings-colorize` |

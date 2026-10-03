@@ -1,0 +1,43 @@
+{
+  "active_id": "d771bdf2-5251-4eab-9252-766f4ef5254a",
+  "presets": [
+    {
+      "id": "dd84773e-3883-40d0-8077-0e5a9266606c",
+      "name": "小虎",
+      "accent": "#b3a469",
+      "colors": [
+        "#a78877",
+        "#896858",
+        "#c6ac96",
+        "#544a4a"
+      ],
+      "colors_version": 2,
+      "theme": null,
+      "badge": "1937e44c-4fc1-4169-941c-ae70e36cb0ca"
+    },
+    {
+      "id": "d771bdf2-5251-4eab-9252-766f4ef5254a",
+      "name": "三花",
+      "accent": "#cc976d",
+      "colors": [
+        "#cc976d",
+        "#ab7751",
+        "#e5b88b",
+        "#6c4c38"
+      ],
+      "colors_version": 2,
+      "theme": {
+        "palette": "character",
+        "primary": "#cc976d",
+        "secondary": "#ab7751",
+        "strength": 90
+      },
+      "badge": null
+    }
+  ],
+  "images_unchanged": true,
+  "pet_request_count": 4,
+  "badge_request_count": 1,
+  "build_session": 51228,
+  "native_evidence": "Six choices visible; rose and mint preview isolated, strength50 then90 via real slider, advanced fields expanded; applied mint across pet toolbar/panel/loader states and settings. Rebuilt/reopened preserved mint50. Final character calico orange #cc976d saved at90. Assistant data remains loading, no new chat/model call; not certifying populated business pages."
+}

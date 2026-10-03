@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/frontend/companion-experience.md", "reason": "Preserve native companion and interaction contracts"}
+{"file": ".trellis/spec/frontend/native-pet-windows.md", "reason": "Native window and verification requirements"}
+{"file": ".trellis/spec/desktop/dual-mode-llm.md", "reason": "Credentials and local/server isolation"}
+{"file": ".trellis/tasks/09-30-pet-image-customization/research/integration-boundaries.md", "reason": "Inspected integration seams"}
+{"file": ".trellis/tasks/09-30-pet-image-customization/research/image-provider-contract.md", "reason": "Official image API constraints"}
+{"file": ".trellis/spec/desktop/pet-customization.md", "reason": "Approved customization persistence, generation and verification invariants"}

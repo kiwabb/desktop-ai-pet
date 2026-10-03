@@ -1,0 +1,47 @@
+{
+  "verified_at": "2026-09-30T21:13:35.235827+08:00",
+  "binary_sha256": "fc4690130a0ddf78685ee2a11d3a82eb0c1339795355084b5f2614d64153f0ac",
+  "binary_mtime": 1790768287.3755677,
+  "sources": {
+    "src-tauri/src/customization/provider.rs": {
+      "sha256": "b3bfff80bb38c5fc890604b36120b363e58977af7c612e7d8510498acc5c429a",
+      "mtime": 1790767512.9690955
+    },
+    "src-tauri/src/customization/mod.rs": {
+      "sha256": "4b5e933de8284f84e3a6db531407ef85a12143dabf78d19217e5e46acad0f1cd",
+      "mtime": 1790767895.8017595
+    },
+    "src-tauri/src/customization/storage.rs": {
+      "sha256": "c0a841b69ffe6f2df876b6030bd96209844a9c18ba1477de42c4c325327ccd75",
+      "mtime": 1790767774.1040907
+    },
+    "src-tauri/src/customization/assets.rs": {
+      "sha256": "453d09d122aec1dec9f237adfbd0d15f8f55c5f52598da0ef17487f901431bfe",
+      "mtime": 1790767774.0717049
+    },
+    "src-tauri/src/lib.rs": {
+      "sha256": "123b821e80d8bcd1320c054540ae6f0d3fdf5dd861eee919f774be9773686a57",
+      "mtime": 1790767607.595729
+    },
+    "src-tauri/src/window_geometry.rs": {
+      "sha256": "9752a444403027880e27d7a98c30b436cd7ec50f5bd827b9ab20186f35b07b3b",
+      "mtime": 1790767664.0922508
+    },
+    "src/components/PetCustomization.tsx": {
+      "sha256": "25871cf1066086c8d7141f40c6ba702ff01f5eadc73e2ad9cbee0b7bcb0ac28b",
+      "mtime": 1790768176.2042708
+    },
+    "src/components/PetCustomization.css": {
+      "sha256": "b3692ba35e8f375426d93916a9fbfe4da00d7f58c64d0540dcbcda9e81ced12f",
+      "mtime": 1790767332.589771
+    },
+    "src/lib/useCustomization.tsx": {
+      "sha256": "cffbc0f3c19bbb15adf8410c1e8990f1d5229fa3d276b1614ce8800576bf8e18",
+      "mtime": 1790767578.8027306
+    },
+    "src/lib/customization-theme.ts": {
+      "sha256": "985929c856ff0108b1097aedbc30a346764fb440d1cac7618585c8c77e1b201b",
+      "mtime": 1790767142.1850903
+    }
+  }
+}

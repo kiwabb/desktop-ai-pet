@@ -1,0 +1,11 @@
+{
+  "agent_sessions": 1,
+  "agent_runs": 7,
+  "agent_messages": 14,
+  "agent_tool_calls": 6,
+  "todos": 1,
+  "agent_events": 188,
+  "memos": 0,
+  "agent_context_summaries": 0,
+  "context_request_metrics": 9
+}
