@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contrast, petTheme } from './customization-theme'
+import { contrast, petTheme, presetTheme, paletteChoices } from './customization-theme'
 
 const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
 
@@ -65,4 +65,42 @@ describe('custom pet palette roles (unit fixtures)', () => {
       }
     }
   })
+})
+
+
+describe('complete coordinated palettes (algorithm fixtures)', () => {
+  it('preserves legacy saved themes exactly until a palette is selected', () => {
+    expect(presetTheme('#b3a469')).toEqual(petTheme('#b3a469'))
+    expect(presetTheme('#777777', null)).toEqual(petTheme('#777777'))
+  })
+  it('changes reading and secondary surfaces, not only a button', () => {
+    const choices = paletteChoices(['#c48443', '#38312d'])
+    expect(choices[0].theme.primary).toBe('#c48443')
+    expect(choices[0].theme.secondary).toBe('#38312d')
+    for (const role of ['surface', 'chrome', 'action', 'user']) {
+      expect(new Set(choices.map(c => presetTheme(c.theme.primary, c.theme)[`--companion-${role}`])).size).toBe(6)
+    }
+  })
+  it('keeps all actual text, focus and control pairings readable at all strength limits', () => {
+    for (const strength of [0, 50, 100]) for (const choice of [...paletteChoices(), ...['#000000', '#ffffff', '#0000ff', '#ff0000', '#00ff00'].map(primary => ({ theme: { palette: 'custom' as const, primary, secondary: '#000000', strength } }))]) {
+      const theme = presetTheme(choice.theme.primary, { ...choice.theme, strength })
+      for (const role of ['surface', 'chrome', 'action', 'action-hover', 'selected', 'user', 'selection']) {
+        expect(contrast(theme['--companion-ink'], theme[`--companion-${role}`])).toBeGreaterThanOrEqual(4.5)
+        expect(contrast(theme['--companion-focus'], theme[`--companion-${role}`])).toBeGreaterThanOrEqual(3)
+      }
+      for (const role of ['surface', 'chrome', 'selected', 'user']) expect(contrast(theme['--companion-muted'], theme[`--companion-${role}`])).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+})
+
+// Arbitrary pairs cover light and dark secondary colors, independent of presets.
+it('keeps rich-theme input boundaries distinct from every supported control surface', () => {
+  const colors = ['#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ff00ff', '#00ffff', '#ffff00', '#888888']
+  for (const primary of colors) for (const secondary of colors) for (const strength of [0, 50, 100]) {
+    const theme = presetTheme(primary, { palette: 'custom', primary, secondary, strength })
+    for (const role of ['surface', 'chrome', 'action', 'action-hover', 'selected', 'user', 'selection']) {
+      expect(contrast(theme['--companion-control-line'], theme[`--companion-${role}`])).toBeGreaterThanOrEqual(3)
+      expect(contrast(theme['--companion-ink'], theme[`--companion-${role}`])).toBeGreaterThanOrEqual(4.5)
+    }
+  }
 })

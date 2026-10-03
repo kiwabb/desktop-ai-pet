@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import type { PetTheme } from './customization'
 type RGB = [number, number, number]
 const mix = (a: RGB, b: RGB, amount: number): RGB => a.map((v, i) => Math.round(v * (1 - amount) + b[i] * amount)) as RGB
 const hex = (v: RGB) => '#' + v.map(n => n.toString(16).padStart(2, '0')).join('')
@@ -47,10 +48,64 @@ export function petTheme(accent: string): ThemeStyle {
   return {
     '--companion-ink': ink, '--companion-muted': muted, '--companion-surface': surface,
     '--companion-chrome': chrome, '--companion-line': hex(mix([222, 218, 209], accentColor, .12)),
+    '--companion-control-line': hex(mix([222, 218, 209], accentColor, .12)),
     '--companion-accent': emphasis, '--companion-action': action, '--companion-action-ink': ink,
     '--companion-action-hover': hover, '--companion-focus': emphasis,
     '--companion-selected': selected, '--companion-user': user,
     '--companion-selection': selection,
+    '--companion-shadow-soft': `0 3px 8px ${ink}1f`, '--companion-shadow-panel': `0 3px 4px ${ink}1a`,
+    '--companion-focus-ring': `${emphasis}29`,
+  }
+}
+
+export type PaletteChoice = { name: string; theme: PetTheme }
+export function paletteChoices(colors: string[] = [], accent = '#d39964'): PaletteChoice[] {
+  const make = (palette: PetTheme['palette'], name: string, primary: string, secondary: string): PaletteChoice => ({ name, theme: { palette, primary, secondary, strength: 65 } })
+  return [
+    make('character', '它的原色', colors[0] || accent, colors[1] || '#c596a1'),
+    make('apricot', '杏桃奶糖', '#d88b4f', '#dfa391'),
+    make('rose', '莓果软糖', '#c86a91', '#b695ca'),
+    make('mint', '薄荷花园', '#459f87', '#c5b567'),
+    make('sky', '晴空汽水', '#5d91c5', '#76b8af'),
+    make('lilac', '紫藤来信', '#9b7fc3', '#d68ba4'),
+  ]
+}
+/** Complete two-color palette; absence preserves the exact legacy theme. */
+export function presetTheme(accent: string, theme?: PetTheme | null): ThemeStyle {
+  if (!theme) return petTheme(accent)
+  if (!/^#[\da-f]{6}$/i.test(theme.primary) || !/^#[\da-f]{6}$/i.test(theme.secondary) || !Number.isInteger(theme.strength) || theme.strength < 0 || theme.strength > 100) throw new Error('主题颜色或浓度无效。')
+  const rgb = (color: string) => [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16)) as RGB
+  const white: RGB = [255,255,255]
+  const primary = rgb(theme.primary), secondary = rgb(theme.secondary)
+  const amount = theme.strength / 100
+  const tint = (color: RGB, weight: number) => {
+    let result = mix(white, color, weight)
+    while (contrast(hex(result), '#000000') < 5.5) result = mix(result, white, .05)
+    return hex(result)
+  }
+  const surface = tint(primary, .035 + amount * .095)
+  const chrome = tint(secondary, .08 + amount * .18)
+  const action = tint(primary, .36 + amount * .28)
+  const hover = tint(primary, .43 + amount * .28)
+  const selected = tint(primary, .18 + amount * .22)
+  const user = tint(secondary, .13 + amount * .24)
+  const selection = tint(secondary, .3 + amount * .25)
+  const backgrounds = [surface, chrome, action, hover, selected, user, selection]
+  const readable = (seed: RGB, surfaces: string[], ratio: number) => {
+    let color = seed
+    while (surfaces.some(bg => contrast(hex(color), bg) < ratio)) color = color.map(v => Math.floor(v * .9)) as RGB
+    return hex(color)
+  }
+  const ink = readable(mix(primary, [30,25,35], .78), backgrounds, 4.5)
+  const muted = readable(mix(primary, [108,99,111], .7), [surface, chrome, selected, user], 4.5)
+  const emphasis = readable(primary, [surface, chrome, selected], 4.5)
+  return {
+    '--companion-ink': ink, '--companion-muted': muted, '--companion-surface': surface,
+    '--companion-chrome': chrome, '--companion-line': tint(primary, .22 + amount * .12),
+    '--companion-control-line': readable(mix(primary, white, .4), backgrounds, 3),
+    '--companion-accent': emphasis, '--companion-action': action, '--companion-action-ink': ink,
+    '--companion-action-hover': hover, '--companion-focus': readable(primary, backgrounds, 3),
+    '--companion-selected': selected, '--companion-user': user, '--companion-selection': selection,
     '--companion-shadow-soft': `0 3px 8px ${ink}1f`, '--companion-shadow-panel': `0 3px 4px ${ink}1a`,
     '--companion-focus-ring': `${emphasis}29`,
   }

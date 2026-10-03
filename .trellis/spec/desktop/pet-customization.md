@@ -24,9 +24,9 @@ Every appearance snapshot/event carries a monotonically ordered revision. Both w
 
 Generate base, closed-eye, happy and talking assets with a stable character identity, shared proportions and consistent ground anchor. CSS movement may complement states but cannot substitute for the promised generated state assets. Extract theme color from the character, not the reference-photo background; validate paired text/control contrast. Theme covers companion controls, compact/expanded chat, Todo, Memo, settings, hover, selection, focus and semantic status styles. Restore-default restores the complete original visual identity.
 
-## Character-matched palette contract
+## Legacy character-matched palette contract
 
-User rejected both full gray surfaces and blanket apricot recoloring (2026-10-03). `petTheme(accent: string)` must honor the selected color, including low-chroma hues, instead of substituting the built-in white cat's orange palette. Use near-white ivory reading surfaces, taupe text and bounded tints/shades of the selected accent for actions/selection. The built-in default theme remains separate.
+This section only governs legacy presets without a saved complete theme. New complete themes follow the contract below. User rejected both full gray surfaces and blanket apricot recoloring (2026-10-03). `petTheme(accent: string)` must honor the selected color, including low-chroma hues, instead of substituting the built-in white cat's orange palette. Use near-white ivory reading surfaces, taupe text and bounded tints/shades of the selected accent for actions/selection. The built-in default theme remains separate.
 
 Choose a distinctive actual character detail when dominant fur gives an unsuitable action color. Current 小虎 was manually art-directed from its real iris pixels: sampled seed `#b3a469`. This is a curated preset adjustment, not evidence that automatic extraction now detects eyes. No hardcoded gray-cat-to-green rule.
 
@@ -58,3 +58,66 @@ Check source generation/config mutation rejection, mode rejection, UI action pay
 
 ### Wrong versus correct
 Wrong: send the chat key to JavaScript or copy it at startup. Correct: explicit IPC action handles the secret entirely in Rust and returns only non-secret settings metadata.
+
+## Generated per-pet paw mark
+
+### Scope / trigger
+User clarified on 2026-10-03 that the paw mark should be customized from the uploaded pet image. Use the saved generated base (derived from those images) for one explicit additional image edit. Preserve the approved built-in paw as default/reset/fallback. A mark is a small paw graphic, never a duplicate cat avatar.
+
+### Signatures
+- `customization_badge_start({id: presetID}) -> View`
+- `customization_badge_cancel({id: badgeJobID}) -> View`
+- `customization_update` accepts optional `badge: {action: 'select', token: UUID} | {action: 'reset'}`. Omission preserves the current mark.
+- `Preset.badge: UUID | null` and `View.badge_job: {id, preset_id, status, request_count, result, error} | null`, missing fields default safely for existing stores.
+
+### Contracts
+A separate persisted badge job uses running/ready/failed/cancelled/interrupted states and is mutually exclusive with the four-state pet job. It references the saved pet base, uses a square transparent PNG request and counts each dispatched provider attempt. It must not alter KINDS or silently turn the four-state job into five requests. UI identifies the extra image request before starting. No automatic retry/replay.
+
+Successful output is a normalized immutable `assets/<preset>/badge-<UUID>.png` candidate; result generation does not activate it. Asset reads authorize only the preset's saved mark or its current ready candidate. Explicit selection commits the ready candidate; reset clears only the optional mark. Saved marks remain readable after a later generation job. Reset preserves the existing ready candidate and request count; choosing that candidate again is a local preview action, not another paid call. Initial ready-state hydration must not silently undo a user reset. Both windows observe revision changes; appearance loads include the badge token in their identity and fence stale decode completions. The current combined loader also rereads the four pet sprites on a badge-only change; this is an efficiency limitation, not a separate correctness claim.
+
+### Validation and errors
+Bound bytes, dimensions and decode; validate PNG transparency and actual subject before accepting generated output. Reject malformed IDs, unknown presets, wrong-preset or stale candidate selection and conflicting running jobs without changing active appearance. Credentials are read outside state locks. Cancellation fences late responses; restart marks running work interrupted without another provider request. Missing/corrupt optional badge falls back to original paw with a visible warning, preserving valid pet states.
+
+### Cases
+Good: existing 小虎 base -> one real image request -> candidate preview -> save -> all panel headers share that mark. Base: older presets with no badge show original paw. Bad: cancelled/stale output must not replace saved mark, and failed save must not overwrite an active file.
+
+### Required tests
+Old-store compatibility; optional omission/reset; path and candidate ownership; invalid image rejection; save failure keeps active state; cancellation fencing; same-preset badge refresh; missing optional image fallback; original-paw restoration. Native acceptance additionally requires actual provider response, preview before apply, header update, reopen/restart and reset using real assets.
+
+### Wrong versus correct
+Wrong: overwrite badge.png before manifest commit, reuse pet-sprite cache identity, silently add paid generation, or declare placeholder marks generated. Correct: immutable candidate tokens, revision-aware independent badge loading, visible explicit request and real result inspection.
+
+
+## Complete locally generated theme palettes (2026-10-03)
+
+### 1. Scope / trigger
+The user requires rich self-service theming, not repeated developer changes to one dominant color. Extract candidates from the saved generated base locally; theme operations must not dispatch provider requests or modify pet/badge image bytes.
+
+### 2. Signatures
+- `Preset.theme: Theme | null`, `Preset.colors: string[]`, `Preset.colors_version: number` default to absent/empty/zero for old stores.
+- `Theme = {palette, primary, secondary, strength}`.
+- `customization_update(..., theme?: Theme)` augments the existing update command; omitted theme preserves the stored complete theme.
+- `presetTheme(accent, theme?)` renders the complete theme when present; absent theme uses legacy `petTheme(accent)` exactly.
+
+### 3. Contracts
+Palette identifiers: `character`, `apricot`, `rose`, `mint`, `sky`, `lilac`, `custom`. Primary and secondary are six-digit hex colors; strength is an integer from 0 through 100. Complete theme primary is authoritative for display. Saving an explicit theme synchronizes the legacy accent with its primary.
+
+On local load, presets lacking candidates or with an older `colors_version` obtain up to four colors from their saved base (current extraction version 2). This backfill must not select a theme or overwrite the old accent. New generated presets receive a complete character theme with default strength 65. Candidate extraction ignores transparent edges; a chromatic cluster must meet both absolute chroma >=35 and relative chroma >=24%. Within meaningful clusters, sqrt(population) × chroma² favors distinctive coat colors without allowing a white/gray majority to dominate. This is pixel analysis, not semantic eye recognition.
+
+Draft selection, strength and advanced editing stay inside customization preview. Save/apply uses existing durable revision broadcasts. Metadata-only theme changes update both windows without sprite reload; stale image completions cannot overwrite new metadata. Existing generated raster badges keep their pixels; original SVG marks inherit tokens. Built-in default remains unchanged. Rich themes expose `--companion-control-line` with at least 3:1 contrast against role surfaces for actual input boundaries; decorative `--companion-line` remains subtle. Legacy themes reset the new token to their old line value to prevent inheriting a rich theme from a surrounding preview.
+
+### 4. Validation / error matrix
+Unknown palette, malformed hex, out-of-range strength, excess/invalid candidates -> reject invalid update/store without replacing durable valid state. Missing old fields -> legacy appearance. Missing base during candidate backfill -> preserve existing scheme and existing asset recovery behavior; no provider call. Theme omission -> preserve full theme, not reset to single color.
+
+### 5. Good / base / bad cases
+Good: choose a calico-derived character theme, preview independently, save and activate; every companion surface follows the same roles. Base: an old gray-tabby scheme keeps its curated iris seed until selection. Bad: repaint all old schemes at startup, derive only gray/white from calico fur, or trigger image generation to change theme.
+
+### 6. Required tests
+- White/gray-dominant character extraction retains substantial colored regions and ignores transparent saturated noise.
+- Legacy serde/load compatibility; candidate backfill preserves selected appearance; update omission preserves full theme.
+- Six palette role sets and strength extremes; text/placeholder >=4.5:1 and focus/control indicators >=3:1, including arbitrary dark/saturated input colors.
+- Preview isolation, reset to saved, save payload and same-preset theme propagation without sprite reload.
+- Native acceptance: real saved characters, visibly distinct palettes, cross-surface apply, close/reopen, restart, unchanged assets and request counts. Unit fixtures are not runtime proof.
+
+### 7. Wrong versus correct
+Wrong: a lone colorwell, a gray canvas with one recolored button, or an unlabeled simulated conversation used as proof. Correct: named multi-color choices, concentration and advanced editing, explicit component color specimen, authoritative save/apply state and separately recorded real native observations.
