@@ -188,3 +188,26 @@ execution.
 These results establish source/type/test/build evidence only. They do not establish
 native window composition, installed packaging, real Pi output, Cindy screen parity,
 legacy-data migration, or credential transfer.
+
+## Native Electron smoke and packaged renderer fix
+
+Date: 2026-10-26 (Asia/Shanghai).
+
+The first native launch exposed two packaging-path defects that static Vite checks
+could not see: the Electron host loaded source `apps/desktop/renderer/` instead of
+the built `apps/desktop/dist/renderer/`, and sandboxed preloads still contained
+unbundled local `require` dependencies. The host now resolves the built renderer
+directory and `copy-renderer.mjs` bundles both narrow preloads while keeping
+`electron` external.
+
+| Check | Result |
+|---|---|
+| Electron binary | Passed: `pnpm exec electron --version` downloaded and reported `v45.0.0` through the configured local proxy |
+| Native main window | Passed: Electron loaded `file:///.../apps/desktop/dist/renderer/main.html`; the shell, composer, settings controls, and pet controls were visible in the native accessibility tree and screenshot |
+| Main preload bridge | Passed: `window.desktop` was an object in the native renderer; submitting a real test prompt reached the host and produced the real Pi-runtime failure state |
+| Independent pet window | Passed: Electron DevTools reported a second native page at `dist/renderer/pet.html`; `window.pet` was present, the page was visible, and idle/action assets had nonzero natural dimensions |
+| Pet action interaction | Passed: clicking the real `吃饭` control changed the native pet renderer to `pet-stage is-action` and loaded `eating-ai-v2-smooth/action.webp` |
+| Pi executable/model invocation | Not accepted: the native submit path reached the Pi boundary and logged `spawn pi ENOENT`; no model output was shown and no fake response was inserted |
+| Full Cindy visual parity | Not accepted: this remains a product-owned shell using the copied `FadeSwitcher`; `MainLayout`, router, broad preload, service closure, and installed-package acceptance remain deferred |
+
+This is native Electron renderer/preload/window evidence, not live-model evidence.

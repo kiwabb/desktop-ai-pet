@@ -476,6 +476,10 @@ Cindy `FadeSwitcher` is a visual primitive, not an application-service boundary.
   is a static/non-Electron view. No fake assistant response is inserted.
 - The Vite build must bundle the renderer entry into `apps/desktop/dist/renderer`
   and must not reference the external Cindy checkout or its absolute path.
+- The Electron host must load the emitted `dist/renderer` directory, never the
+  source `renderer` directory. Sandboxed preloads must be bundled with their
+  narrow local contract inlined; an emitted preload that still requires a sibling
+  TypeScript/CommonJS module is not a runnable native artifact.
 
 ### 4. Validation & Error Matrix
 
@@ -489,6 +493,7 @@ Cindy `FadeSwitcher` is a visual primitive, not an application-service boundary.
 | Pi process/submit failure | Show a generic actionable runtime error; do not expose provider response text |
 | Cancel request rejected | Show failure and keep the run ownership explicit for a later host event |
 | Pet open/hide failure | Keep the main chat usable; do not mark the Agent run as failed |
+| Native host points at source renderer or an unbundled sandbox preload | Treat startup as failed; the static Vite bundle is not native acceptance |
 
 ### 5. Good / Base / Bad Cases
 
@@ -508,6 +513,9 @@ Cindy `FadeSwitcher` is a visual primitive, not an application-service boundary.
   Pi child failure in the desktop test suite; report real Pi/native checks separately.
 - Native acceptance still requires an actual Electron binary, window interaction,
   screenshots and installed-package checks; a Vite build is not sufficient.
+- The minimal native smoke must verify the main URL is under `dist/renderer`, the
+  preload object is available, and the independent pet page/assets load before
+  claiming the Electron shell is usable.
 
 ### 7. Wrong vs Correct
 

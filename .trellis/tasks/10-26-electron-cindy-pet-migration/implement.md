@@ -70,6 +70,8 @@ Do not start cloud/mobile implementation as a side effect of any child.
   intentionally deferred because the pinned entry imports unreviewed host services.
 - [x] Add a product-owned Vite main entry and a usable Electron main shell that
   keeps the typed preload boundary and does not load the reference checkout.
+- [x] Route native windows to the emitted `dist/renderer` output and bundle the
+  narrow sandboxed preloads so the built application can start outside Vite.
 - [ ] **Full source import:** copy the pinned Cindy source, with its required
   Electron/preload/shared/package dependency closure and source manifest. Do not create
   a newly designed replacement UI before importing the reference.

@@ -31,7 +31,7 @@ function preloadPath(name: 'main-preload' | 'pet-preload'): string {
 }
 
 function rendererPath(name: 'main' | 'pet'): string {
-  return join(__dirname, '..', '..', 'renderer', `${name}.html`)
+  return join(__dirname, '..', 'renderer', `${name}.html`)
 }
 
 export function createMainWindow(windows: DesktopWindows): BrowserWindow {

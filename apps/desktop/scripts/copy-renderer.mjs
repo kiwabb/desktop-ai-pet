@@ -6,6 +6,7 @@ import { build } from 'vite'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const desktopDir = resolve(scriptDir, '..')
 const distRendererDir = join(desktopDir, 'dist', 'renderer')
+const distPreloadDir = join(desktopDir, 'dist', 'preload')
 
 const copies = [
   ['renderer/main.html', 'dist/renderer/main.html'],
@@ -34,6 +35,29 @@ await build({
     },
   },
 })
+
+for (const [name, source] of [
+  ['main-preload', 'main-preload.ts'],
+  ['pet-preload', 'pet-preload.ts'],
+]) {
+  await build({
+    root: desktopDir,
+    configFile: false,
+    plugins: [],
+    build: {
+      outDir: distPreloadDir,
+      emptyOutDir: false,
+      lib: {
+        entry: join(desktopDir, 'src', 'preload', source),
+        formats: ['cjs'],
+        fileName: () => `${name}.js`,
+      },
+      rollupOptions: {
+        external: ['electron'],
+      },
+    },
+  })
+}
 
 await rm(join(distRendererDir, 'assets', 'pets'), { recursive: true, force: true })
 for (const [source, destination] of copies) {
