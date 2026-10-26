@@ -8,8 +8,10 @@ first.
 
 The planning delivery is complete and Pi has been selected. Implementation proceeds
 in bounded slices on `codex/companion-product-refactor`; preserve the existing Tauri
-launch path until Electron acceptance passes. The Cindy source checkout is absent from
-this workspace, so do not fabricate source parity or copy unverified files.
+launch path until Electron acceptance passes. The Cindy reference checkout is
+available outside this workspace, and the pre-copy entry/host inventory is recorded
+at `apps/desktop/SOURCE-IMPORT-INVENTORY.md`; do not fabricate source parity or copy
+unverified files.
 
 Before any future implementation:
 
@@ -48,8 +50,12 @@ Do not start cloud/mobile implementation as a side effect of any child.
 ### P0. Inventory and baseline
 
 - [ ] Confirm both baseline commits and clean/dirty state; preserve unrelated user work.
-- [ ] Enumerate Cindy screens, navigation, startup providers, visible features, preload
-  APIs, native handlers, workspace dependencies, assets, licenses, and service endpoints.
+- [x] Freeze the pinned Cindy reference identity and inspect the renderer entry,
+  startup providers, route inventory, preload bridge, Electron bootstrap, package
+  dependencies, and root license/notice. The resulting pre-copy inventory is
+  `apps/desktop/SOURCE-IMPORT-INVENTORY.md`.
+- [ ] Complete the file-level screen/API/dependency/asset matrix for the approved
+  visible inventory; the pre-copy inventory intentionally does not claim this is done.
 - [ ] Classify each as reuse/adapt/explicitly deferred. Review visible parity exceptions;
   do not trim whole feature groups solely to make the first build pass.
 - [ ] Inventory legacy schema, configuration paths, credential metadata, custom assets,

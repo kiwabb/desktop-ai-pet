@@ -11,6 +11,11 @@ The local reference checkout includes the source needed for the next import revi
 paths, and `docs/dev-rules`. It is a reference checkout, not yet copied into this
 product.
 
+The pre-copy entry/host inventory is recorded in
+[`SOURCE-IMPORT-INVENTORY.md`](./SOURCE-IMPORT-INVENTORY.md). It confirms that
+Cindy's renderer entry, preload, and Electron bootstrap have a broad dependency
+closure; the inventory is not a copied-file manifest and does not claim UI parity.
+
 The following must be recorded before copying any Cindy code:
 
 - source commit and repository identity;

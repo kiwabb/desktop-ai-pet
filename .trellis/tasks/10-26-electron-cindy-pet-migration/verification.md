@@ -106,3 +106,28 @@ Focused validation after the slice:
 
 These checks still do not prove that the real Pi executable is installed or that the
 copied Cindy renderer builds in this product's dependency graph.
+
+## Pre-copy Cindy entry/host inventory
+
+Date: 2026-10-26 (Asia/Shanghai).
+
+The pinned reference was inspected at the actual local checkout rather than from
+README claims. The resulting inventory is tracked at
+`apps/desktop/SOURCE-IMPORT-INVENTORY.md` and records the exact source commit,
+entry anchors, selected SHA-256 values, observed host boundaries, root
+Apache-2.0/NOTICE provenance, proposed destinations, and exclusions.
+
+| Check | Result |
+|---|---|
+| Reference identity | Passed: `makecindy/cindy` at `ae50e8e1afd9b95e51801085d1a2ed9dfe8b16af` |
+| Reference checkout state | Passed: detached, sparse, clean; no product files copied |
+| Entry inspection | Passed: renderer dispatcher, main bootstrap, App, router, layout/sidebar, global styles and theme anchors inspected |
+| Host inspection | Passed: preload bridge and Electron bootstrap inspected; both marked wholesale-copy exclusions |
+| Dependency observation | Passed: desktop package scripts/dependencies and maker-core metadata inspected; broad `@cindy/*`/native closure recorded |
+| Legal provenance | Passed: root Apache-2.0 license and XD Inc. notice verified from the pinned Git tree; third-party notice directory remains to be imported/reviewed if needed |
+| Product boundary | Passed: current main/pet windows, narrow preloads, placeholder HTML, and TypeScript include boundary recorded |
+| Source-copy acceptance | Not yet accepted: no application source, dependency, asset, or native module has been copied |
+
+No build or typecheck was rerun for this documentation-only inventory slice. The
+next code slice must generate the file-level copied-source manifest before changing
+the current Electron renderer or replacing the existing window/preload owners.

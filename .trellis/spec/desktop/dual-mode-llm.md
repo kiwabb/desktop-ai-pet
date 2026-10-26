@@ -239,3 +239,102 @@ if (record.type === 'agent_settled' && (!run.requireStartFence || run.started)) 
   emitSettled(run, record.aborted ? 'cancelled' : 'completed')
 }
 ```
+
+## Cindy source import boundary (migration)
+
+### 1. Scope / Trigger
+
+This contract applies before importing any source from the pinned Cindy checkout
+into `apps/desktop/`. It is triggered by the Electron UI migration and prevents a
+visual source reuse request from silently importing Cindy's host services, accounts,
+credentials, telemetry, or remote integrations.
+
+### 2. Signatures
+
+Every copied file must have one manifest record before it is committed:
+
+```ts
+interface SourceImportRecord {
+  sourceRepo: 'makecindy/cindy'
+  sourceCommit: string
+  sourcePath: string
+  destinationPath: string
+  sha256: string
+  license: string
+  importReason: string
+  adaptation: 'unchanged' | 'product-adapter' | 'deferred'
+  status: 'copied' | 'excluded' | 'rejected'
+}
+```
+
+The manifest is committed with the source-import diff. The external checkout is
+an audit input only; no build, runtime, or package script may resolve it by its
+absolute path.
+
+### 3. Contracts
+
+- `sourceCommit` must resolve to the pinned Cindy commit selected by the task.
+- `sourcePath` must exist in that commit and `sha256` must match the copied bytes.
+- `destinationPath` must be inside the product's reviewed import boundary.
+- Root license, root notice, and required third-party notices must be retained or
+  explicitly recorded as unresolved before distribution.
+- Cindy's broad preload and Electron bootstrap are not compatibility layers. Each
+  renderer call maps to a product-owned, allowlisted service and handler.
+- Pet renderer code cannot import the Cindy main renderer graph or receive its
+  credentials/full conversation bodies.
+- Excluded capabilities must return the product's explicit unavailable/error state;
+  they must not return fake success merely because a UI component was copied.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+|---|---|
+| Source path or commit cannot be resolved | Reject the import; do not copy bytes |
+| SHA-256 differs after copy | Reject the import and remove only the staged copy |
+| Destination is outside the reviewed product boundary | Reject the import |
+| License/notice ownership is unknown | Defer the file; do not package it |
+| Import reaches broad preload/bootstrap without a method mapping | Reject wholesale reuse; split into reviewed adapters |
+| File contains an absolute reference to the external checkout | Reject and fix the adaptation |
+| Deferred visible capability has no explicit unavailable state | Do not mark the source-import slice complete |
+
+### 5. Good / Base / Bad Cases
+
+- Good: copy a reviewed renderer module, record its pinned hash and transitive
+  dependency reason, then connect its required operation to a typed product IPC
+  handler.
+- Base: keep the current Electron placeholder while the dependency or legal
+  closure is unresolved; no parity claim is made.
+- Bad: copy `preload.ts` or `bootstrap-electron.ts` wholesale and add a permissive
+  `window.electronAPI` proxy until the page stops crashing.
+
+### 6. Tests Required
+
+- Recompute every copied-file hash from the pinned source and compare it with the
+  manifest before commit.
+- Assert no runtime, build, package, or copied-source file contains the external
+  reference checkout path; audit-only manifests may record the local checkout.
+- Assert the pet entry does not statically import the main Cindy renderer entry.
+- Inspect the dependency/native-module closure and fail the import review when a
+  required license, generated asset, or native runtime resource is unaccounted for.
+- Keep source/provenance checks separate from Electron native startup, visual parity,
+  real Pi/model execution, and installed-package acceptance.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// Make the copied Cindy UI compile by exposing every host method.
+contextBridge.exposeInMainWorld('electronAPI', ipcRenderer)
+```
+
+#### Correct
+
+```ts
+// Expose only a reviewed product contract; map each method in the manifest.
+contextBridge.exposeInMainWorld('desktop', {
+  submitRun: (request: AgentRunRequest) => ipcRenderer.invoke('agent:submit', request),
+  cancelRun: (sessionId: string, runId: string) =>
+    ipcRenderer.invoke('agent:cancel', { sessionId, runId }),
+})
+```
