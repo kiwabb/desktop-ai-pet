@@ -165,4 +165,31 @@ describe('PiAgentRuntime', () => {
     expect(transport.abortCalls).toBe(1)
     runtime.dispose()
   })
+
+  it('rejects malformed requests before invoking Pi', async () => {
+    const transport = new FakePiTransport()
+    const runtime = new PiAgentRuntime(transport)
+
+    await expect(runtime.submit({ ...request(), prompt: '   ' })).rejects.toThrow('prompt must be a non-empty string')
+    await expect(runtime.submit({ ...request(), streamingBehavior: 'unknown' as 'steer' })).rejects.toThrow(
+      'streamingBehavior must be steer or followUp',
+    )
+    expect(transport.promptCalls).toEqual([])
+    runtime.dispose()
+  })
+
+  it('settles an accepted run as failed when the Pi child exits', async () => {
+    const transport = new FakePiTransport()
+    const runtime = new PiAgentRuntime(transport)
+    const events: AgentRunEvent[] = []
+    runtime.onEvent((event) => events.push(event))
+
+    await runtime.submit(request())
+    transport.emitExit(1, null)
+
+    expect(events).toHaveLength(2)
+    expect(events.at(-1)).toMatchObject({ type: 'run.settled', outcome: 'failed', aborted: false })
+    expect((events.at(-1) as Extract<AgentRunEvent, { type: 'run.settled' }>).error).toContain('code=1')
+    runtime.dispose()
+  })
 })

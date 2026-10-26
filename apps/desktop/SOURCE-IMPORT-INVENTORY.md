@@ -1,11 +1,13 @@
 # Cindy source import inventory (pre-copy)
 
-Status: **reference audit complete for the entry and host boundary; no Cindy
-source has been copied into this product**.
+Status: **reference audit complete; one low-coupling Cindy renderer component has
+now been imported as a separately manifested slice**. The full Cindy renderer and
+host closure remain unimported.
 
 This document freezes the first import boundary for the implementation task. It
-is deliberately a pre-copy inventory, not a claim that the Electron renderer
-already has Cindy UI parity.
+is not a full copied-file manifest and does not claim that the Electron renderer
+already has Cindy UI parity. The current copied-file record is
+`apps/desktop/CINDY-SOURCE-MANIFEST.json`.
 
 ## Source identity
 

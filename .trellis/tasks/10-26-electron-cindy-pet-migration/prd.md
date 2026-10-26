@@ -6,9 +6,10 @@ Turn the current pet-centered desktop into a full desktop assistant with Cindy's
 existing interface and an optional, independent pet window. Preserve conversations,
 todos, memos, reminders, settings, and pet assets through the change.
 
-This task currently delivers **planning documents only**. Authorization is limited
-to D5 below; it does not include copying application code, installing dependencies,
-migrating live data, or starting implementation.
+The initial delivery of this task was planning-only. D6 subsequently authorized
+implementation; the current branch is **implementation in progress**. The current
+slice does not authorize live-data migration, broad Cindy service activation, or a
+claim of native Electron/model acceptance.
 
 ## Confirmed decisions and background
 

@@ -338,3 +338,99 @@ contextBridge.exposeInMainWorld('desktop', {
     ipcRenderer.invoke('agent:cancel', { sessionId, runId }),
 })
 ```
+
+## Electron pet activity and window persistence (migration)
+
+### 1. Scope / Trigger
+
+This contract applies to the independent Electron pet window and the host-owned
+activity projection added during the migration. It is triggered by adding pet
+activity IPC, position recovery, and the Pi run-to-pet status bridge. It does not
+replace the existing Tauri pet preferences or authorize live-data migration.
+
+### 2. Signatures
+
+```ts
+type PetActivityStatus =
+  | 'idle' | 'running' | 'cancelling' | 'waiting'
+  | 'completed' | 'cancelled' | 'failed'
+
+interface PetActivity {
+  status: PetActivityStatus
+  sessionId: string | null
+  runId: string | null
+  updatedAt: number
+}
+
+invoke<PetActivity>('pet:activity')
+on('pet:activity', (activity: PetActivity) => void)
+on('pet:state', (state: { visible: boolean }) => void)
+```
+
+The host persists only `{ version: 1, x: number, y: number }` in the Electron
+user-data directory as `pet-position.json`. It restores the position against the
+nearest current display work area and clamps negative/off-screen coordinates.
+
+### 3. Contracts
+
+- Only the main window may invoke `agent:submit` and `agent:cancel`; only the pet
+  window may invoke `pet:activity`, `pet:hide`, and `pet:main:open`.
+- The pet receives a compact projection of run identity and status. It never
+  receives prompts, message deltas, tool arguments, provider errors, credentials,
+  or raw Pi records.
+- `run.accepted` and `run.record` project to `running`; cancellation acceptance
+  projects to `cancelling`; terminal outcomes project to the matching terminal
+  status. The projection does not imply that a model response is visible.
+- Position persistence is best effort, atomic in the same directory, and must not
+  prevent application shutdown. A malformed or missing file falls back to the
+  default Electron window position.
+- The pet renderer is a separate entry/preload graph. Hiding it must not dispose
+  the Pi runtime, cancel a run, or duplicate an IPC subscription.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+|---|---|
+| IPC sender is not the registered main/pet window | Reject with an unauthorized-sender error |
+| Pet activity payload is absent or malformed | Reject the invoke; do not expose a fallback success |
+| Position JSON is missing or malformed | Ignore it and use the default position |
+| Position has nonfinite coordinates | Ignore it and use the default position |
+| Saved display was unplugged or coordinate is outside work area | Use the nearest current display and clamp inside its work area |
+| Position write/rename fails | Keep the current window usable; do not block quit |
+| Pet is hidden or renderer is destroyed | Stop sending to its webContents; keep host run ownership |
+
+### 5. Good / Base / Bad Cases
+
+- Good: a Pi run changes the pet to `running`, hiding/showing the pet preserves
+  the same run, and a restart restores a finite in-bounds position.
+- Base: no run is active, the pet shows `idle`, and no activity record is sent.
+- Bad: the pet infers completion from an animation timer, receives model text, or
+  a hidden pet causes the main process to abort the active run.
+
+### 6. Tests Required
+
+- Assert each agent event maps to a compact activity projection without copying
+  the raw record or settlement error.
+- Assert malformed position values and negative multi-display origins are handled
+  by pure parser/clamping tests.
+- Mock Electron sender identity and assert unauthorized main/pet calls reject.
+- Assert activity listeners are disposed with the window and that hiding does not
+  dispose the Pi runtime.
+- Keep pure projection/position tests separate from native Electron startup,
+  display/DPI acceptance, and real Pi/model execution.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// A pet timer guesses that work finished and can disagree with the host.
+setTimeout(() => pet.show('完成'), animationDuration)
+```
+
+#### Correct
+
+```ts
+// The host owns lifecycle truth and sends only a compact projection.
+runtime.onEvent((event) => setPetActivity(windows, petActivityFromAgentEvent(event)))
+```

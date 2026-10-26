@@ -1,8 +1,15 @@
 import { app } from 'electron'
 
-import { createMainWindow, createPetWindow, registerWindowIpc, type DesktopWindows } from './desktop-windows'
+import { registerAgentIpc } from './agent-ipc'
+import {
+  createDesktopWindowsState,
+  createMainWindow,
+  createPetWindow,
+  registerWindowIpc,
+  type DesktopWindows,
+} from './desktop-windows'
 
-const windows: DesktopWindows = { main: null, pet: null, petVisible: false }
+const windows: DesktopWindows = createDesktopWindowsState()
 const singleInstance = app.requestSingleInstanceLock()
 
 if (!singleInstance) {
@@ -14,9 +21,15 @@ if (!singleInstance) {
   })
 
   app.whenReady().then(() => {
-    registerWindowIpc(windows)
+    const disposeWindowIpc = registerWindowIpc(windows)
+    const disposeAgentIpc = registerAgentIpc(windows)
     createMainWindow(windows)
     createPetWindow(windows)
+
+    app.once('before-quit', () => {
+      disposeWindowIpc()
+      disposeAgentIpc()
+    })
   })
 
   app.on('window-all-closed', () => {

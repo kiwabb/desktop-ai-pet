@@ -16,6 +16,7 @@ import type {
   AgentRunRequest,
   AgentRunSettledEvent,
 } from '../shared/agent-runtime'
+import { parseAgentRunRequest } from '../shared/agent-runtime'
 
 export interface PiRunTransport {
   prompt(message: string, streamingBehavior?: 'steer' | 'followUp'): Promise<PiRpcResponse<PiPromptData>>
@@ -73,18 +74,18 @@ export class PiAgentRuntime {
 
   async submit(request: AgentRunRequest): Promise<AgentRunAcceptedEvent> {
     if (this.disposed) throw new Error('Pi agent runtime is disposed')
-    validateRequest(request)
+    const normalizedRequest = parseAgentRunRequest(request)
 
-    const existingRequest = this.requests.get(request.requestId)
+    const existingRequest = this.requests.get(normalizedRequest.requestId)
     if (existingRequest) {
-      assertSameRequest(existingRequest.request, request)
+      assertSameRequest(existingRequest.request, normalizedRequest)
       if (!existingRequest.acceptance) throw new Error('Agent run acceptance is not initialized')
       return existingRequest.acceptance
     }
 
-    const existingRun = this.runs.get(request.runId)
+    const existingRun = this.runs.get(normalizedRequest.runId)
     if (existingRun) {
-      assertSameRequest(existingRun.request, request)
+      assertSameRequest(existingRun.request, normalizedRequest)
       if (!existingRun.acceptance) throw new Error('Agent run acceptance is not initialized')
       return existingRun.acceptance
     }
@@ -94,7 +95,7 @@ export class PiAgentRuntime {
     }
 
     const state: RunState = {
-      request,
+      request: normalizedRequest,
       status: 'submitting' as const,
       requireStartFence: this.hasIssuedRun,
       started: false,
@@ -106,8 +107,8 @@ export class PiAgentRuntime {
       bufferedRecords: [],
       bufferedSettlements: [],
     }
-    this.requests.set(request.requestId, state)
-    this.runs.set(request.runId, state)
+    this.requests.set(normalizedRequest.requestId, state)
+    this.runs.set(normalizedRequest.runId, state)
     this.active = state
     this.hasIssuedRun = true
     state.acceptance = this.acceptPrompt(state)
@@ -272,17 +273,6 @@ export class PiAgentRuntime {
     this.sequence += 1
     return this.sequence
   }
-}
-
-function validateRequest(request: AgentRunRequest): void {
-  assertNonEmpty(request.sessionId, 'sessionId')
-  assertNonEmpty(request.runId, 'runId')
-  assertNonEmpty(request.requestId, 'requestId')
-  assertNonEmpty(request.prompt, 'prompt')
-}
-
-function assertNonEmpty(value: string, name: string): void {
-  if (typeof value !== 'string' || value.trim().length === 0) throw new Error(`${name} must be a non-empty string`)
 }
 
 function assertSameRequest(existing: AgentRunRequest, next: AgentRunRequest): void {

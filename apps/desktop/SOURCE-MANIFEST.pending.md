@@ -8,15 +8,17 @@ was `D:\atcs\cindy`; it is not used as a runtime dependency.
 
 The local reference checkout includes the source needed for the next import review:
 `apps/desktop` without large renderer assets/tests, `packages/maker-core` Pi/types
-paths, and `docs/dev-rules`. It is a reference checkout, not yet copied into this
-product.
+paths, and `docs/dev-rules`. One low-coupling renderer component has now been
+copied as a separate partial slice; the full renderer closure is not copied.
 
 The pre-copy entry/host inventory is recorded in
 [`SOURCE-IMPORT-INVENTORY.md`](./SOURCE-IMPORT-INVENTORY.md). It confirms that
 Cindy's renderer entry, preload, and Electron bootstrap have a broad dependency
 closure; the inventory is not a copied-file manifest and does not claim UI parity.
 
-The following must be recorded before copying any Cindy code:
+The current partial copied-file record is
+[`CINDY-SOURCE-MANIFEST.json`](./CINDY-SOURCE-MANIFEST.json). The following must
+be recorded before copying additional Cindy code:
 
 - source commit and repository identity;
 - source path and destination path for every copied file;
@@ -25,6 +27,6 @@ The following must be recorded before copying any Cindy code:
 - adaptation reason for every changed copied file;
 - excluded accounts, endpoints, telemetry, credentials, caches and private data.
 
-Until this manifest is completed and the copied-file diff is reviewed, the Electron
-pages in this slice remain explicit migration-boundary placeholders. They must not
-be described as Cindy UI parity.
+Until the full manifest, dependency closure, and copied-file diff are reviewed, the
+Electron pages in this slice remain explicit migration-boundary placeholders. They
+must not be described as Cindy UI parity.

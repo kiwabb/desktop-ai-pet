@@ -1,0 +1,23 @@
+{
+  "sourceRepo": "makecindy/cindy",
+  "sourceCommit": "ae50e8e1afd9b95e51801085d1a2ed9dfe8b16af",
+  "license": "Apache-2.0",
+  "notice": "Cindy Copyright 2026 XD Inc.",
+  "status": "partial-source-import",
+  "records": [
+    {
+      "sourcePath": "apps/desktop/src/renderer/components/layout/FadeSwitcher.tsx",
+      "destinationPath": "apps/desktop/src/renderer/cindy/FadeSwitcher.tsx",
+      "sha256": "a4246b32e5ca0e2c140700f266e090f64a2d64b9ebd5969071436bcd85ae74d1",
+      "sourceSha256": "760eaaf8c31bb076223b1043c49d45926bec58aa2bbbacc952754ad48d1a3779",
+      "importReason": "Low-coupling visual transition primitive; validates JSX/React source import without importing Cindy host services.",
+      "adaptation": "product-adapter",
+      "status": "copied",
+      "adaptationNotes": "Import path and semicolon formatting adapted to this repository; full Cindy renderer is not enabled by this slice."
+    }
+  ],
+  "unresolved": [
+    "Cindy root LICENSE/NOTICE and required third-party notices must be copied into the distributable source bundle before packaging.",
+    "The full renderer dependency closure, preload bridge, host services, and screen matrix remain unimported."
+  ]
+}

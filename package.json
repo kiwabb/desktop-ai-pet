@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "desktop:build": "tsc -p apps/desktop/tsconfig.json",
+    "desktop:build": "tsc -p apps/desktop/tsconfig.json && node apps/desktop/scripts/copy-renderer.mjs",
     "desktop:typecheck": "tsc -p apps/desktop/tsconfig.json --noEmit",
     "desktop:test": "vitest run apps/desktop/src",
     "desktop:run": "pnpm desktop:build && electron apps/desktop/dist/main/main.js",

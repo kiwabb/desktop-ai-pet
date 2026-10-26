@@ -107,6 +107,34 @@ Focused validation after the slice:
 These checks still do not prove that the real Pi executable is installed or that the
 copied Cindy renderer builds in this product's dependency graph.
 
+## Current Electron slice: pet, Pi IPC, and source-import boundary
+
+Date: 2026-10-26 (Asia/Shanghai).
+
+The current implementation slice adds a real Electron pet renderer using the
+existing white-cat assets, a priority/interrupt/resume action state machine, a
+typed main-window Pi submit/cancel bridge, a compact host-owned pet activity
+projection, finite multi-display position recovery, and one low-coupling Cindy
+renderer component with a provenance manifest. The full Cindy renderer and broad
+host services remain deferred.
+
+| Check | Result |
+|---|---|
+| `pnpm desktop:typecheck` | Passed |
+| `pnpm desktop:test` | Passed: 4 files, 13 tests |
+| `pnpm desktop:build` | Passed; renderer HTML/CSS/assets and compiled pet/Cindy slice emitted |
+| `pnpm test` | Passed: 31 files, 246 tests |
+| `pnpm build` | Passed; existing Vite chunk-size warning remains |
+| `pnpm pet2d:validate` | Passed: existing white-cat 2D asset validation |
+| Pet asset provenance | Passed: existing idle/blink/action assets are hashed in `PET-ASSET-MANIFEST.md` |
+| Cindy source provenance | Partial: `FadeSwitcher.tsx` is recorded in `CINDY-SOURCE-MANIFEST.json`; full closure/license packaging remains open |
+| Native Electron startup | Not accepted: Electron binary download/startup did not complete in this environment |
+| Real Pi/model invocation | Not accepted: no `pi` executable was run; injected/runtime tests only |
+
+The passing checks are source/type/test/build evidence. They do not establish
+native window composition, installed packaging, Cindy visual parity, legacy-data
+migration, or a live model response.
+
 ## Pre-copy Cindy entry/host inventory
 
 Date: 2026-10-26 (Asia/Shanghai).

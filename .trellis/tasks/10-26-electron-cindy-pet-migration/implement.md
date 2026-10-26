@@ -79,10 +79,13 @@ Do not start cloud/mobile implementation as a side effect of any child.
 
 ### P2. Application services and IPC
 
-- [ ] Define shared validation schemas, stable session/run IDs, request deduplication,
-  ordered events, snapshots, reconnect cursors, and configuration generations.
+- [x] Define the first shared validation boundary, stable session/run IDs, request
+  deduplication, and host-ordered run events for the Pi adapter.
+- [ ] Add durable snapshots, reconnect cursors, and configuration generations.
 - [ ] Bind copied preload methods to application services; retain useful upstream API
   names instead of spreading translation logic through visual components.
+- [x] Bind the current product-owned main preload to typed submit/cancel/event methods;
+  Cindy renderer API mapping remains deferred until the approved screen closure is imported.
 - [ ] Add real session operations required by the copied UI; document project/workspace
   mapping and permission grants rather than manufacturing placeholder entities.
 - [ ] Give the host lifecycle ownership and enforce one executor per run. Keep stores,
@@ -124,11 +127,16 @@ Do not start cloud/mobile implementation as a side effect of any child.
 
 ### P5. Independent pet
 
-- [ ] Create a dedicated window, entry module, styles, minimal providers, and narrow preload.
-- [ ] Reuse the existing pet renderer/assets and replace Tauri transport without a new pet design.
-- [ ] Implement independent visibility, tray/main recovery, drag, pinning, DPI/bounds
-  persistence, transparent hit testing, reduced motion, and bounded renderer recovery.
-- [ ] Feed only the host's compact activity projection. Route task activation to the
+- [x] Create a dedicated window, entry module, styles, minimal providers, and narrow preload.
+- [x] Reuse the existing pet assets and replace the pet visibility/activity transport
+  with Electron without introducing a new pet artwork design.
+- [x] Add the first action state machine: eating is resumable at lower priority;
+  play-wand and belly-up interrupt it and return to the remaining eating duration.
+- [x] Implement independent visibility, CSS drag region, reduced-motion behavior, and
+  best-effort position persistence with work-area clamping.
+- [ ] Add tray/main recovery, pinning, DPI/display-removal native acceptance,
+  transparent hit testing, and bounded renderer recovery.
+- [x] Feed only the host's compact activity projection. Route task activation to the
   correct main-window conversation without submitting another run.
 - [ ] Test pet disabled at startup, repeated show/hide, main hidden/reloaded, pet crash,
   absent tray, monitor unplug, negative origins, and current custom-pet asset restoration.

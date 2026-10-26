@@ -27,7 +27,7 @@
     ".trellis/tasks/10-26-electron-cindy-pet-migration/research/source-audit.md",
     ".trellis/tasks/10-26-electron-cindy-pet-migration/verification.md"
   ],
-  "notes": "The initial planning-only delivery was superseded by the user's 2026-10-26 approval to execute the task and select Pi. Electron, direct Cindy UI reuse and an independent pet window remain confirmed. The pinned Cindy source is now available as a sparse detached reference checkout at /Users/zhoujiaangyao/zhoujiangyao/AI/cindy-reference; it has not yet been copied into the product. Do not fabricate UI parity. Keep Tauri and legacy data recoverable until acceptance.",
+  "notes": "The initial planning-only delivery was superseded by the user's 2026-10-26 approval to execute the task and select Pi. Electron, direct Cindy UI reuse and an independent pet window remain confirmed. The pinned Cindy source is available as a sparse detached reference checkout at /Users/zhoujiaangyao/zhoujiangyao/AI/cindy-reference; one low-coupling renderer component is now copied under a partial source manifest, while the full renderer/host closure remains deferred. Do not fabricate UI parity. Keep Tauri and legacy data recoverable until acceptance.",
   "meta": {
     "artifact_scope": "implementation",
     "engine_decision": "Pi",
