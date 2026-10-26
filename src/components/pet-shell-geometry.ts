@@ -2,6 +2,8 @@
 export interface ChatBubbleDockConfig {
   /** Fixed artwork scale; the component reduces it only when the frame is too small. */
   scale?: number
+  /** Desktop hosts retain the fixed cat/platform scale as text columns narrow. */
+  preserveScale?: boolean
   /** Translate the platform; upward movement stops before its joint would fold. */
   offsetX?: number
   offsetY?: number
@@ -11,12 +13,12 @@ interface ShellSize { width: number; height: number }
 
 /** Panel-local version of the approved HTML's shared PetShell perimeter. */
 export function buildPetShellGeometry({ width, height }: ShellSize, dock: ChatBubbleDockConfig = {}) {
-  const w = Math.max(132, width)
-  const h = Math.max(132, height)
-  const requestedScale = Number.isFinite(dock.scale) && dock.scale! > 0 ? dock.scale! : 0.6
-  const k = Math.min(requestedScale, w / 680, h / 440)
-  const dx = Number.isFinite(dock.offsetX) ? dock.offsetX! : 0
-  const requestedY = Number.isFinite(dock.offsetY) ? dock.offsetY! : 0
+  const w = Math.max(132, Number.isFinite(width) ? width : 132)
+  const h = Math.max(132, Number.isFinite(height) ? height : 132)
+  const requestedScale = typeof dock.scale === 'number' && Number.isFinite(dock.scale) && dock.scale > 0 ? dock.scale : 0.6
+  const k = dock.preserveScale ? Math.min(requestedScale, h / 440) : Math.min(requestedScale, w / 680, h / 440)
+  const dx = typeof dock.offsetX === 'number' && Number.isFinite(dock.offsetX) ? dock.offsetX : 0
+  const requestedY = typeof dock.offsetY === 'number' && Number.isFinite(dock.offsetY) ? dock.offsetY : 0
   const p = (x: number, y: number) => `${+x.toFixed(3)} ${+y.toFixed(3)}`
   const r = 72
   const tr = 42 * k

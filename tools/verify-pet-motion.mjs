@@ -54,19 +54,22 @@ const tick = async () => { for (let i = 0; i < 20; i++) await Promise.resolve() 
 function transitionHarness(viewportReady = true, publishBounds = async () => {}) {
   const calls = [], errors = [], commits = [], events = []
   let currentCommit = null
+  let focusRequest = 0
   const bindings = {
     markMotionDiagnostic: () => {},
     getFrameVisualBounds: frame => frame.getBoundingClientRect(),
     window: { innerWidth: 940, innerHeight: 760 },
-    isChatWindow: true, stableChatBacking: true,
+    isChatWindow: true, stableChatBacking: true, isTauri: () => true,
+    visibilityEpochRef: { current: 0 }, hiddenRef: { current: false }, setPanelSide() {},
     emitTo: async (...args) => { events.push(['emit', ...args]) },
     publishChatHitBounds: async () => { events.push(['hit-bounds']); await publishBounds() },
     chatModeRef: { current: 'compact' }, modeTransitionRef: { current: false },
     pendingCommitRef: { current: undefined }, pendingModeRef: { current: null }, modeWaitersRef: { current: [] },
     flushSync: callback => { currentCommit = []; callback(); commits.push(currentCommit); currentCommit = null }, setModeTransitioning() {}, setPanelEntering() {},
     setPanelPreparing(value) { bindings.preparing = value }, setChatMode: mode => { events.push(['mode', mode]); currentCommit?.push(mode) }, setError: error => errors.push(error),
-    waitForWindowPaint: async () => { events.push(['paint']) }, waitForPanelViewport: async () => viewportReady,
-    invoke: (_command, { mode } = {}) => { const call = { mode, ...deferred() }; calls.push(call); return call.promise },
+    setPanelFocusRequest(update) { focusRequest = update(focusRequest); events.push(['focus-request', focusRequest]); currentCommit?.push('focus-request') },
+    waitForWindowPaint: async () => { events.push(['paint']) }, waitForPanelViewport: async () => { events.push(['viewport']); return viewportReady },
+    invoke: (command, { mode } = {}) => { const pending = deferred(); const call = { command, mode, ...pending, resolve: value => pending.resolve(value ?? { width: 720, height: 680, side: 'left' }) }; calls.push(call); events.push(['invoke', command]); return call.promise },
   }
   const change = new Function(...Object.keys(bindings), `${extractFunction(source, 'changePetChatMode')}; return changePetChatMode`)(...Object.values(bindings))
   return { change, calls, bindings, errors, commits, events, commitPage: () => { events.push(['page']); currentCommit?.push('settings') } }
@@ -108,10 +111,12 @@ function transitionHarness(viewportReady = true, publishBounds = async () => {})
   const bindings = {
     markMotionDiagnostic: () => {},
     getFrameVisualBounds: frame => frame.getBoundingClientRect(),
-    settingsOpen: false, todosOpen: false, expanded: false,
+    settingsOpen: false, page: 'chat', expanded: false,
+    reading: { invalidateSendReveal() {} },
+    savingRef: { current: false }, setSettingsSuccess() {}, setSettingsError() {},
     returnExpandedRef: { current: false }, pageIntentRef: { current: 0 },
     onExpandedChange: () => expansion.promise, onClose: () => updates.push('closed'),
-    setTodosOpen: value => updates.push(['todos', value]),
+    setPage: value => updates.push(['page', value]),
     setSettingsOpen: value => updates.push(['settings', value]), returnToChat() {},
   }
   const handlers = new Function(...Object.keys(bindings), `${extractFunction(panel, 'changePage')}\n${extractFunction(panel, 'openSettings')}\n${extractFunction(panel, 'closePanel')}; return { openSettings, closePanel }`)(...Object.values(bindings))
@@ -119,7 +124,7 @@ function transitionHarness(viewportReady = true, publishBounds = async () => {})
   handlers.closePanel()
   expansion.resolve()
   await opening
-  assert.deepEqual(updates, [['settings', false], ['todos', false], 'closed'], 'late resize completion cannot reopen settings after close')
+  assert.deepEqual(updates, [['settings', false], ['page', 'chat'], 'closed'], 'late resize completion cannot reopen settings after close')
 }
 console.log('actual transition handlers: queued failure propagation, retry, final intent, serialized IPC and close invalidation passed')
 
@@ -143,11 +148,59 @@ console.log('actual transition handlers: queued failure propagation, retry, fina
   assert.equal(committedEmits.length, 1, 'exactly one pet-panel:committed emit per transition')
   assert.ok(boundsAt < events.indexOf(committedEmits[0]), 'commit acknowledgement follows hit bounds')
   const count = h.calls.length
-  await h.change('expanded', h.commitPage)
-  assert.equal(h.calls.length, count, 'same-size navigation needs no native resize')
+  let focusSettled = false
+  const focus = h.change('expanded', h.commitPage).then(() => { focusSettled = true })
+  assert.equal(h.calls.length, count + 1)
+  assert.equal(h.calls[count].command, 'show_chat_window', 'same-open navigation restores native focus without resizing')
   assert.deepEqual(h.commits.at(-1), ['settings'], 'same-size page commit keeps its explicit flush')
+  await tick()
+  assert.equal(focusSettled, false, 'same-open navigation must await native focus before acknowledging success')
+  assert.equal(h.events.filter(event => event[0] === 'focus-request').length, 0, 'control focus must wait for successful native activation')
+  h.calls[count].resolve()
+  await focus
+  assert.deepEqual(h.events.filter(event => event[0] === 'focus-request'), [['focus-request', 1]])
+  assert.deepEqual(h.commits.at(-1), ['focus-request'], 'control focus request commits after native activation')
 }
-console.log('open-to-open commit: async state, paint wait before hit bounds, single committed emit; same-size page navigation bypasses IPC')
+console.log('open-to-open commit: async state, paint wait before hit bounds, single committed emit; same-open navigation awaits native focus without resizing')
+
+{
+  const h = transitionHarness()
+  h.bindings.chatModeRef.current = 'closed'
+  await h.change('closed', h.commitPage)
+  assert.equal(h.calls.length, 0, 'same-closed must not show or resize the native window')
+  assert.equal(h.events.filter(event => event[0] === 'focus-request').length, 0, 'same-closed must not request control focus')
+  assert.deepEqual(h.commits.at(-1), ['settings'], 'same-closed preserves the page commit contract')
+}
+{
+  const h = transitionHarness()
+  const focus = h.change('compact', h.commitPage)
+  const failed = assert.rejects(focus, /native focus failed/)
+  assert.equal(h.calls[0].command, 'show_chat_window')
+  h.calls[0].reject(new Error('native focus failed'))
+  await failed
+  assert.deepEqual(h.errors, ['切换面板失败，请重试。'], 'native focus rejection retains visible failure feedback')
+  assert.equal(h.events.filter(event => event[0] === 'focus-request').length, 0, 'failed native activation must not request control focus')
+  assert.deepEqual(h.commits, [['settings']], 'focus rejection must not roll back an already committed page')
+  assert.equal(h.bindings.chatModeRef.current, 'compact')
+  assert.equal(h.bindings.modeTransitionRef.current, false)
+}
+{
+  const h = transitionHarness()
+  const focus = h.change('compact')
+  const close = h.change('closed')
+  assert.equal(h.calls.length, 1, 'close must wait for the pending same-open focus command')
+  assert.equal(h.calls[0].command, 'show_chat_window')
+  h.calls[0].resolve()
+  await tick()
+  assert.equal(h.calls.length, 2)
+  assert.equal(h.calls[1].command, 'set_pet_chat_mode')
+  assert.equal(h.calls[1].mode, 'closed')
+  h.calls[1].resolve()
+  await Promise.all([focus, close])
+  assert.equal(h.bindings.chatModeRef.current, 'closed')
+  assert.equal(h.bindings.modeWaitersRef.current.length, 0)
+}
+console.log('same-mode actual handler: closed stays hidden; focus failure rejects visibly without page rollback; later close is serialized')
 
 {
   const h = transitionHarness()
@@ -159,6 +212,12 @@ console.log('open-to-open commit: async state, paint wait before hit bounds, sin
   h.calls[1].resolve()
   await opening
   assert.equal(h.bindings.chatModeRef.current, 'compact')
+  assert.equal(h.events.filter(event => event[0] === 'paint').length, 0, 'cold open does not wait for a hidden WebView RAF')
+  const shown = h.events.findIndex(event => event[0] === 'invoke' && event[1] === 'show_chat_window')
+  const measured = h.events.findIndex(event => event[0] === 'viewport')
+  const bounds = h.events.findIndex(event => event[0] === 'hit-bounds')
+  assert.ok(shown >= 0 && shown < measured && measured < bounds, 'native reveal precedes viewport observation, then actual hit bounds')
+  assert.ok(h.events.some(event => event[0] === 'focus-request'), 'cold open requests actual control focus after activation')
 }
 
 // The viewport gate observes renderer dimensions, and never calls timeout ready.
@@ -171,7 +230,7 @@ for (const scenario of ['ready', 'resize', 'timeout']) {
     removeEventListener() { removed = true },
   }
   const wait = new Function('window', `${extractFunction(source, 'waitForPanelViewport')}; return waitForPanelViewport`)(window)
-  const result = wait('compact')
+  const result = wait({ width: 940, height: 760 })
   if (scenario === 'resize') { window.innerWidth = 940; window.innerHeight = 760; resized() }
   if (scenario === 'timeout') timer()
   assert.equal(await result, scenario !== 'timeout')
@@ -183,12 +242,15 @@ console.log('viewport observation: ready, delayed resize and unready timeout cle
   const h = transitionHarness(false)
   h.bindings.chatModeRef.current = 'closed'
   const opening = h.change('compact')
-  const rejected = assert.rejects(opening, /限定时间/)
+  const rejected = assert.rejects(opening, /尚未就绪/)
   await tick()
   h.calls[0].resolve()
   await tick()
-  assert.deepEqual(h.calls.map(call => call.mode), ['compact', 'closed'])
+  assert.equal(h.calls[1].command, 'show_chat_window')
   h.calls[1].resolve()
+  await tick()
+  assert.deepEqual(h.calls.map(call => call.mode), ['compact', undefined, 'closed'])
+  h.calls[2].resolve()
   await rejected
   assert.equal(h.bindings.chatModeRef.current, 'closed')
   assert.equal(h.bindings.modeTransitionRef.current, false)
@@ -196,14 +258,54 @@ console.log('viewport observation: ready, delayed resize and unready timeout cle
 }
 console.log('unready initial viewport restores native closed frame, React mode and interaction guards')
 
+{
+  const h = transitionHarness()
+  h.bindings.chatModeRef.current = 'closed'
+  const opening = h.change('compact')
+  const rejected = assert.rejects(opening, /已隐藏/)
+  h.bindings.hiddenRef.current = true
+  h.bindings.visibilityEpochRef.current += 1
+  h.calls[0].resolve()
+  await tick()
+  assert.equal(h.calls[1].command, 'set_pet_chat_mode')
+  assert.equal(h.calls[1].mode, 'closed')
+  h.calls[1].resolve()
+  await rejected
+  assert.ok(!h.calls.some(call => call.command === 'show_chat_window'), 'a native hide cancels an in-flight prepare before reveal')
+  assert.equal(h.bindings.chatModeRef.current, 'closed')
+  assert.equal(h.bindings.modeTransitionRef.current, false)
+}
+console.log('hide during preparation cancels reveal, restores closed mode and releases pending work')
+
+for (const restored of [false, true]) {
+  const bounds = deferred()
+  const h = transitionHarness(true, () => bounds.promise)
+  const changing = h.change('expanded')
+  const rejected = assert.rejects(changing, /已隐藏/)
+  await tick()
+  h.bindings.hiddenRef.current = true
+  h.bindings.visibilityEpochRef.current += 1
+  h.bindings.chatModeRef.current = 'closed'
+  if (restored) {
+    h.bindings.hiddenRef.current = false
+    h.bindings.visibilityEpochRef.current += 1
+  }
+  bounds.resolve()
+  await rejected
+  assert.ok(!h.events.some(event => event[0] === 'emit'), 'a hidden or superseded visible transition cannot publish an obsolete open commit')
+  assert.equal(h.bindings.chatModeRef.current, 'closed', 'hide/recovery keeps the chat closed')
+  assert.equal(h.bindings.modeTransitionRef.current, false)
+}
+console.log('hide and hide/recovery during open-to-open bounds update invalidate the old commit')
+
+
 const native = readFileSync('src-tauri/src/lib.rs', 'utf8')
 const resizing = native.slice(native.indexOf('fn set_pet_chat_mode'), native.indexOf('fn pet_drag_origin'))
-assert.ok(resizing.includes('get_webview_panel("chat")'))
-assert.ok(!resizing.includes('get_webview_panel("main")'))
+assert.ok(resizing.includes('!state.visible.load(Ordering::Relaxed)'), 'fit backing only while hidden')
+assert.ok(resizing.includes('place_window(&app, "chat", layout.chat, true)'), 'chat receives work-area fitted dimensions')
+assert.ok(!resizing.includes('place_window(&app, "main"'), 'opening chat leaves the cat rectangle untouched')
 assert.ok(!resizing.includes('pet.set_size'))
-assert.ok(!resizing.includes('pet.set_position'))
 assert.ok(!native.includes('addChildWindow'))
-assert.ok(!resizing.includes('setFrame:'))
 assert.ok(native.includes('fn move_pet_group'))
 const mainRendering = source.slice(source.lastIndexOf('  return ('))
 assert.ok(!mainRendering.includes('<ChatPanel'))
@@ -218,6 +320,7 @@ console.log('fixed main window: chat-only native resizing; single cat render; ex
     getFrameVisualBounds: frame => frame.getBoundingClientRect(),
     setPanelError() {}, crypto: { randomUUID: () => 'request-1' }, remoteRequestsRef: count, modeTransitionRef: busy,
     chatModeRef: mode, setModeTransitioning() {}, setChatMode() {},
+    visibilityEpochRef: { current: 0 }, hiddenRef: { current: false },
     listen: async (_name, callback) => { listener = callback; return () => { stopped = true } },
     emitTo: async (...args) => { sent.push(args) },
     window: { setTimeout(callback) { timer = callback; return 1 }, clearTimeout() { timer = undefined } },
@@ -238,14 +341,17 @@ console.log('fixed main window: chat-only native resizing; single cat render; ex
 }
 console.log('cross-window request: matching acknowledgement, actual mode and reminder gate cleanup')
 
-assert.ok(native.includes('if let Some(chat) = app.get_webview_window("chat") { chat.hide()?; }'))
-assert.ok(source.includes("title: '打开失败'"))
+assert.ok(/if let Some\(chat\) = app.get_webview_window\("chat"\) \{\s*chat.hide\(\)\?;/.test(native), 'chat starts hidden')
+assert.ok(source.includes('actionError={panelError}'), 'opening failures remain actionable at the pet controls')
 
 {
   const dragSource = readFileSync('src/lib/usePetGroupDrag.ts', 'utf8')
   const code = extractFunction(dragSource, 'usePetGroupDrag').replace('export function', 'function')
   const calls = [], errors = []
+  class Element {}
+  class HTMLElement extends Element { getAttribute() { return null } }
   const bindings = {
+    Element, HTMLElement,
     markMotionDiagnostic: () => {},
     getFrameVisualBounds: frame => frame.getBoundingClientRect(),
     useRef: value => ({ current: value }), useEffect() {}, isTauri: () => true,
@@ -254,7 +360,7 @@ assert.ok(source.includes("title: '打开失败'"))
   }
   const useDrag = new Function(...Object.keys(bindings), `${code}; return usePetGroupDrag`)(...Object.values(bindings))
   const handlers = useDrag({ onError: cause => errors.push(cause) })
-  const target = { setPointerCapture() {}, hasPointerCapture: () => false, releasePointerCapture() {} }
+  const target = Object.assign(new HTMLElement(), { setPointerCapture() {}, hasPointerCapture: () => false, releasePointerCapture() {} })
   const event = x => ({ pointerId: 1, button: 0, isPrimary: true, screenX: x, screenY: 0, currentTarget: target, target, preventDefault() {}, stopPropagation() {} })
   handlers.onPointerDown(event(0))
   await tick()
@@ -310,18 +416,155 @@ console.log('native layer contract: main stays one level above chat independentl
   assert.ok(hook.includes('requestAnimationFrame') && hook.includes('cancelAnimationFrame'), 'crossfade starts only after the committed frame paints; settle rAF handles cancel cleanly')
   assert.ok(hook.includes("opacity = '0'") && hook.includes("opacity = ''"), 'destination pins invisible beneath the ghost cover and restores cleanly')
   assert.ok(hook.includes('document.fonts'), 'pending webfonts join the paint-settle wait when observable')
-  assert.ok(hook.includes('FRAME_MORPH_MS = 300'), 'morph budget constant matches the 300ms crossfade')
-  assert.ok(hook.includes('duration: reduced ? FRAME_MORPH_REDUCED_MS : 240'), 'ghost cover fade lasts 240ms under ordinary motion')
-  assert.ok(hook.includes('duration: reduced ? FRAME_MORPH_REDUCED_MS : 300'), 'destination fade-in lasts 300ms under ordinary motion')
+  assert.ok(hook.includes('FRAME_MORPH_MS = 240'), 'fallback crossfade fits the shared240ms motion budget')
+  assert.ok(hook.includes("motionDuration(root, 'exit', 160)"), 'outgoing ghost follows the shared exit timing' )
+  assert.ok(hook.includes("motionDuration(root, 'slow', FRAME_MORPH_MS)"), 'incoming shell follows the shared slow timing' )
   assert.ok(hook.includes('cubic-bezier(0.4, 0, 0.2, 1)'), 'ghost fade uses the standard curve')
-  assert.ok(hook.includes('cubic-bezier(0.22, 1, 0.36, 1)'), 'destination fade-in uses the emphasized ease-out')
+  assert.ok(hook.includes('easing: MOTION_EASE_OUT'), 'destination fade-in uses the shared exponential easing')
   assert.ok(hook.includes("finishWatchdog") && hook.includes("morph-watchdog"), 'a watchdog settles the morph when an occluded WebView suspends the animation timeline')
-  assert.ok(hook.includes("finish('morph-watchdog'), 1200"), 'watchdog budget covers the longer 300ms timeline')
   assert.ok(hook.includes('dataset.frameMorphing'), 'the CSS relief attribute lifecycle stays')
   assert.ok(hook.includes('chat-frame-bounds'), 'start/end hit-bounds notifications stay')
   assert.ok(hook.includes('activeRef.current?.cancel()'), 'rapid toggling cancels the previous ghost and animations first')
 }
 console.log('frame morph contract: WAAPI transform/opacity crossfade only; no SMIL, clip-path or per-frame IPC')
+
+// Execute the production morph layout effect with isolated clocks/DOM/WAAPI.
+// This verifies lifecycle behavior, not native paint or compositor smoothness.
+function morphHarness({ incoming = 240, outgoing = 160, reduced = false, fonts } = {}) {
+  const hookSource = readFileSync('src/components/useFrameMorph.ts', 'utf8')
+  const hookAst = ts.createSourceFile('useFrameMorph.ts', hookSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const hook = hookAst.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'useFrameMorph')
+  const effect = hook.body.statements.find(node => ts.isExpressionStatement(node) && ts.isCallExpression(node.expression) && node.expression.expression.getText(hookAst) === 'useLayoutEffect').expression.arguments[0]
+  const constants = hookAst.statements.filter(node => ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => declaration.name.getText(hookAst).startsWith('FRAME_MORPH_'))).map(node => node.getText(hookAst).replace(/^export /, '')).join('\n')
+  const effectCode = ts.transpile(`${constants}\nconst run = ${effect.getText(hookAst)}`, { target: ts.ScriptTarget.ES2022 })
+  const frames = new Map(), timers = new Map(), animations = [], ghosts = [], marks = [], bounds = [], geometries = []
+  let now = 0, next = 0
+  const window = {
+    matchMedia: () => ({ matches: reduced }),
+    requestAnimationFrame(callback) { const id = ++next; frames.set(id, callback); return id },
+    cancelAnimationFrame(id) { frames.delete(id) },
+    setTimeout(callback, ms) { const id = ++next; timers.set(id, { callback, at: now + ms }); return id },
+    clearTimeout(id) { timers.delete(id) },
+  }
+  const node = name => ({
+    style: {},
+    querySelectorAll: () => [],
+    animate(keyframes, options) {
+      const pending = deferred()
+      const animation = { name, keyframes, options, finished: pending.promise, resolve: pending.resolve, cancelCount: 0,
+        cancel() { this.cancelCount++; pending.reject(new Error('isolated animation cancellation')) } }
+      animations.push(animation)
+      return animation
+    },
+  })
+  const svg = node('svg'), surface = node('surface')
+  const from = { x: 240, y: 400, width: 475, height: 278 }, to = { x: 40, y: 40, width: 676, height: 665 }
+  const root = {
+    dataset: {}, getBoundingClientRect: () => to,
+    querySelector: selector => selector === '.chat-bubble-shell' ? svg : selector === '.chat-panel-surface' ? surface : null,
+    append(ghost) { ghosts.push(ghost) }, dispatchEvent(event) { bounds.push(event.detail) },
+  }
+  const document = {
+    fonts: fonts ? { ready: fonts.promise } : undefined, timeline: { currentTime: 17 },
+    createElement() { return { ...node('ghost'), append() {}, removed: false, remove() { this.removed = true } } },
+  }
+  const bindings = {
+    rootRef: { current: root }, previousRef: { current: { variant: 'compact', rect: from } }, activeRef: { current: null }, morphingRef: { current: false },
+    visible: true, enabled: true, onFrame: geometry => geometries.push(geometry), window, document,
+    getComputedStyle: () => ({ position: 'absolute' }), motionDiagnosticMode: () => 'normal', markMotionDiagnostic: mark => marks.push(mark),
+    motionDuration: (_root, token) => token === 'slow' ? incoming : outgoing, MOTION_EASE_OUT: 'isolated-easing',
+    isolatedClone: () => node('clone'), dockAnchorOrigin: () => '100% 100%',
+    CustomEvent: class { constructor(_name, options) { this.detail = options.detail } },
+  }
+  const run = (variant = 'expanded') => new Function(...Object.keys(bindings), 'variant', `${effectCode}; return run()`)(...Object.values(bindings), variant)
+  const advance = ms => {
+    const until = now + ms
+    for (;;) {
+      const due = [...timers].filter(([, timer]) => timer.at <= until).sort((a, b) => a[1].at - b[1].at)[0]
+      if (!due) break
+      timers.delete(due[0]); now = due[1].at; due[1].callback()
+    }
+    now = until
+  }
+  const frame = () => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(callback => callback(now)) }
+  run()
+  return { run, advance, frame, frames, timers, animations, ghosts, marks, bounds, geometries, bindings, svg, surface, from, to, root }
+}
+function assertMorphClean(h) {
+  assert.equal(h.frames.size, 0)
+  assert.equal(h.timers.size, 0)
+  assert.equal(h.svg.style.opacity, '')
+  assert.equal(h.surface.style.opacity, '')
+  assert.equal(h.root.dataset.frameMorphing, undefined)
+  assert.equal(h.bindings.morphingRef.current, false)
+  assert.ok(h.ghosts.every(ghost => ghost.removed))
+}
+for (const framesReceived of [0, 1]) {
+  const fonts = deferred(), h = morphHarness({ fonts })
+  const staleFrame = [...h.frames.values()][0]
+  if (framesReceived) h.frame()
+  h.advance(199)
+  assert.equal(h.svg.style.opacity, '0')
+  h.advance(1)
+  assert.equal(h.animations.length, 0, 'incomplete paint callbacks must reveal final geometry without starting WAAPI')
+  assert.deepEqual(h.bounds, [h.from, h.to], 'no-paint recovery publishes the committed final hit bounds')
+  assert.ok(h.marks.includes('morph-paint-timeout'))
+  assert.ok(!h.marks.includes('morph-start'))
+  fonts.resolve(); staleFrame(); await tick()
+  assertMorphClean(h)
+}
+{
+  const fonts = deferred(), h = morphHarness({ fonts })
+  h.frame(); h.frame()
+  assert.equal(h.animations.length, 0, 'healthy paint still waits for observable fonts')
+  fonts.resolve(); await tick()
+  assert.equal(h.animations.length, 3)
+  assert.ok(h.animations.every(animation => animation.startTime === 17), 'healthy animations keep their shared timeline')
+  h.animations[0].resolve(); h.animations[1].resolve(); await tick()
+  assert.equal(h.ghosts[0].removed, false, 'natural finish waits for every effect')
+  h.animations[2].resolve(); await tick()
+  assert.deepEqual(h.bounds, [h.from, h.to])
+  assert.ok(h.marks.includes('morph-end'))
+  assert.ok(!h.marks.includes('morph-watchdog'))
+  assertMorphClean(h)
+}
+{
+  const h = morphHarness({ fonts: deferred() })
+  h.frame(); h.frame(); h.advance(200)
+  assert.equal(h.animations.length, 3, 'the existing font deadline starts animation when both paint callbacks arrived')
+  h.animations.forEach(animation => animation.resolve()); await tick()
+  assertMorphClean(h)
+}
+for (const options of [{ incoming: 240, outgoing: 160 }, { incoming: 180, outgoing: 460 }, { reduced: true, incoming: 800, outgoing: 900 }]) {
+  const h = morphHarness(options)
+  h.frame(); h.frame()
+  const longestEffect = Math.max(...h.animations.map(animation => animation.options.duration))
+  h.advance(longestEffect + 79)
+  assert.equal(h.ghosts[0].removed, false, 'watchdog must cover every actual effect plus its grace')
+  h.advance(1)
+  assert.ok(h.marks.includes('morph-watchdog'))
+  assert.deepEqual(h.bounds, [h.from, h.to])
+  assertMorphClean(h)
+  await tick()
+}
+{
+  const h = morphHarness()
+  h.frame(); h.frame()
+  const oldAnimations = [...h.animations]
+  // Fulfilled effects queue their completion microtask just before re-entry.
+  oldAnimations.forEach(animation => animation.resolve())
+  h.run('compact')
+  const replacement = h.bindings.activeRef.current
+  await tick()
+  assert.equal(h.bindings.activeRef.current, replacement, 'stale completion cannot clear the replacement morph')
+  assert.equal(h.ghosts[1].removed, false)
+  assert.equal(h.bounds.length, 2, 'cancelled old morph must not publish stale final bounds')
+  replacement.cancel()
+  h.advance(2000); await tick()
+  assert.ok(!h.marks.includes('morph-end') && !h.marks.includes('morph-watchdog'))
+  assertMorphClean(h)
+}
+console.log('actual morph lifecycle: no-paint recovery, font gate, natural finish, duration-bound stall recovery, reduced motion and stale cancellation passed')
 {
   let rect = { x: 254, y: 427, width: 475, height: 278 }
   const calls = []
@@ -419,3 +662,29 @@ console.log('terminal hit-region failure preserves committed page/mode consisten
   assert.ok(frameCss.includes('.chat-panel[data-frame-morphing]'), 'morph-state paint relief rules stay')
 }
 console.log('crossfade dissolve contract: shell-motion deleted, dock geometry intact, relief rules and committed-rect hit bounds pinned')
+
+// A final drag refit must settle any old morph and publish the new geometry
+// in the same layout transaction, with no per-pointer-move resize path.
+{
+  const frame = readFileSync('src/components/ChatBubbleFrame.tsx', 'utf8')
+  const steps = []
+  const bounds = { x: 16, y: 16, width: 400, height: 365 }
+  const root = { offsetWidth: 400, offsetHeight: 365,
+    dispatchEvent(event) { steps.push(event.type) }, getBoundingClientRect() { return bounds } }
+  class Event { constructor(type) { this.type = type } }
+  class CustomEvent extends Event { constructor(type, options) { super(type); this.detail = options.detail } }
+  const bindings = { root, Event, CustomEvent, flushSync(callback) { steps.push('flush'); callback() },
+    update(width, height) { assert.deepEqual([width, height], [400, 365]); steps.push('geometry') } }
+  const resize = new Function(...Object.keys(bindings), `${extractFunction(frame, 'resizeViewport')}; return resizeViewport`)(...Object.values(bindings))
+  resize()
+  assert.deepEqual(steps, ['chat-frame-viewport-resize', 'flush', 'geometry', 'chat-frame-bounds'])
+  const move = native.slice(native.indexOf('fn move_pet_group_on_main'), native.indexOf('fn show_chat_window'))
+  assert.ok(!move.includes(', true)'), 'pointer movement never resizes a backing')
+  const end = native.slice(native.indexOf('fn end_pet_group_drag'), native.indexOf('struct PanelViewport'))
+  assert.ok(end.includes('align_visible_chat(&app)?'))
+  const align = native.slice(native.indexOf('fn align_visible_chat'), native.indexOf('async fn set_pet_chat_mode'))
+  assert.ok(align.includes('needs_refit(chat, display)'))
+  assert.ok(align.includes('place_window(app, "chat", target, resize)'))
+  assert.ok(align.includes('"pet-panel:viewport-changed"'))
+}
+console.log('drag-end refit: one final native fit, cancelled old morph, synchronous perimeter and fresh hit bounds')

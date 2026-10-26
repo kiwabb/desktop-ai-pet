@@ -3,7 +3,7 @@
 //! `LocalConfig.api_key` field is in-memory only (`skip_serializing`), hydrated
 //! from here at startup and updated here before any settings save persists.
 
-use super::LocalConfig;
+use super::{LocalConfig, Mode};
 
 /// Stable identifiers shared by every install, so the key survives updates.
 const SERVICE: &str = "desktop-ai-pet";
@@ -61,6 +61,30 @@ pub fn hydrate(config: &mut LocalConfig, store: &impl CredentialStore) -> bool {
     false
 }
 
+/// Server mode has no use for an encrypted local model key. Do not wake the
+/// credential UI simply to populate an inactive mode's metadata. Legacy
+/// plaintext is different: retain the existing migrate-before-scrub contract.
+pub fn hydrate_startup(mode: Mode, config: &mut LocalConfig, store: &impl CredentialStore) -> bool {
+    if mode == Mode::Local || !config.api_key.is_empty() {
+        hydrate(config, store)
+    } else {
+        false
+    }
+}
+
+/// Called only by an explicit local configuration/model-list action. A denied
+/// or unavailable credential service remains an error, never a fabricated key.
+pub fn load_saved_key(
+    config: &LocalConfig,
+    store: &impl CredentialStore,
+) -> Result<String, String> {
+    if config.api_key.is_empty() {
+        Ok(store.get()?.unwrap_or_default())
+    } else {
+        Ok(config.api_key.clone())
+    }
+}
+
 /// Settings save: a fresh key goes to the store before the config is persisted,
 /// so plaintext never reaches the disk; switching endpoints without a fresh key
 /// drops the stale credential instead of leaking it across services.
@@ -75,9 +99,9 @@ pub fn save_key(
         return Ok(key_input.to_owned());
     }
     if base_url == stored.base_url {
-        return Ok(stored.api_key.clone());
+        return load_saved_key(stored, store);
     }
-    let _ = store.delete();
+    store.delete()?;
     Ok(String::new())
 }
 
@@ -125,7 +149,10 @@ pub mod tests {
             api_key: "legacy-key".into(),
             ..Default::default()
         };
-        assert!(hydrate(&mut config, &store), "caller must scrub the config file");
+        assert!(
+            hydrate(&mut config, &store),
+            "caller must scrub the config file"
+        );
         assert_eq!(*store.secret.borrow(), Some("legacy-key".to_owned()));
         // The in-memory field keeps the key so the running session still works.
         assert_eq!(config.api_key, "legacy-key");
@@ -141,7 +168,10 @@ pub mod tests {
             api_key: "legacy-key".into(),
             ..Default::default()
         };
-        assert!(!hydrate(&mut config, &store), "no scrub rewrite without a durable copy");
+        assert!(
+            !hydrate(&mut config, &store),
+            "no scrub rewrite without a durable copy"
+        );
         assert_eq!(config.api_key, "legacy-key");
     }
 
@@ -170,7 +200,10 @@ pub mod tests {
             "new-key"
         );
         assert_eq!(*store.secret.borrow(), Some("new-key".to_owned()));
-        assert_eq!(save_key(&store, "", &stored.base_url, &stored).unwrap(), "old-key");
+        assert_eq!(
+            save_key(&store, "", &stored.base_url, &stored).unwrap(),
+            "old-key"
+        );
         assert_eq!(
             save_key(&store, "", "https://other.example.com/v1", &stored).unwrap(),
             ""
@@ -181,5 +214,88 @@ pub mod tests {
             ..MemoryStore::with(None)
         };
         assert!(save_key(&failing, "new-key", &stored.base_url, &stored).is_err());
+    }
+
+    struct NoReadStore;
+    impl CredentialStore for NoReadStore {
+        fn get(&self) -> Result<Option<String>, String> {
+            panic!("unrelated credential read")
+        }
+        fn set(&self, _secret: &str) -> Result<(), String> {
+            Ok(())
+        }
+        fn delete(&self) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn server_startup_does_not_read_inactive_local_credentials() {
+        let mut config = LocalConfig {
+            base_url: "https://model.example/v1".into(),
+            model: "saved-model".into(),
+            ..Default::default()
+        };
+        assert!(!hydrate_startup(Mode::Server, &mut config, &NoReadStore));
+        assert!(config.api_key.is_empty());
+        assert_eq!(config.model, "saved-model");
+    }
+
+    #[test]
+    fn startup_still_migrates_legacy_plaintext_before_scrubbing() {
+        let mut config = LocalConfig {
+            api_key: "legacy-key".into(),
+            ..Default::default()
+        };
+        let store = MemoryStore::with(None);
+        assert!(hydrate_startup(Mode::Server, &mut config, &store));
+        assert_eq!(*store.secret.borrow(), Some("legacy-key".to_owned()));
+    }
+
+    #[test]
+    fn local_save_lazily_reuses_the_matching_endpoint_key() {
+        let config = LocalConfig {
+            base_url: "https://model.example/v1".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            save_key(
+                &MemoryStore::with(Some("saved-key")),
+                "",
+                &config.base_url,
+                &config
+            )
+            .unwrap(),
+            "saved-key"
+        );
+        assert_eq!(
+            save_key(&NoReadStore, "new-key", &config.base_url, &config).unwrap(),
+            "new-key"
+        );
+        assert_eq!(
+            save_key(&NoReadStore, "", "https://other.example/v1", &config).unwrap(),
+            ""
+        );
+    }
+
+    #[test]
+    fn endpoint_change_rejects_when_old_key_cannot_be_removed() {
+        struct DeniedDelete;
+        impl CredentialStore for DeniedDelete {
+            fn get(&self) -> Result<Option<String>, String> {
+                panic!("must not read a different endpoint key")
+            }
+            fn set(&self, _: &str) -> Result<(), String> {
+                Ok(())
+            }
+            fn delete(&self) -> Result<(), String> {
+                Err("credential deletion denied".into())
+            }
+        }
+        let stored = LocalConfig {
+            base_url: "https://old.example/v1".into(),
+            ..Default::default()
+        };
+        assert!(save_key(&DeniedDelete, "", "https://new.example/v1", &stored).is_err());
     }
 }

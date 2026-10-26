@@ -4,18 +4,16 @@
 //! single local account. Every visible mutation commits its event in the same
 //! transaction; `agent_sessions.seq` is the strictly increasing watermark and
 //! `request_id` uniqueness makes submissions idempotent across restarts.
-use crate::agent_protocol::{Envelope, Message, Role, Run, RunStatus, Snapshot, ToolCall, ToolStatus};
+use crate::agent_protocol::{
+    Envelope, Message, Role, Run, RunStatus, Snapshot, ToolCall, ToolStatus,
+};
 use chrono::{DateTime, SecondsFormat, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde_json::{json, Value};
 use std::path::Path;
 use std::sync::Mutex;
 
-pub const HISTORY_WINDOW: i64 = 40;
 pub const UNRESOLVED_TOOL_WINDOW: i64 = 20;
-
-/// (role, content) message pairs plus unresolved tool records, in server shape.
-pub type History = (Vec<(String, String)>, Vec<Value>);
 
 /// Fixed, safe failure classes; SQL/driver details never surface.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -104,6 +102,19 @@ CREATE TABLE todos (
 CREATE INDEX todos_created ON todos(created_at, id);
 CREATE INDEX todos_pending_remind_at ON todos(remind_at, id)
     WHERE status = 'pending' AND remind_at IS NOT NULL;
+CREATE TABLE memos (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('note','goal')),
+    title TEXT NOT NULL CHECK (length(trim(title)) BETWEEN 1 AND 2000),
+    content TEXT,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
+    review_at TEXT,
+    source_tool_call_id TEXT UNIQUE REFERENCES agent_tool_calls(id),
+    created_at TEXT NOT NULL
+);
+CREATE INDEX memos_created ON memos(created_at, id);
+CREATE INDEX memos_active_review_at ON memos(review_at, id)
+    WHERE status = 'active' AND review_at IS NOT NULL;
 CREATE TABLE agent_events (
     session_id TEXT NOT NULL REFERENCES agent_sessions(id),
     seq INTEGER NOT NULL,
@@ -113,6 +124,26 @@ CREATE TABLE agent_events (
     created_at TEXT NOT NULL,
     PRIMARY KEY (session_id, seq)
 );
+";
+
+/// Increment for databases created before the memo plugin existed
+/// (user_version 1 → 2). IF NOT EXISTS keeps this a no-op for fresh installs
+/// where SCHEMA_V1 already created the memos table; the migration runs in its
+/// own transaction so a failure can never half-alter the existing todos data.
+const SCHEMA_V2: &str = "
+CREATE TABLE IF NOT EXISTS memos (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('note','goal')),
+    title TEXT NOT NULL CHECK (length(trim(title)) BETWEEN 1 AND 2000),
+    content TEXT,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
+    review_at TEXT,
+    source_tool_call_id TEXT UNIQUE REFERENCES agent_tool_calls(id),
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS memos_created ON memos(created_at, id);
+CREATE INDEX IF NOT EXISTS memos_active_review_at ON memos(review_at, id)
+    WHERE status = 'active' AND review_at IS NOT NULL;
 ";
 
 /// All persisted instants use one fixed-width UTC format so lexicographic
@@ -251,7 +282,12 @@ fn run_row(conn: &Connection, run_id: &str) -> Result<RunRow, StoreError> {
 
 /// Bumps the session watermark and persists the envelope in one statement pair;
 /// callers always run inside the transaction of the mutation being announced.
-fn event(conn: &Connection, run: &RunRow, kind: &str, payload: Value) -> Result<Envelope, StoreError> {
+fn event(
+    conn: &Connection,
+    run: &RunRow,
+    kind: &str,
+    payload: Value,
+) -> Result<Envelope, StoreError> {
     let seq: i64 = conn.query_row(
         "UPDATE agent_sessions SET seq = seq + 1 WHERE id = ?1 RETURNING seq",
         params![run.session_id],
@@ -297,7 +333,11 @@ fn finish_tool_tx(
     result: Option<Value>,
     error: Option<String>,
 ) -> Result<(ToolCall, Envelope), StoreError> {
-    let status = if error.is_some() { "failed" } else { "completed" };
+    let status = if error.is_some() {
+        "failed"
+    } else {
+        "completed"
+    };
     let changed = conn.execute(
         "UPDATE agent_tool_calls SET status = ?1, result = ?2, error = ?3 \
          WHERE id = ?4 AND run_id = ?5 AND status = 'running'",
@@ -332,11 +372,19 @@ fn terminal_tx(
          WHERE run_id = ?2 AND status = 'running' RETURNING *",
     )?;
     let calls = statement
-        .query_map(params!["执行中断，结果需要核实，未自动重试", run.id], tool_from_row)?
+        .query_map(
+            params!["执行中断，结果需要核实，未自动重试", run.id],
+            tool_from_row,
+        )?
         .collect::<Result<Vec<_>, _>>()?;
     drop(statement);
     for call in calls {
-        envelopes.push(event(conn, run, "tool.finished", json!({"tool_call": call}))?);
+        envelopes.push(event(
+            conn,
+            run,
+            "tool.finished",
+            json!({"tool_call": call}),
+        )?);
     }
     let mut finished = run.clone();
     finished.status = status.clone();
@@ -346,7 +394,12 @@ fn terminal_tx(
         params![run_status_name(status.clone()), error, run.id],
     )?;
     let kind = format!("run.{}", run_status_name(status));
-    envelopes.push(event(conn, &finished, &kind, json!({"run": finished.view()}))?);
+    envelopes.push(event(
+        conn,
+        &finished,
+        &kind,
+        json!({"run": finished.view()}),
+    )?);
     Ok(envelopes)
 }
 
@@ -372,7 +425,9 @@ impl Store {
     /// later store call; SQLite transactions roll back on drop, so the
     /// connection never exposes a half-committed mutation.
     fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
-        self.conn.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.conn
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     pub fn open(path: &Path) -> Result<Self, StoreError> {
@@ -385,14 +440,30 @@ impl Store {
         Self::initialize(Connection::open_in_memory().unwrap()).unwrap()
     }
 
-    fn initialize(conn: Connection) -> Result<Self, StoreError> {
+    fn initialize(mut conn: Connection) -> Result<Self, StoreError> {
         conn.execute_batch(
             "PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;",
         )?;
         let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
         if version < 1 {
-            conn.execute_batch(SCHEMA_V1)?;
-            conn.execute_batch("PRAGMA user_version = 1;")?;
+            let tx = conn.transaction()?;
+            tx.execute_batch(SCHEMA_V1)?;
+            tx.execute_batch("PRAGMA user_version = 1;")?;
+            tx.commit()?;
+        }
+        if version < 2 {
+            // Existing v1 databases gain only the memos table; a failure here
+            // leaves user_version=1 and the todos data untouched.
+            let tx = conn.transaction()?;
+            tx.execute_batch(SCHEMA_V2)?;
+            tx.execute_batch("PRAGMA user_version = 2;")?;
+            tx.commit()?;
+        }
+        if version < 3 {
+            let tx = conn.transaction()?;
+            tx.execute_batch(super::context_store::SCHEMA_V3)?;
+            tx.execute_batch("PRAGMA user_version = 3;")?;
+            tx.commit()?;
         }
         Ok(Self {
             conn: Mutex::new(conn),
@@ -516,11 +587,20 @@ impl Store {
         run.ordinal = tx.query_row(
             "INSERT INTO agent_runs(id, session_id, request_id, input_text, status, created_at) \
              VALUES (?1, ?2, ?3, ?4, 'queued', ?5) RETURNING ordinal",
-            params![run.id, run.session_id, run.request_id, run.input_text, run.created_at],
+            params![
+                run.id,
+                run.session_id,
+                run.request_id,
+                run.input_text,
+                run.created_at
+            ],
             |row| row.get(0),
         )?;
         let mut messages = Vec::with_capacity(2);
-        for (role, content) in [(Role::User, text.to_owned()), (Role::Assistant, String::new())] {
+        for (role, content) in [
+            (Role::User, text.to_owned()),
+            (Role::Assistant, String::new()),
+        ] {
             let message = Message {
                 id: uuid::Uuid::new_v4().to_string(),
                 role,
@@ -686,9 +766,8 @@ impl Store {
         if !matches!(run.status, RunStatus::Running) {
             return Err(StoreError::Internal);
         }
-        let outcome = effect(&tx).and_then(|result| {
-            finish_tool_tx(&tx, &run, tool_id, Some(result), None)
-        });
+        let outcome =
+            effect(&tx).and_then(|result| finish_tool_tx(&tx, &run, tool_id, Some(result), None));
         match outcome {
             Ok(done) => {
                 tx.commit()?;
@@ -705,6 +784,19 @@ impl Store {
     ) -> Result<R, StoreError> {
         let conn = self.conn();
         f(&conn)
+    }
+
+    /// Multi-statement direct mutation in one transaction (e.g. create + review
+    /// time), so a failing step never leaves a half-written record behind.
+    pub(crate) fn with_transaction<R>(
+        &self,
+        f: impl FnOnce(&Connection) -> Result<R, StoreError>,
+    ) -> Result<R, StoreError> {
+        let mut conn = self.conn();
+        let tx = conn.transaction()?;
+        let result = f(&tx)?;
+        tx.commit()?;
+        Ok(result)
     }
 
     /// Records a business failure as the tool result in its own transaction
@@ -750,8 +842,9 @@ impl Store {
     pub fn recover_interrupted(&self) -> Result<(), StoreError> {
         let mut conn = self.conn();
         let tx = conn.transaction()?;
-        let mut statement =
-            tx.prepare("SELECT * FROM agent_runs WHERE status IN ('queued', 'running') ORDER BY ordinal")?;
+        let mut statement = tx.prepare(
+            "SELECT * FROM agent_runs WHERE status IN ('queued', 'running') ORDER BY ordinal",
+        )?;
         let runs = statement
             .query_map([], RunRow::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
@@ -766,46 +859,6 @@ impl Store {
         }
         tx.commit()?;
         Ok(())
-    }
-
-    /// Same window as runtime_store.history: recent nonempty messages of earlier
-    /// runs plus tool records of failed/interrupted runs (descending, like the server).
-    pub fn history(&self, run_id: &str) -> Result<History, StoreError> {
-        let conn = self.conn();
-        let run = run_row(&conn, run_id)?;
-        let mut statement = conn.prepare(
-            "SELECT m.role, m.content FROM agent_messages m JOIN agent_runs r ON r.id = m.run_id \
-             WHERE m.session_id = ?1 AND r.ordinal < ?2 AND m.content <> '' \
-             ORDER BY m.ordinal DESC LIMIT ?3",
-        )?;
-        let mut messages = statement
-            .query_map(
-                params![run.session_id, run.ordinal, HISTORY_WINDOW],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )?
-            .collect::<Result<Vec<_>, _>>()?;
-        drop(statement);
-        messages.reverse();
-        // Failed model replies must not hide already committed effects.
-        let mut statement = conn.prepare(
-            "SELECT t.name, t.status, t.result FROM agent_tool_calls t JOIN agent_runs r ON r.id = t.run_id \
-             WHERE r.session_id = ?1 AND r.ordinal < ?2 AND r.status IN ('failed', 'interrupted') \
-             ORDER BY t.ordinal DESC LIMIT ?3",
-        )?;
-        let unresolved = statement
-            .query_map(
-                params![run.session_id, run.ordinal, UNRESOLVED_TOOL_WINDOW],
-                |row| {
-                    let result: Option<String> = row.get(2)?;
-                    Ok(json!({
-                        "name": row.get::<_, String>(0)?,
-                        "status": row.get::<_, String>(1)?,
-                        "result": result.and_then(|text| serde_json::from_str::<Value>(&text).ok()),
-                    }))
-                },
-            )?
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok((messages, unresolved))
     }
 }
 
@@ -848,6 +901,247 @@ mod tests {
         Utc::now() + Duration::hours(hours)
     }
 
+    /// The pre-memo v1 schema (independent transcription): databases written
+    /// before the memo plugin shipped look exactly like this.
+    const OLD_SCHEMA_V1: &str = "
+CREATE TABLE agent_sessions (
+    id TEXT PRIMARY KEY,
+    seq INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE agent_runs (
+    ordinal INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    session_id TEXT NOT NULL REFERENCES agent_sessions(id),
+    request_id TEXT NOT NULL UNIQUE,
+    input_text TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('queued','running','completed','failed','interrupted')),
+    error TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX agent_runs_queue ON agent_runs(status, ordinal);
+CREATE UNIQUE INDEX agent_one_running_per_session ON agent_runs(session_id) WHERE status = 'running';
+CREATE TABLE agent_messages (
+    ordinal INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    session_id TEXT NOT NULL REFERENCES agent_sessions(id),
+    run_id TEXT NOT NULL REFERENCES agent_runs(id),
+    role TEXT NOT NULL CHECK (role IN ('user','assistant')),
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(run_id, role)
+);
+CREATE INDEX agent_messages_session ON agent_messages(session_id, ordinal);
+CREATE TABLE agent_tool_calls (
+    ordinal INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL UNIQUE,
+    run_id TEXT NOT NULL REFERENCES agent_runs(id),
+    model_call_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    arguments TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('running','completed','failed','needs_reconciliation')),
+    result TEXT,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE(run_id, model_call_id)
+);
+CREATE TABLE todos (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL CHECK (length(trim(title)) BETWEEN 1 AND 2000),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','completed')),
+    source_tool_call_id TEXT UNIQUE REFERENCES agent_tool_calls(id),
+    remind_at TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX todos_created ON todos(created_at, id);
+CREATE INDEX todos_pending_remind_at ON todos(remind_at, id)
+    WHERE status = 'pending' AND remind_at IS NOT NULL;
+CREATE TABLE agent_events (
+    session_id TEXT NOT NULL REFERENCES agent_sessions(id),
+    seq INTEGER NOT NULL,
+    run_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    envelope TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (session_id, seq)
+);
+";
+
+    #[test]
+    fn version_one_databases_gain_the_memos_table_without_losing_todos() {
+        // Seed an old v1 database with an existing todo.
+        let conn = Connection::open_in_memory().unwrap();
+        {
+            conn.execute_batch(OLD_SCHEMA_V1).unwrap();
+            conn.execute_batch("PRAGMA user_version = 1;").unwrap();
+            conn.execute(
+                "INSERT INTO todos(id, title, status, created_at) VALUES (?1, ?2, 'pending', ?3)",
+                params![
+                    "00000000-0000-0000-0000-000000000001",
+                    "既有待办",
+                    now_stamp()
+                ],
+            )
+            .unwrap();
+        }
+        // Opening upgrades in place: existing todos survive and memos work.
+        let store = Store::initialize(conn).unwrap();
+        {
+            let todos = todos(&store).list_todos().unwrap();
+            assert_eq!(todos.len(), 1);
+            assert_eq!(todos[0].title, "既有待办");
+            let memos = crate::local_agent::plugins::memo::MemoStore::new(&store);
+            let memo = memos
+                .create_memo("升级后的备忘", crate::backend::MemoKind::Note, None, None)
+                .unwrap();
+            assert_eq!(memos.list_memos(None, false).unwrap().len(), 1);
+            assert_eq!(memo.status, crate::backend::MemoStatus::Active);
+        }
+        // Initialization commits the version and repeating it is idempotent.
+        let conn = store.conn.into_inner().unwrap();
+        {
+            let version: i64 = conn
+                .query_row("PRAGMA user_version", [], |row| row.get(0))
+                .unwrap();
+            assert_eq!(version, 3);
+        }
+        let store = Store::initialize(conn).unwrap();
+        assert_eq!(todos(&store).list_todos().unwrap().len(), 1);
+        assert_eq!(
+            crate::local_agent::plugins::memo::MemoStore::new(&store)
+                .list_memos(None, false)
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn context_migrations_preserve_v1_v2_records_and_reopen_v3_cache() {
+        for version in [1, 2] {
+            let conn = Connection::open_in_memory().unwrap();
+            conn.execute_batch(if version == 1 {
+                OLD_SCHEMA_V1
+            } else {
+                SCHEMA_V1
+            })
+            .unwrap();
+            conn.pragma_update(None, "user_version", version).unwrap();
+            conn.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+            let old = Store {
+                conn: Mutex::new(conn),
+            };
+            let session = old.create_session().unwrap();
+            let (run, _) = accepted_run(
+                &old,
+                &session,
+                &uuid::Uuid::new_v4().to_string(),
+                "existing source",
+            );
+            let StartedTool::Fresh(tool, _) = old
+                .start_tool(
+                    &run.id,
+                    "existing-call",
+                    "todo_create",
+                    &json!({"title": "existing todo"}),
+                )
+                .unwrap()
+                .unwrap()
+            else {
+                panic!()
+            };
+            todos(&old)
+                .tool_create_todo(&run.id, &tool.id, "existing todo", None)
+                .unwrap();
+            old.append_delta(&run.id, "existing answer").unwrap();
+            old.finish_run(&run.id, RunStatus::Completed, None).unwrap();
+            if version == 2 {
+                crate::local_agent::plugins::memo::MemoStore::new(&old)
+                    .create_memo(
+                        "existing memo",
+                        crate::backend::MemoKind::Note,
+                        Some("existing content"),
+                        None,
+                    )
+                    .unwrap();
+            }
+            let original_snapshot = serde_json::to_value(old.snapshot(&session).unwrap()).unwrap();
+            let original_todos = serde_json::to_value(todos(&old).list_todos().unwrap()).unwrap();
+            let original_events: Vec<String> = old
+                .conn()
+                .prepare("SELECT envelope FROM agent_events ORDER BY seq")
+                .unwrap()
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap();
+
+            let migrated = Store::initialize(old.conn.into_inner().unwrap()).unwrap();
+            assert_eq!(
+                serde_json::to_value(migrated.snapshot(&session).unwrap()).unwrap(),
+                original_snapshot
+            );
+            assert_eq!(
+                serde_json::to_value(todos(&migrated).list_todos().unwrap()).unwrap(),
+                original_todos
+            );
+            let events: Vec<String> = migrated
+                .conn()
+                .prepare("SELECT envelope FROM agent_events ORDER BY seq")
+                .unwrap()
+                .query_map([], |row| row.get(0))
+                .unwrap()
+                .collect::<Result<_, _>>()
+                .unwrap();
+            assert_eq!(events, original_events);
+            let memos = crate::local_agent::plugins::memo::MemoStore::new(&migrated)
+                .list_memos(None, false)
+                .unwrap();
+            assert_eq!(memos.len(), if version == 2 { 1 } else { 0 });
+            if version == 2 {
+                assert_eq!(memos[0].title, "existing memo");
+                assert_eq!(memos[0].content.as_deref(), Some("existing content"));
+            }
+            assert!(migrated
+                .save_context_summary(&session, 0, run.ordinal, "existing history summary")
+                .unwrap());
+            migrated
+                .record_context_metrics(&run.id, 0, &json!({"estimated_input_tokens": 123}))
+                .unwrap();
+            let reopened = Store::initialize(migrated.conn.into_inner().unwrap()).unwrap();
+            let (next, _) = accepted_run(
+                &reopened,
+                &session,
+                &uuid::Uuid::new_v4().to_string(),
+                "next",
+            );
+            let summary = reopened
+                .context_snapshot(&next.id)
+                .unwrap()
+                .summary
+                .unwrap();
+            assert_eq!(summary.revision, 1);
+            assert_eq!(summary.through_ordinal, run.ordinal);
+            assert_eq!(summary.content, "existing history summary");
+            assert_eq!(
+                reopened
+                    .conn()
+                    .query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))
+                    .unwrap(),
+                3
+            );
+            assert_eq!(
+                reopened
+                    .conn()
+                    .query_row("SELECT count(*) FROM context_request_metrics", [], |row| {
+                        row.get::<_, i64>(0)
+                    })
+                    .unwrap(),
+                1
+            );
+        }
+    }
+
     #[test]
     fn submit_is_idempotent_by_request_id() {
         let store = Store::open_memory();
@@ -883,19 +1177,28 @@ mod tests {
         assert_eq!(accepted.seq, Some(1));
         let delta = store.append_delta(&run.id, "好的").unwrap().unwrap();
         assert_eq!(delta.seq, Some(3)); // 1=run.accepted, 2=run.started
-        let finished = store.finish_run(&run.id, RunStatus::Completed, None).unwrap();
+        let finished = store
+            .finish_run(&run.id, RunStatus::Completed, None)
+            .unwrap();
         assert_eq!(seqs(&finished), vec![4]);
         let snapshot = store.snapshot(&session).unwrap();
         assert_eq!(snapshot.seq, 4);
         assert_eq!(snapshot.runs[0].status, RunStatus::Completed);
-        let assistant = snapshot.messages.iter().find(|m| m.role == Role::Assistant).unwrap();
+        let assistant = snapshot
+            .messages
+            .iter()
+            .find(|m| m.role == Role::Assistant)
+            .unwrap();
         assert_eq!(assistant.content, "好的");
         // Applying the same envelopes to a fresh projection lands on the snapshot.
         let mut projection = Snapshot {
             session_id: session.clone(),
             ..Default::default()
         };
-        for envelope in [accepted, claimed.envelope, delta].into_iter().chain(finished) {
+        for envelope in [accepted, claimed.envelope, delta]
+            .into_iter()
+            .chain(finished)
+        {
             assert!(projection.apply(&envelope).unwrap());
         }
         assert_eq!(projection.seq, snapshot.seq);
@@ -907,12 +1210,19 @@ mod tests {
     fn recovery_interrupts_queued_and_running_runs_and_flags_pending_tools() {
         let store = Store::open_memory();
         let session = session(&store);
-        let (run, _) = accepted_run(&store, &session, &uuid::Uuid::new_v4().to_string(), "提醒我");
+        let (run, _) = accepted_run(
+            &store,
+            &session,
+            &uuid::Uuid::new_v4().to_string(),
+            "提醒我",
+        );
         let start = store
             .start_tool(&run.id, "call_1", "todo.create", &json!({"title": "喝水"}))
             .unwrap()
             .unwrap();
-        let StartedTool::Fresh(tool, started) = start else { panic!("fresh tool expected") };
+        let StartedTool::Fresh(tool, started) = start else {
+            panic!("fresh tool expected")
+        };
         assert_eq!(tool.status, ToolStatus::Running);
         assert_eq!(started.kind, "tool.started");
         // A second run stays queued behind the running one.
@@ -926,7 +1236,10 @@ mod tests {
             .runs
             .iter()
             .all(|run| run.status == RunStatus::Interrupted));
-        assert_eq!(snapshot.tool_calls[0].status, ToolStatus::NeedsReconciliation);
+        assert_eq!(
+            snapshot.tool_calls[0].status,
+            ToolStatus::NeedsReconciliation
+        );
         assert_eq!(
             snapshot.tool_calls[0].error.as_deref(),
             Some("执行中断，结果需要核实，未自动重试")
@@ -947,7 +1260,12 @@ mod tests {
     fn repeated_tool_call_returns_committed_outcome_without_rewriting() {
         let store = Store::open_memory();
         let session = session(&store);
-        let (run, _) = accepted_run(&store, &session, &uuid::Uuid::new_v4().to_string(), "提醒我喝水");
+        let (run, _) = accepted_run(
+            &store,
+            &session,
+            &uuid::Uuid::new_v4().to_string(),
+            "提醒我喝水",
+        );
         let arguments = json!({"title": "喝水"});
         let StartedTool::Fresh(tool, _) = store
             .start_tool(&run.id, "call_1", "todo.create", &arguments)
@@ -998,13 +1316,18 @@ mod tests {
         assert!(item["remind_at"].is_string());
 
         // Idempotent retry with the same target succeeds even with a stale expected.
-        let same = todos(&store).set_todo_reminder(&todo_id, Some(target), None).unwrap();
+        let same = todos(&store)
+            .set_todo_reminder(&todo_id, Some(target), None)
+            .unwrap();
         assert!(same.remind_at.is_some());
         // Stale CAS is a conflict; completed todos reject reminders.
         let conflict = todos(&store)
             .set_todo_reminder(&todo_id, Some(future(4)), None)
             .unwrap_err();
-        assert_eq!(conflict, StoreError::Conflict("提醒已被修改，请刷新后重试".into()));
+        assert_eq!(
+            conflict,
+            StoreError::Conflict("提醒已被修改，请刷新后重试".into())
+        );
         let current: DateTime<Utc> = DateTime::parse_from_rfc3339(&same.remind_at.clone().unwrap())
             .unwrap()
             .with_timezone(&Utc);
@@ -1016,17 +1339,27 @@ mod tests {
                 Some(current),
             )
             .unwrap_err();
-        assert_eq!(past, StoreError::Validation("提醒时间必须晚于当前时间".into()));
+        assert_eq!(
+            past,
+            StoreError::Validation("提醒时间必须晚于当前时间".into())
+        );
         // Cancel is explicit and clearing again is a no-op retry.
-        let cleared = todos(&store).set_todo_reminder(&todo_id, None, Some(current)).unwrap();
+        let cleared = todos(&store)
+            .set_todo_reminder(&todo_id, None, Some(current))
+            .unwrap();
         assert!(cleared.remind_at.is_none());
-        let cleared_again = todos(&store).set_todo_reminder(&todo_id, None, Some(current)).unwrap();
+        let cleared_again = todos(&store)
+            .set_todo_reminder(&todo_id, None, Some(current))
+            .unwrap();
         assert!(cleared_again.remind_at.is_none());
         // Completion clears the reminder atomically and is idempotent.
         let completed = todos(&store).complete_todo(&todo_id).unwrap();
         assert_eq!(completed.status, TodoStatus::Completed);
         assert!(completed.remind_at.is_none());
-        assert_eq!(todos(&store).complete_todo(&todo_id).unwrap().status, TodoStatus::Completed);
+        assert_eq!(
+            todos(&store).complete_todo(&todo_id).unwrap().status,
+            TodoStatus::Completed
+        );
         let completed_target = todos(&store)
             .set_todo_reminder(&todo_id, Some(future(5)), None)
             .unwrap_err();
@@ -1039,11 +1372,15 @@ mod tests {
         assert_eq!(reopened.status, TodoStatus::Pending);
         assert!(reopened.remind_at.is_none());
         assert_eq!(
-            todos(&store).complete_todo(&uuid::Uuid::new_v4().to_string()).unwrap_err(),
+            todos(&store)
+                .complete_todo(&uuid::Uuid::new_v4().to_string())
+                .unwrap_err(),
             StoreError::NotFound("未找到可完成的待办，请重新查询并确认事项".into())
         );
         assert_eq!(
-            todos(&store).set_todo_reminder(&uuid::Uuid::new_v4().to_string(), None, None).unwrap_err(),
+            todos(&store)
+                .set_todo_reminder(&uuid::Uuid::new_v4().to_string(), None, None)
+                .unwrap_err(),
             StoreError::NotFound("未找到待办，请刷新核对".into())
         );
     }
@@ -1052,7 +1389,12 @@ mod tests {
     fn create_with_past_reminder_leaves_no_orphan_todo() {
         let store = Store::open_memory();
         let session = session(&store);
-        let (run, _) = accepted_run(&store, &session, &uuid::Uuid::new_v4().to_string(), "提醒我");
+        let (run, _) = accepted_run(
+            &store,
+            &session,
+            &uuid::Uuid::new_v4().to_string(),
+            "提醒我",
+        );
         let StartedTool::Fresh(tool, _) = store
             .start_tool(&run.id, "call_1", "todo.create", &json!({"title": "喝水"}))
             .unwrap()
@@ -1061,11 +1403,22 @@ mod tests {
             panic!("fresh tool expected")
         };
         let error = todos(&store)
-            .tool_create_todo(&run.id, &tool.id, "喝水", Some(Utc::now() - Duration::minutes(5)))
+            .tool_create_todo(
+                &run.id,
+                &tool.id,
+                "喝水",
+                Some(Utc::now() - Duration::minutes(5)),
+            )
             .unwrap_err();
-        assert_eq!(error, StoreError::Validation("提醒时间必须晚于当前时间".into()));
+        assert_eq!(
+            error,
+            StoreError::Validation("提醒时间必须晚于当前时间".into())
+        );
         assert!(todos(&store).list_todos().unwrap().is_empty());
-        let (failed, _) = store.fail_tool(&run.id, &tool.id, &error.message()).unwrap().unwrap();
+        let (failed, _) = store
+            .fail_tool(&run.id, &tool.id, &error.message())
+            .unwrap()
+            .unwrap();
         assert_eq!(failed.status, ToolStatus::Failed);
         assert_eq!(failed.error.as_deref(), Some("提醒时间必须晚于当前时间"));
     }
@@ -1111,49 +1464,6 @@ mod tests {
     }
 
     #[test]
-    fn history_window_and_unresolved_tool_records_match_server_shape() {
-        let store = Store::open_memory();
-        let session = session(&store);
-        for index in 0..30 {
-            let (run, _) = accepted_run(
-                &store,
-                &session,
-                &uuid::Uuid::new_v4().to_string(),
-                &format!("问{index}"),
-            );
-            if index % 3 == 0 {
-                store.append_delta(&run.id, &format!("答{index}")).unwrap();
-            }
-            let status = if index % 5 == 0 {
-                RunStatus::Failed
-            } else {
-                RunStatus::Completed
-            };
-            store.finish_run(&run.id, status, None).unwrap();
-        }
-        // A failed run with a committed tool record contributes to the injection.
-        let (run, _) = accepted_run(&store, &session, &uuid::Uuid::new_v4().to_string(), "创建待办");
-        let StartedTool::Fresh(tool, _) = store
-            .start_tool(&run.id, "call_9", "todo.create", &json!({"title": "已保存"}))
-            .unwrap()
-            .unwrap()
-        else {
-            panic!("fresh tool expected")
-        };
-        todos(&store).tool_create_todo(&run.id, &tool.id, "已保存", None).unwrap();
-        store
-            .finish_run(&run.id, RunStatus::Failed, Some("模型或任务执行失败"))
-            .unwrap();
-        let (current, _) = accepted_run(&store, &session, &uuid::Uuid::new_v4().to_string(), "现在呢");
-        let (messages, unresolved) = store.history(&current.id).unwrap();
-        assert_eq!(messages.len(), HISTORY_WINDOW as usize);
-        assert!(messages.iter().all(|(_, content)| !content.is_empty()));
-        assert!(unresolved.iter().all(|record| record["result"].is_object() || record["result"].is_null()));
-        assert!(unresolved.iter().any(|record| record["name"] == "todo.create"
-            && record["result"]["item"]["title"] == "已保存"));
-    }
-
-    #[test]
     fn direct_todo_writes_validate_and_scope_like_the_server() {
         let store = Store::open_memory();
         // Create validates and strips exactly like the tool/server rule.
@@ -1169,13 +1479,26 @@ mod tests {
         assert_eq!(created.title, "买牛奶");
         assert_eq!(created.status, TodoStatus::Pending);
         assert!(created.remind_at.is_none());
-        assert_eq!(todos(&store).create_todo(&"长".repeat(2000)).unwrap().title.chars().count(), 2000);
+        assert_eq!(
+            todos(&store)
+                .create_todo(&"长".repeat(2000))
+                .unwrap()
+                .title
+                .chars()
+                .count(),
+            2000
+        );
         // Title edits also apply to completed rows; missing/foreign ids share one message.
-        let renamed = todos(&store).update_todo_title(&created.id, " 新标题 ").unwrap();
+        let renamed = todos(&store)
+            .update_todo_title(&created.id, " 新标题 ")
+            .unwrap();
         assert_eq!(renamed.title, "新标题");
         todos(&store).complete_todo(&created.id).unwrap();
         assert_eq!(
-            todos(&store).update_todo_title(&created.id, "完成后改名").unwrap().status,
+            todos(&store)
+                .update_todo_title(&created.id, "完成后改名")
+                .unwrap()
+                .status,
             TodoStatus::Completed
         );
         let missing = uuid::Uuid::new_v4().to_string();
@@ -1190,7 +1513,11 @@ mod tests {
         // Delete is hard: the row is gone and a repeat reports not-found.
         let deleted = todos(&store).delete_todo(&created.id).unwrap();
         assert_eq!(deleted.id, created.id);
-        assert!(todos(&store).list_todos().unwrap().iter().all(|todo| todo.id != created.id));
+        assert!(todos(&store)
+            .list_todos()
+            .unwrap()
+            .iter()
+            .all(|todo| todo.id != created.id));
         for target in [created.id.as_str(), missing.as_str()] {
             assert_eq!(
                 todos(&store).delete_todo(target).unwrap_err(),
@@ -1206,7 +1533,9 @@ mod tests {
     #[test]
     fn reminder_time_parsing_requires_timezone_aware_iso() {
         assert!(parse_reminder_time(&Value::Null).unwrap().is_none());
-        assert!(parse_reminder_time(&json!("2026-09-09T15:15:00+08:00")).unwrap().is_some());
+        assert!(parse_reminder_time(&json!("2026-09-09T15:15:00+08:00"))
+            .unwrap()
+            .is_some());
         assert_eq!(
             parse_reminder_time(&json!("2026-09-09T15:15:00")).unwrap_err(),
             StoreError::Validation("提醒时间必须为有效的带时区 ISO 时间".into())
@@ -1216,7 +1545,9 @@ mod tests {
             StoreError::Validation("提醒时间必须为带时区的 ISO 时间或 null".into())
         );
         // Offset times normalize to a single UTC instant.
-        let parsed = parse_reminder_time(&json!("2026-09-09T15:15:00+08:00")).unwrap().unwrap();
+        let parsed = parse_reminder_time(&json!("2026-09-09T15:15:00+08:00"))
+            .unwrap()
+            .unwrap();
         assert_eq!(normalize_instant(parsed), "2026-09-09T07:15:00.000000Z");
     }
 }

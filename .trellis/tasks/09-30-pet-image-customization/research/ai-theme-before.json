@@ -1,0 +1,38 @@
+{
+  "active_id": "d771bdf2-5251-4eab-9252-766f4ef5254a",
+  "revision": 47,
+  "presets": [
+    {
+      "id": "dd84773e-3883-40d0-8077-0e5a9266606c",
+      "name": "小虎",
+      "theme": null,
+      "badge": "1937e44c-4fc1-4169-941c-ae70e36cb0ca"
+    },
+    {
+      "id": "d771bdf2-5251-4eab-9252-766f4ef5254a",
+      "name": "三花",
+      "theme": {
+        "palette": "character",
+        "primary": "#cc976d",
+        "secondary": "#ab7751",
+        "strength": 90
+      },
+      "badge": null
+    }
+  ],
+  "job_request_count": 4,
+  "badge_request_count": 1,
+  "asset_hashes": {
+    "assets/dd84773e-3883-40d0-8077-0e5a9266606c/happy.png": "27a01a0fef579dbead92ff5fa7690a570eb91536d3245c338e687c65a4e3aa57",
+    "assets/dd84773e-3883-40d0-8077-0e5a9266606c/badge-1937e44c-4fc1-4169-941c-ae70e36cb0ca.png": "38f11f755feca48c4008c1fa4690b4f831b3608fafad12eb832fd25d9c0a0373",
+    "assets/dd84773e-3883-40d0-8077-0e5a9266606c/talk.png": "67f2342abe45a063e438879259208c91cf331547d55933edc30110448e9f27e3",
+    "assets/dd84773e-3883-40d0-8077-0e5a9266606c/closed.png": "cb6209817d41809f4c1c0e7d39948b240b10a3b2e804b697b851e400769000d8",
+    "assets/dd84773e-3883-40d0-8077-0e5a9266606c/base.png": "21bfcdc7473d9391c3aa7e965d40db1ce1bea4cd69961852c660c2285b7fccbe",
+    "assets/dd84773e-3883-40d0-8077-0e5a9266606c/reference-0.png": "345da229228a0daf63db1532b0b92d90343db25f7837c14a48bfd134b9ba83b0",
+    "assets/d771bdf2-5251-4eab-9252-766f4ef5254a/happy.png": "ad5ee541a9908565004d72941518f0da4e386f2fa5d446a88b6c11e98f439dc5",
+    "assets/d771bdf2-5251-4eab-9252-766f4ef5254a/talk.png": "47e7e80922d2b97e5f41cf20bd82d3960df3b07a5da8306e5d00c92cdac57436",
+    "assets/d771bdf2-5251-4eab-9252-766f4ef5254a/closed.png": "dd015079967cb21a7111b5d7ffd2700f0acd90f358b7d693c491905adbcb71ca",
+    "assets/d771bdf2-5251-4eab-9252-766f4ef5254a/base.png": "5aef864283b6f7fe88cc98613097d666a7a72c3989a3051375a7f8eca65834cd",
+    "assets/d771bdf2-5251-4eab-9252-766f4ef5254a/reference-0.png": "a6e46aa07e18dbda82eb71f673366d774c909ce57582210d1e8e9b9ce13c0097"
+  }
+}

@@ -24,7 +24,7 @@ vi.mock('react', async original => ({
 }))
 vi.mock('../lib/useCustomization', () => ({ useCustomization: () => ({ view: host.view, available: true, error: null, mutate: host.mutate }) }))
 import { PetCustomization } from './PetCustomization'
-import { PetThemePicker } from './PetThemePicker'
+import { PetThemePreview } from './PetThemePicker'
 type Props = { children?: ReactNode; ref?: { current: unknown }; type?: string; value?: string; placeholder?: string; disabled?: boolean; onClick?: () => void; onChange?: (event: { target: { value: string } }) => void; 'aria-expanded'?: boolean }
 function flatten(node: ReactNode): ReactElement<Props>[] {
   if (Array.isArray(node)) return node.flatMap(flatten)
@@ -97,18 +97,12 @@ it('reuses a paid candidate only by explicit local selection and preserves omiss
 })
 
 
-it('keeps theme selection local and saves the complete theme only on explicit save', async () => {
+it('shows a saved theme without fixed palette controls or analysis side effects', () => {
   const id = 'pet'
   host.view = { revision: 1, active_id: id, presets: [{ id, name: '三花', accent: '#d39964', created_at: '', assets: {} as never }], job: null, settings: { base_url: '', model: '', has_key: false }, warning: null }
   render()
   tree.find(node => node.type === 'button' && JSON.stringify(node.props.children).includes('三花'))!.props.onClick!(); render()
-  const picker = tree.find(node => node.type === PetThemePicker)!
-  const theme = { palette: 'rose', primary: '#c86a91', secondary: '#b695ca', strength: 80 }
-  ;(picker.props as unknown as { onChange: (value: unknown) => void }).onChange(theme)
-  render(); expect(host.mutate).not.toHaveBeenCalled()
-  tree.find(node => node.type === 'input' && node.props.type === undefined && node.props.value === '')!.props.onChange!({ target: { value: '三花' } }); render()
-  host.mutate.mockResolvedValue(host.view)
-  tree.find(node => node.type === 'button' && node.props.children === '保存修改')!.props.onClick!()
-  await Promise.resolve(); await Promise.resolve()
-  expect(host.mutate).toHaveBeenCalledWith('update', { id, name: '三花', accent: '#c86a91', theme })
+  expect(tree.some(node => node.type === PetThemePreview)).toBe(true)
+  expect(tree.some(node => node.type === 'input' && node.props.type === 'color')).toBe(false)
+  expect(host.mutate).not.toHaveBeenCalled()
 })

@@ -1,0 +1,347 @@
+/* Host geometry belongs here. The backing is measured by the native host;
+   panel contents remain in normal flow within the component's three slots. */
+.desktop-pet-app {
+  --pet-width: 232px;
+  --pet-height: 380.9px;
+  --dock-right: 210.7px;
+  --dock-bottom: 55px;
+  --scene-inset: clamp(16px, 4.25vw, 40px);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  user-select: none;
+}
+
+.pet-stage {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--pet-width, 232px);
+  height: var(--pet-height, 380.9px);
+  z-index: var(--z-pet, 3);
+  pointer-events: none;
+  touch-action: none;
+}
+.pet-shell.pet-chat-closed .pet-stage { inset: 0; }
+.closed-reference-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.pet-character-hitbox {
+  position: absolute;
+  inset: 0 5px 50px 14px;
+  z-index: 1;
+  border-radius: 48%;
+  cursor: grab;
+  pointer-events: auto;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.pet-stage .pet-character-hitbox:focus-visible {
+  outline: none;
+}
+.pet-stage-reference-closed:has(> .pet-character-hitbox:focus-visible) .closed-reference-art {
+  filter:
+    drop-shadow(0 1px 1px rgba(255, 253, 250, 0.96))
+    drop-shadow(0 2px 3px var(--focus-accent, #a45831));
+}
+
+/* Ambient life for the reference cat. The art touches every edge of the
+   fixed 232x380.9 backing, so motion stays transform-only and within its
+   bounds: lifts never exceed the ~3px top headroom, accents squash toward
+   the anchored base instead of hopping past it. */
+.pet-closed-figure,
+.pet-closed-accent {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+}
+.pet-closed-figure { animation: pet-breathe 3.8s ease-in-out infinite; }
+.pet-state-sleeping .pet-closed-figure {
+  animation-name: pet-breathe-deep;
+  animation-duration: 6.4s;
+}
+.pet-state-happy .pet-closed-accent { animation: pet-delight 560ms cubic-bezier(0.16, 1, 0.3, 1) 1; }
+.pet-state-curious .pet-closed-accent { animation: pet-peek 900ms cubic-bezier(0.16, 1, 0.3, 1) 1; }
+.pet-state-thinking .pet-closed-accent { animation: pet-sway 4.8s ease-in-out infinite; }
+.pet-state-talking .pet-closed-accent { animation: pet-nod 1.15s ease-in-out infinite; }
+
+@keyframes pet-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1.4px) scale(1.003); }
+}
+@keyframes pet-breathe-deep {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1.8px) scale(1.0035); }
+}
+@keyframes pet-delight {
+  0% { transform: scale(1, 1); }
+  35% { transform: scale(1.006, 0.955); }
+  100% { transform: scale(1, 1); }
+}
+@keyframes pet-peek {
+  0% { transform: translateX(0) rotate(0deg); }
+  35% { transform: translateX(2px) rotate(0.55deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+@keyframes pet-sway {
+  0%, 100% { transform: rotate(-0.5deg); }
+  50% { transform: rotate(0.5deg); }
+}
+@keyframes pet-nod {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.002, 0.992); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-closed-figure,
+  .pet-closed-accent { animation: none; }
+}
+.pet-character-hitbox:focus-visible .pet-render-stage,
+.pet-character-hitbox:focus-visible .pet-preview {
+  filter:
+    drop-shadow(0 9px 8px rgba(67, 20, 7, 0.22))
+    drop-shadow(0 1px 1px rgba(255, 253, 250, 0.96))
+    drop-shadow(0 2px 3px var(--focus-accent, #a45831));
+}
+.pet-state-error .pet-character-hitbox:focus-visible .pet-render-stage,
+.pet-state-error .pet-character-hitbox:focus-visible .pet-preview {
+  filter:
+    grayscale(0.2)
+    drop-shadow(0 10px 9px rgba(67, 20, 7, 0.18))
+    drop-shadow(0 1px 1px rgba(255, 253, 250, 0.96))
+    drop-shadow(0 2px 3px var(--focus-accent, #a45831));
+}
+.pet-character-hitbox:active,
+.pet-stage.is-dragging .pet-character-hitbox { cursor: grabbing; }
+
+.pet-shell .chat-panel.is-attached {
+  position: absolute;
+  z-index: var(--z-panel, 2);
+  right: var(--dock-right);
+  bottom: var(--dock-bottom);
+}
+.pet-shell.pet-chat-compact .chat-panel.is-attached {
+  top: auto;
+  left: auto;
+  width: min(475px, calc(100% - var(--dock-right) - 20px));
+  height: 278px;
+}
+.pet-shell.pet-chat-expanded .chat-panel.is-attached {
+  top: var(--scene-inset);
+  left: var(--scene-inset);
+  right: calc(var(--dock-right) + 13.3px);
+}
+.pet-chat-scene.pet-chat-compact {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: min(713px, 100%);
+  height: min(401px, 100%);
+}
+.pet-chat-scene.pet-chat-expanded { width: 100%; height: 100%; }
+.pet-chat-scene .chat-header { touch-action: none; }
+
+/* Replace only the original disk front while the continuous dock is visible. */
+.pet-shell.pet-panel-visible .closed-reference-art,
+.pet-shell:not(.pet-chat-closed):has(.chat-panel.is-integrated:not(.is-hidden)) .closed-reference-art {
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 96% 80%, 90% 82%, 73% 83.3%, 44% 83.3%, 22% 82%, 9% 80%, 0 77%);
+}
+
+/* Small viewports reflow the title/actions instead of reducing the cat or
+   scaling typography. The two outer grid axes remain fixed to the dock. */
+@media (max-width: 720px) {
+  .pet-chat-scene { --scene-inset: 16px; }
+}
+
+/* Companion composition: native preferences size the backing. Percent geometry
+   follows its actual viewport; the legacy reference/QA hosts above stay intact. */
+.companion-host { --pet-height: 340px; }
+.companion-host .pet-stage-companion { width: 100%; height: 100%; }
+.companion-cat-motion {
+  position: absolute;
+  inset: 4px 4px 65px;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  animation: companion-breathe 6s ease-in-out infinite;
+}
+.companion-cat-art { display: block; width: 100%; height: 100%; overflow: visible; }
+.pet-stage-companion.pet-state-happy .companion-cat-motion { animation: companion-nuzzle 1.1s var(--ease-standard) both; }
+.pet-stage-companion.pet-state-sleeping .companion-cat-motion { animation: companion-rest 8s ease-in-out infinite; }
+.pet-stage-companion.is-dragging .companion-cat-motion { animation: none; }
+.pet-stage-companion .pet-character-hitbox { inset: 5% 6% 68px 9%; border-radius: 45% 45% 32% 32%; }
+.pet-stage-companion:has(.pet-character-hitbox:focus-visible) .companion-cat-art {
+  filter: drop-shadow(0 1px 1px var(--surface-raised)) drop-shadow(0 2px 2px var(--focus-accent));
+}
+.companion-feedback {
+  position: absolute;
+  bottom: 4px;
+  inset-inline: 8px;
+  min-height: 18px;
+  text-align: center;
+  color: var(--companion-muted, var(--muted));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  text-shadow: 0 1px 3px var(--surface-raised), 0 0 5px var(--surface-raised);
+}
+.companion-actions {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: max-content;
+  padding: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.companion-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--companion-ink, var(--ink));
+  background: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  transition: color var(--motion-fast), background-color var(--motion-fast);
+}
+.companion-actions .companion-menu-button {
+  width: 32px;
+  padding: 0;
+  color: var(--companion-ink, #6c4631);
+  background: var(--companion-surface, #fffaf4);
+  box-shadow: none;
+}
+.companion-actions button:hover:not(:disabled) {
+  color: var(--companion-ink, var(--ink));
+  background: var(--companion-chrome, var(--surface-soft));
+}
+.companion-actions button:active:not(:disabled) { background: var(--companion-line, var(--rule)); }
+.companion-actions button:focus-visible {
+  position: relative;
+  outline: 2px solid var(--companion-focus, var(--focus-accent));
+  outline-offset: 1px;
+}
+.companion-actions button:disabled { color: var(--companion-muted, var(--muted)); opacity: .65; }
+.companion-actions .companion-chat-button { color: var(--companion-action-ink, #704021); background: var(--companion-action, #f4bd7e); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6); }
+.companion-actions .companion-chat-button:hover:not(:disabled) { color: var(--companion-action-ink, #704021); background: var(--companion-action-hover, #efb174); }
+.companion-actions .companion-chat-button:active:not(:disabled) { background: var(--companion-action-hover, #efb174); box-shadow: inset 0 1px 3px rgba(123, 75, 38, .2); }
+.companion-actions .companion-chat-button:disabled { color: var(--companion-muted, #8b6753); background: var(--companion-selected, #ffe4bf); box-shadow: none; opacity: 1; }
+.companion-action-error {
+  position: absolute;
+  top: 8px;
+  inset-inline: 8px;
+  z-index: 3;
+  padding: 9px 11px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  background: var(--surface-raised);
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: var(--shadow-surface);
+  pointer-events: auto;
+}
+.companion-chat-host { width: 100%; height: 100%; --companion-origin-x: 100%; }
+.companion-chat-host[data-panel-side="right"] { --companion-origin-x: 0%; }
+.companion-chat-host .chat-panel.is-companion {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+}
+.companion-chat-host.pet-chat-compact .chat-panel.is-companion { width: 420px; height: 380px; }
+.companion-chat-host[data-panel-side="right"] .chat-panel.is-companion { right: auto; left: 12px; }
+.companion-chat-host.pet-chat-expanded .chat-panel.is-companion { inset: 12px; width: auto; height: auto; }
+.companion-chat-host.has-pet-anchor .chat-panel.is-companion {
+  inset: var(--companion-panel-y) auto auto var(--companion-panel-x);
+  width: var(--companion-panel-width);
+  height: var(--companion-panel-height);
+  z-index: 1;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.companion-panel-silhouette {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: var(--companion-surface, #fffaf4);
+  stroke: var(--companion-line, #eed8bf);
+  stroke-width: 1px;
+  filter: drop-shadow(var(--companion-shadow-panel));
+  pointer-events: none;
+  user-select: none;
+}
+.companion-chat-host:has(> .chat-panel.is-entering) > .companion-panel-silhouette {
+  animation: companion-panel-arrive 180ms var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+.companion-chat-host .chat-header { touch-action: none; }
+.companion-browser-menu,
+.companion-browser-recovery {
+  position: absolute;
+  inset: auto 8px 49px;
+  z-index: 5;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--companion-line, #eed8bf);
+  border-radius: 20px;
+  background: var(--companion-surface, #fffaf4);
+  box-shadow: var(--companion-shadow-panel);
+  color: var(--companion-ink, #6c4631);
+  font-size: 12px;
+}
+.companion-browser-menu button,
+.companion-browser-recovery button { min-height: 32px; padding: 5px 8px; background: transparent; border: 0; border-radius: 999px; color: inherit; }
+.companion-browser-menu button:hover,
+.companion-browser-menu button[aria-pressed="true"] { background: var(--companion-selected, #ffe4bf); color: var(--companion-action-ink, #704021); }
+.companion-size-choices { display: flex; }
+.companion-size-choices button { flex: 1; }
+.companion-browser-menu button:focus-visible,
+.companion-browser-recovery button:focus-visible { outline: 2px solid var(--companion-focus, #ae6739); outline-offset: 1px; }
+.companion-browser-menu button:disabled { background: var(--companion-chrome, #fff0dd); color: var(--companion-muted, #8b6753); }
+.companion-browser-panel { position: fixed; right: 12px; bottom: 12px; width: min(720px, calc(100vw - 24px)); height: min(680px, calc(100vh - 24px)); z-index: 6; }
+@keyframes companion-breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.004); } }
+@keyframes companion-nuzzle { 0%, 100% { transform: rotate(0); } 35% { transform: rotate(-1deg) translateY(-2px); } 70% { transform: rotate(.4deg); } }
+@keyframes companion-rest { 0%, 100% { transform: scaleY(.99); } 50% { transform: scaleY(.994); } }
+@media (prefers-reduced-motion: reduce) {
+  .companion-chat-host:has(> .chat-panel.is-entering) > .companion-panel-silhouette { animation: none; }
+  .pet-stage.pet-stage-companion .companion-cat-motion { animation: none; transform: none; }
+  .companion-actions button { transition: none; }
+}
+
+/* Generated pets have real alpha and normalized registration; never use the white-cat matte. */
+.companion-custom-art { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; user-select: none; -webkit-user-drag: none; }
+[data-custom-pet] .companion-actions button { box-shadow: none; }
+[data-custom-pet] .companion-actions button:active { box-shadow: none; }
+.pet-stage-companion:has(.pet-character-hitbox:focus-visible) .companion-custom-art { filter: drop-shadow(0 1px 1px var(--companion-surface)) drop-shadow(0 2px 2px var(--companion-focus)); }
+[data-designed-pet] .companion-actions button { border-radius: var(--companion-control-radius); }
+[data-designed-pet] .companion-actions .companion-chat-button { border: var(--companion-border-width) solid var(--companion-action-border); box-shadow: var(--companion-material-inset); }

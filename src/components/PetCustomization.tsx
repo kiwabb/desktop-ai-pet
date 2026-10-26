@@ -4,13 +4,25 @@ import { useCustomization } from '../lib/useCustomization'
 import { loadPetBadge, loadPetSprites, PET_KINDS, PET_KIND_LABELS, readReference, validateReferenceFiles } from '../lib/customization'
 import type { BadgeUpdate, PetKind, PetSprites, PetTheme } from '../lib/customization'
 import { presetTheme } from '../lib/customization-theme'
-import { PetThemePicker } from './PetThemePicker'
+import { PetThemePreview } from './PetThemePicker'
+import { ReferenceThemeQueue } from '../lib/reference-theme-queue'
 import './PetCustomization.css'
 import { BadgeMark } from './CompanionBadge'
 
 export function PetCustomization({ hidden = false }: { hidden?: boolean }) {
   const { view, available, error: syncError, refresh, mutate, activate } = useCustomization()
+  useEffect(() => {
+    if (hidden || !available) return
+    let disposed = false
+    void refresh().catch(() => { if (!disposed) setError('主题服务信息读取失败，请重新读取定制信息。') })
+    return () => { disposed = true }
+  }, [hidden, available, refresh])
   const [files, setFiles] = useState<File[]>([])
+  const [selectionId, setSelectionId] = useState<string | null>(null)
+  const [preparingTheme, setPreparingTheme] = useState(false)
+  const themeQueue = useRef<ReferenceThemeQueue | null>(null)
+  if (!themeQueue.current) themeQueue.current = new ReferenceThemeQueue(mutate)
+  useEffect(() => () => themeQueue.current?.dispose(), [])
   const [references, setReferences] = useState<string[]>([])
   const [name, setName] = useState('我的伙伴')
   const [selected, setSelected] = useState<string | null>(null)
@@ -97,16 +109,21 @@ export function PetCustomization({ hidden = false }: { hidden?: boolean }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) }
     finally { busyRef.current = false; setBusy(false) }
   }
-  function addFiles(next: File[]) {
-    try { const combined = [...files, ...next]; validateReferenceFiles(combined); setFiles(combined); setError(null) }
-    catch (cause) { setError((cause as Error).message) }
+  function selectFiles(next: File[]) {
+    try {
+      if (next.length) validateReferenceFiles(next)
+      const selection = crypto.randomUUID()
+      setFiles(next); setSelectionId(selection); setError(null); setPreparingTheme(next.length > 0)
+      themeQueue.current!.select(next.length ? signal => Promise.all(next.map(file => readReference(file, signal))) : null, selection, setError, () => setPreparingTheme(false))
+    } catch (cause) { setError((cause as Error).message) }
   }
+  function addFiles(next: File[]) { selectFiles([...files, ...next]) }
   async function generate() {
     await run(async () => {
       validateReferenceFiles(files)
       if (!name.trim() || [...name.trim()].length > 40) throw new Error('请填写 1–40 个字的伙伴名字。')
-      const images = await Promise.all(files.map(readReference))
-      await mutate('start', { name: name.trim(), images })
+      if (!themeReady || !themeDraft) throw new Error('请等待这组图片的主题设计完成。')
+      await mutate('start', { name: name.trim(), draftId: themeDraft.id, themeAttempt: themeDraft.attempt })
     })
   }
   async function savePreset() {
@@ -114,6 +131,8 @@ export function PetCustomization({ hidden = false }: { hidden?: boolean }) {
     await mutate('update', { id: preset.id, name: rename.trim(), accent, ...(theme ? { theme } : {}), ...(badgeDraft ? { badge: badgeDraft } : {}) })
     setBadgeDraft(undefined)
   }
+  const themeDraft = view?.theme_draft?.selection_id === selectionId ? view.theme_draft : null
+  const themeReady = !!selectionId && files.length > 0 && !preparingTheme && themeDraft?.status === 'ready' && !!themeDraft.theme
   const configured = !!view?.settings.base_url && !!view.settings.model
   const previewStyle = presetTheme(accent, theme)
   const retryDisclosure = <p className="customization-disclosure">发送到 <strong>{view?.settings.base_url || '尚未配置服务'}</strong>，模型 <strong>{view?.settings.model || '尚未配置'}</strong>。重做陪伴形象为 4 次请求，其余单个状态为 1 次；按实际服务计费。</p>
@@ -139,7 +158,7 @@ export function PetCustomization({ hidden = false }: { hidden?: boolean }) {
       <div className="customization-portrait">{sprites ? <img src={sprites[kind]} alt={`${preset.name}的${PET_KIND_LABELS[kind]}形象`} /> : <p>正在读取形象…</p>}</div>
       <div className="customization-states" aria-label="预览动作">{PET_KINDS.map(state => <button type="button" key={state} aria-pressed={kind === state} onClick={() => setKind(state)}>{PET_KIND_LABELS[state]}</button>)}</div>
       <p className="customization-hint">确认四个状态是同一个伙伴，毛发边缘和落脚点自然，再应用。</p>
-      <PetThemePicker accent={accent} colors={preset.colors} value={theme} onChange={next => { setTheme(next); setAccent(next.primary) }} onReset={() => { setTheme(preset.theme ?? undefined); setAccent(preset.accent) }} />
+      <PetThemePreview accent={accent} theme={theme} saved />
       <div className="customization-badge" aria-label="配套猫爪">
         <div className="customization-badge-preview"><BadgeMark src={badgeSrc} className="customization-badge-mark" /><div><h3>它的专属猫爪</h3><p>{badgeLoading ? '正在读取标志…' : badgeDraft ? '预览中，保存后才会替换面板标志。' : '根据这只伙伴的模样，生成同色系小猫爪。'}</p></div></div>
         <div className="customization-actions"><button type="button" disabled={busy || running || !available || !configured} onClick={() => void run(() => mutate('badge_start', { id: preset.id }))}><ImagePlus size={15} aria-hidden="true" />{badgeJob?.status === 'running' ? '正在生成猫爪…' : badgeJob ? '重新生成猫爪' : '生成配套猫爪'}</button>
@@ -163,13 +182,23 @@ export function PetCustomization({ hidden = false }: { hidden?: boolean }) {
 
     {!preset && <div className="customization-create">
       <label className="customization-name">给它一个名字<input value={name} maxLength={40} onChange={event => setName(event.target.value)} disabled={running || busy} placeholder="例如：团团" /></label>
-      <div className="customization-reference-grid">{files.map((file, index) => <div className="customization-reference" key={`${file.name}-${index}`}><img src={references[index]} alt={`参考图 ${index + 1}：${file.name}`} /><button type="button" disabled={busy || running} aria-label={`移除参考图${index + 1}`} onClick={() => setFiles(previous => previous.filter((_, i) => i !== index))}><X size={14} aria-hidden="true" /></button></div>)}
-        {files.length < 4 && <label className={`customization-upload${busy || running ? ' is-disabled' : ''}`}><Upload size={22} aria-hidden="true" /><span>{files.length ? '再加一张' : '上传参考图'}</span><input type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={busy || running || !available} onChange={event => { addFiles(Array.from(event.target.files ?? [])); event.target.value = '' }} /></label>}
+      <div className="customization-import-intro"><h3>导入图片，AI 为它设计主题</h3><p>AI 会看角色的颜色与气质，设计面板、按钮和材质。</p>
+        {view?.theme_service?.available ? <p className="customization-disclosure">添加或移除图片会自动发送这组图片到 <strong>{view.theme_service.base_url}</strong>，由 <strong>{view.theme_service.model}</strong> 设计主题，每次 1 次模型请求；后续生成桌宠另需 4 次图片请求。</p> : <p className="customization-notice">先在右上角助手设置中连接支持看图的聊天模型，再导入参考图。</p>}
+      </div>
+      <div className="customization-reference-grid">{files.map((file, index) => <div className="customization-reference" key={`${file.name}-${index}`}><img src={references[index]} alt={`参考图 ${index + 1}：${file.name}`} /><button type="button" disabled={busy || running} aria-label={`移除参考图${index + 1}`} onClick={() => selectFiles(files.filter((_, i) => i !== index))}><X size={14} aria-hidden="true" /></button></div>)}
+        {files.length < 4 && <label className={`customization-upload${busy || running ? ' is-disabled' : ''}`}><Upload size={22} aria-hidden="true" /><span>{files.length ? '再加一张' : '上传参考图'}</span><input type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={busy || running || !available || !view?.theme_service?.available} onChange={event => { addFiles(Array.from(event.target.files ?? [])); event.target.value = '' }} /></label>}
       </div>
       <p className="customization-hint">选择同一个角色的 1–4 张清晰照片或插画。PNG / JPEG / WebP，每张最多 10 MB，合计 30 MB。</p>
+      {files.length > 0 && <div className="customization-theme-progress" aria-live="polite">
+        {(preparingTheme || themeDraft?.status === 'running') && <p><LoaderCircle size={17} className="customization-spinner" aria-hidden="true" />{preparingTheme ? '正在检查参考图…' : 'AI 正在看图，设计专属主题…'}</p>}
+        {themeDraft && <p className="customization-hint">主题分析已发起 {themeDraft.request_count} 次请求。</p>}
+        {themeDraft?.error && <p className="customization-error" role="alert">{themeDraft.error}</p>}
+        {themeDraft && ['failed', 'cancelled', 'interrupted'].includes(themeDraft.status) && <button type="button" disabled={busy || running || preparingTheme} onClick={() => void run(() => mutate('theme_retry', { id: themeDraft.id }))}><RotateCcw size={14} aria-hidden="true" />重新设计主题</button>}
+        {themeReady && <PetThemePreview accent={themeDraft!.theme!.primary} theme={themeDraft!.theme!} />}
+      </div>}
       <div className="customization-provider"><div><strong>{configured ? '图片服务已配置' : '先连接图片服务'}</strong><p>{configured ? view?.settings.model : '与聊天服务分开，图片只在你开始生成后发送。'}</p></div><button ref={settingsButtonRef} type="button" aria-expanded={settingsOpen} onClick={() => { settingsFocusPending.current = true; setSettingsOpen(value => !value) }}>{settingsOpen ? '收起设置' : configured ? '修改服务' : '配置服务'}</button></div>
       {configured && <p className="customization-disclosure">点击开始将把参考图发送到 <strong>{view?.settings.base_url}</strong>，通常发起 4 次图片请求。服务商按实际调用计费，取消不能保证停止计费。</p>}
-      <button type="button" className="customization-primary customization-generate" disabled={!available || !configured || !files.length || !name.trim() || busy || running} onClick={() => void generate()}><ImagePlus size={17} aria-hidden="true" />生成我的桌宠</button>
+      <button type="button" className="customization-primary customization-generate" disabled={!available || !configured || !files.length || !themeReady || !name.trim() || busy || running} onClick={() => void generate()}><ImagePlus size={17} aria-hidden="true" />生成我的桌宠</button>
     </div>}
 
     {settingsOpen && <form className="customization-settings" onSubmit={event => { event.preventDefault(); void run(async () => { await mutate('save_settings', { settings: { base_url: baseUrl.trim(), model: model.trim(), api_key: key, clear_key: clearKey } }); setKey(''); setClearKey(false); settingsDirty.current = false }, '图片服务设置已保存；尚未发起生成请求。') }}>

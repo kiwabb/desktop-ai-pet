@@ -21,6 +21,7 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
 | [Native pet windows](./native-pet-windows.md) | Fixed cat surface, chat lifecycle and native evidence | Active |
+| [Companion experience](./companion-experience.md) | Current pet interactions, independent window geometry, preferences and tray recovery | Active; supersedes legacy attached geometry |
 
 ---
 

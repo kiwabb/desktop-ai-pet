@@ -1,6 +1,6 @@
 import { Check, Copy } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import type { ComponentPropsWithoutRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
+import type { ComponentPropsWithoutRef, KeyboardEvent } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -9,22 +9,27 @@ import './MessageContent.css'
 
 function CodeBlock({ children }: ComponentPropsWithoutRef<'pre'>) {
   const codeRef = useRef<HTMLPreElement>(null)
+  const copyIntentRef = useRef(0)
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
 
   useEffect(() => {
+    copyIntentRef.current += 1
     setCopyState('idle')
   }, [children])
+
+  useEffect(() => () => { copyIntentRef.current += 1 }, [])
 
   async function copyCode() {
     const text = codeRef.current?.textContent
     if (text === undefined || text === null) return
+    const intent = ++copyIntentRef.current
     try {
       await navigator.clipboard.writeText(text)
       // Streaming can extend a block while the clipboard write is pending.
-      setCopyState(codeRef.current?.textContent === text ? 'copied' : 'idle')
+      if (intent === copyIntentRef.current) setCopyState(codeRef.current?.textContent === text ? 'copied' : 'idle')
     }
     catch {
-      setCopyState('error')
+      if (intent === copyIntentRef.current) setCopyState('error')
     }
   }
 
@@ -37,8 +42,27 @@ function CodeBlock({ children }: ComponentPropsWithoutRef<'pre'>) {
   )
 }
 
+function handleTableKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+  const table = event.currentTarget
+  if (event.defaultPrevented || event.target !== table || table.ownerDocument.activeElement !== table
+    || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+    || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229
+    || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
+  const maximum = table.scrollWidth - table.clientWidth
+  if (maximum <= 0 || table.clientWidth <= 0) return
+  const step = Math.min(160, Math.max(48, table.clientWidth * .6))
+  const left = Math.max(0, Math.min(maximum, table.scrollLeft + (event.key === 'ArrowRight' ? step : -step)))
+  event.preventDefault()
+  table.scrollTo({ left, behavior: 'instant' })
+}
+
+function MessageTable({ children }: ComponentPropsWithoutRef<'table'>) {
+  return <div className="message-table-scroll" role="region" aria-label="回复中的表格" tabIndex={0} onKeyDown={handleTableKeyDown}><table>{children}</table></div>
+}
+
 const components = {
   pre: CodeBlock,
+  table: MessageTable,
   a: ({ href, children }: ComponentPropsWithoutRef<'a'>) => {
     const safeHref = href && safeMessageUrl(href)
     return safeHref ? <a href={safeHref} target="_blank" rel="noopener noreferrer">{children}</a> : <span>{children}</span>
@@ -47,6 +71,6 @@ const components = {
   img: ({ alt }: ComponentPropsWithoutRef<'img'>) => <span className="message-image-description">{alt ? `图片：${alt}` : '图片（未自动加载）'}</span>,
 }
 
-export function MessageContent({ content }: { content: string }) {
+export const MessageContent = memo(function MessageContent({ content }: { content: string }) {
   return <div className="message-markdown"><Markdown remarkPlugins={[remarkGfm]} skipHtml urlTransform={safeMessageUrl} components={components}>{content}</Markdown></div>
-}
+})

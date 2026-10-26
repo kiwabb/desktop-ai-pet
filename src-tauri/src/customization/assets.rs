@@ -449,3 +449,13 @@ mod badge_tests {
         assert!(validate_badge(b"bad").is_err());
     }
 }
+
+/// Bounded vision input, derived from our normalized copy, without extra metadata.
+pub fn vision_reference(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    let image = decode(bytes, true)?.thumbnail(768, 768);
+    let mut output = std::io::Cursor::new(Vec::new());
+    image
+        .write_to(&mut output, image::ImageFormat::Png)
+        .map_err(|_| "无法准备主题参考图")?;
+    Ok(output.into_inner())
+}

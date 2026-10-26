@@ -7,9 +7,9 @@ mod store;
 
 pub use store::TodoStore;
 
+use crate::agent_protocol::{Envelope, ToolCall};
 use crate::local_agent::plugin_runtime::ToolPlugin;
 use crate::local_agent::store::{parse_reminder_time, Store, StoreError};
-use crate::agent_protocol::{Envelope, ToolCall};
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::any::Any;
@@ -64,11 +64,14 @@ fn validated_arguments(business_name: &str, arguments: &Value) -> Result<Params,
             })
         }
         "todo.reminder.set" => {
-            if object.len() != 3 || extra_keys(object, &["todo_id", "remind_at", "expected_remind_at"]) {
+            if object.len() != 3
+                || extra_keys(object, &["todo_id", "remind_at", "expected_remind_at"])
+            {
                 return Err(manifest::validation_message("reminder_set_keys").into());
             }
             let todo_id = uuid_argument(&object["todo_id"], "todo_id 必须为 UUID")?;
-            let remind_at = parse_reminder_time(&object["remind_at"]).map_err(|error| error.message())?;
+            let remind_at =
+                parse_reminder_time(&object["remind_at"]).map_err(|error| error.message())?;
             let expected = parse_reminder_time(&object["expected_remind_at"])
                 .map_err(|error| error.message())?;
             Ok(Params::ReminderSet {
@@ -148,7 +151,9 @@ impl ToolPlugin for TodoPlugin {
         tool: &ToolCall,
         params: Box<dyn Any>,
     ) -> Result<(ToolCall, Envelope), StoreError> {
-        let params = params.downcast::<Params>().map_err(|_| StoreError::Internal)?;
+        let params = params
+            .downcast::<Params>()
+            .map_err(|_| StoreError::Internal)?;
         let todos = TodoStore::new(store);
         match *params {
             Params::Create { title, remind_at } => {

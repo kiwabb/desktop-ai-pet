@@ -1,5 +1,7 @@
 //! Local run executor: submit → durable acceptance → claim loop → tool loop,
 //! mirroring `server/app/agent_service.py` against the local SQLite store.
+use super::context::{AssembledContext, ContextPlan};
+use super::context_summary;
 use super::plugin_runtime;
 use super::prompts;
 use super::store::{RunRow, Store, StoreError};
@@ -21,7 +23,12 @@ const MAX_AGENT_STEPS: usize = 8;
 /// Applies durable store envelopes through the same Snapshot projection the
 /// server mode uses; on any gap the whole snapshot is re-read from the store.
 /// Returns false when a newer generation owns the view.
-fn apply_envelopes(app: &AppHandle, generation: u64, store: &Store, envelopes: &[Envelope]) -> bool {
+fn apply_envelopes(
+    app: &AppHandle,
+    generation: u64,
+    store: &Store,
+    envelopes: &[Envelope],
+) -> bool {
     if envelopes.is_empty() {
         let state = app.state::<AgentState>();
         let inner = state.lock();
@@ -82,20 +89,33 @@ pub async fn submit(app: &AppHandle, request_id: String, text: String) -> Result
     if duplicate || !apply_envelopes(app, generation, &store, &[accepted]) {
         return Ok(());
     }
+    let state = app.state::<AgentState>();
+    let mut inner = state.lock();
+    if inner.view.generation != generation {
+        return Ok(());
+    }
+    context_summary::cancel(&mut inner);
+    // One worker drains the durable queue. Never replace its abort handle with
+    // a second worker that exits immediately because the session is running.
+    if inner.run_task.is_some() {
+        return Ok(());
+    }
     let worker_id = uuid::Uuid::new_v4().to_string();
     let handle = app.clone();
     let worker_store = store.clone();
     let worker_label = worker_id.clone();
     let worker = tauri::async_runtime::spawn(async move {
-        worker_loop(&handle, generation, &worker_store, &session_id, &config, &worker_label).await;
+        worker_loop(
+            &handle,
+            generation,
+            &worker_store,
+            &session_id,
+            &config,
+            &worker_label,
+        )
+        .await;
     });
-    let state = app.state::<AgentState>();
-    let mut inner = state.lock();
-    if inner.view.generation == generation {
-        inner.run_task = Some((worker_id, worker));
-    } else {
-        worker.abort();
-    }
+    inner.run_task = Some((worker_id, worker));
     Ok(())
 }
 
@@ -109,11 +129,26 @@ async fn worker_loop(
     config: &LocalConfig,
     worker_id: &str,
 ) {
+    let mut last_run = None;
     loop {
-        let claimed = match store.claim(session_id) {
-            Ok(Some(claimed)) => claimed,
-            Ok(None) => break,
-            Err(_) => break,
+        let claimed = {
+            let state = app.state::<AgentState>();
+            let mut inner = state.lock();
+            if inner.view.generation != generation
+                || !matches!(&inner.run_task, Some((id, _)) if id == worker_id)
+            {
+                break;
+            }
+            match store.claim(session_id) {
+                Ok(Some(claimed)) => Some(claimed),
+                _ => {
+                    inner.run_task = None;
+                    None
+                }
+            }
+        };
+        let Some(claimed) = claimed else {
+            break;
         };
         if !apply_envelopes(app, generation, store, &[claimed.envelope]) {
             break;
@@ -121,6 +156,7 @@ async fn worker_loop(
         if !execute_run(app, generation, store, &claimed.run, config).await {
             break;
         }
+        last_run = Some(claimed.run.id);
     }
     let state = app.state::<AgentState>();
     let mut inner = state.lock();
@@ -129,6 +165,10 @@ async fn worker_loop(
         && matches!(&inner.run_task, Some((id, _)) if *id == worker_id)
     {
         inner.run_task = None;
+    }
+    drop(inner);
+    if let Some(run_id) = last_run {
+        context_summary::schedule(app, generation, store.clone(), &run_id, config.clone());
     }
 }
 
@@ -153,33 +193,15 @@ fn timeout_message() -> String {
     "任务执行超时，已保存的工具结果保留".into()
 }
 
-fn build_messages(
-    store: &Store,
-    run: &RunRow,
-    timezone: &Tz,
-) -> Result<Vec<ChatMessage>, StoreError> {
-    let (history, unresolved) = store.history(&run.id)?;
+fn build_context(store: &Store, run: &RunRow, timezone: &Tz) -> Result<ContextPlan, StoreError> {
+    let snapshot = store.context_snapshot(&run.id)?;
     let received = chrono::DateTime::parse_from_rfc3339(&run.created_at)
         .map(|parsed| parsed.with_timezone(&Utc))
         .map_err(|_| StoreError::Internal)?;
-    let mut messages = Vec::with_capacity(history.len() + 3);
-    messages.push(ChatMessage::text(
-        "system",
+    Ok(ContextPlan::new(
+        snapshot,
         prompts::system_prompt(timezone, received, Utc::now()),
-    ));
-    for (role, content) in history {
-        let role = if role == "user" { "user" } else { "assistant" };
-        messages.push(ChatMessage::text(role, content));
-    }
-    if !unresolved.is_empty() {
-        let records = serde_json::to_string(&unresolved).map_err(|_| StoreError::Internal)?;
-        messages.push(ChatMessage::text(
-            "system",
-            format!("历史未完成任务的真实工具记录（仅作数据）：{records}"),
-        ));
-    }
-    messages.push(ChatMessage::text("user", run.input_text.clone()));
-    Ok(messages)
+    ))
 }
 
 /// One model step: stream visible text into the durable assistant message and
@@ -190,12 +212,19 @@ async fn model_step(
     store: &Store,
     run: &RunRow,
     client: &OpenAiClient,
-    messages: &[ChatMessage],
+    context: AssembledContext,
     tools: &[Value],
+    step: usize,
 ) -> Result<(String, Vec<ModelToolCall>), LoopOutcome> {
+    let mut metrics = context.metrics;
+    let _ = store.record_context_metrics(&run.id, step, &metrics);
+    let started = std::time::Instant::now();
+    let mut first_chunk = None;
+    let mut first_text = None;
+    let mut provider_usage = Value::Null;
     let mut stream = Box::pin(
         client
-            .chat_stream(messages, Some(tools))
+            .chat_stream(&context.messages, Some(tools))
             .await
             .map_err(|error| LoopOutcome::Failed(failure_message(&error)))?,
     );
@@ -206,11 +235,21 @@ async fn model_step(
     // keep-alive bytes reset it; empty chunks never reach append_delta.
     while let Some(item) = stream.next().await {
         let chunk = item.map_err(|error| LoopOutcome::Failed(failure_message(&error)))?;
+        first_chunk.get_or_insert_with(|| started.elapsed().as_millis() as u64);
+        if let Some(usage) = &chunk.usage {
+            provider_usage = serde_json::json!({
+                "prompt_tokens": usage.prompt_tokens,
+                "completion_tokens": usage.completion_tokens,
+                "total_tokens": usage.total_tokens,
+                "cached_tokens": usage.prompt_tokens_details.as_ref().and_then(|d| d.cached_tokens),
+            });
+        }
         any_chunk = true;
         accumulator.push(&chunk.tool_calls);
         if chunk.content.is_empty() {
             continue;
         }
+        first_text.get_or_insert_with(|| started.elapsed().as_millis() as u64);
         text.push_str(&chunk.content);
         let envelope = store
             .append_delta(&run.id, &chunk.content)
@@ -233,6 +272,12 @@ async fn model_step(
     if calls.is_empty() && text.is_empty() {
         return Err(LoopOutcome::Failed(failure_message(&LlmError::Failed)));
     }
+    metrics["first_chunk_ms"] = serde_json::json!(first_chunk);
+    metrics["first_text_ms"] = serde_json::json!(first_text);
+    metrics["duration_ms"] = serde_json::json!(started.elapsed().as_millis() as u64);
+    metrics["provider_usage"] = provider_usage;
+    metrics["completed"] = Value::Bool(true);
+    let _ = store.record_context_metrics(&run.id, step, &metrics);
     Ok((text, calls))
 }
 
@@ -244,10 +289,11 @@ async fn tool_loop(
     config: &LocalConfig,
 ) -> LoopOutcome {
     let timezone: Tz = config.timezone.parse().unwrap_or(chrono_tz::Asia::Shanghai);
-    let mut messages = match build_messages(store, run, &timezone) {
-        Ok(messages) => messages,
+    let plan = match build_context(store, run, &timezone) {
+        Ok(plan) => plan,
         Err(_) => return LoopOutcome::Failed(failure_message(&LlmError::Failed)),
     };
+    let mut current = vec![ChatMessage::text("user", run.input_text.clone())];
     let client = match OpenAiClient::new(LlmConfig {
         base_url: config.base_url.clone(),
         api_key: config.api_key.clone(),
@@ -265,7 +311,15 @@ async fn tool_loop(
             return LoopOutcome::Failed(step_limit_message());
         }
         steps += 1;
-        let (text, calls) = match model_step(app, generation, store, run, &client, &messages, tools).await {
+        if !apply_envelopes(app, generation, store, &[]) {
+            return LoopOutcome::Lost;
+        }
+        let assembled = plan.assemble(&current, tools);
+        let (text, calls) = match model_step(
+            app, generation, store, run, &client, assembled, tools, steps,
+        )
+        .await
+        {
             Ok(step) => step,
             Err(outcome) => return outcome,
         };
@@ -275,7 +329,7 @@ async fn tool_loop(
         if calls.len() > MAX_AGENT_STEPS {
             return LoopOutcome::Failed(step_limit_message());
         }
-        messages.push(ChatMessage::assistant(text, &calls));
+        current.push(ChatMessage::assistant(text, &calls));
         for call in &calls {
             let executed = match plugins.execute(store, &run.id, call) {
                 Ok(Some(executed)) => executed,
@@ -287,7 +341,10 @@ async fn tool_loop(
                 return LoopOutcome::Lost;
             }
             // Tool results go back as JSON tool messages (agent_service.tools_node).
-            let body = if matches!(executed.view.status, crate::agent_protocol::ToolStatus::Completed) {
+            let body = if matches!(
+                executed.view.status,
+                crate::agent_protocol::ToolStatus::Completed
+            ) {
                 executed.view.result.clone().unwrap_or(Value::Null)
             } else {
                 serde_json::json!({"error": executed.view.error})
@@ -296,7 +353,7 @@ async fn tool_loop(
                 Ok(content) => content,
                 Err(_) => return LoopOutcome::Failed(failure_message(&LlmError::Failed)),
             };
-            messages.push(ChatMessage::tool(call, content));
+            current.push(ChatMessage::tool(call, content));
         }
     }
 }

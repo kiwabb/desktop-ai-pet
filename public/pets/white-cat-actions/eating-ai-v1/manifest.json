@@ -1,0 +1,22 @@
+{
+  "id": "white-cat-eating-ai-v1",
+  "action": "eating",
+  "format": "animated-webp",
+  "canvas": {
+    "width": 328,
+    "height": 299
+  },
+  "frameCount": 16,
+  "fps": 12,
+  "loop": true,
+  "durationMs": 1328,
+  "asset": "action.webp",
+  "framesDir": "frames",
+  "spriteSheet": "sprite-sheet.png",
+  "anchor": {
+    "x": 164,
+    "y": 299
+  },
+  "status": "generated-preview",
+  "notes": "AI-generated eating motion. Keep the existing action asset until runtime review passes."
+}

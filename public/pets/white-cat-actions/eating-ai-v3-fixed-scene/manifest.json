@@ -1,0 +1,23 @@
+{
+  "id": "white-cat-eating-ai-v3-fixed-scene",
+  "action": "eating",
+  "format": "animated-webp",
+  "canvas": {
+    "width": 328,
+    "height": 299
+  },
+  "frameCount": 57,
+  "fps": 24,
+  "loop": true,
+  "durationMs": 2394,
+  "asset": "action.webp",
+  "previewGif": "action.gif",
+  "previewSheet": "preview-sheet.png",
+  "anchor": {
+    "x": 164,
+    "y": 299
+  },
+  "status": "generated-fixed-scene-candidate",
+  "source": "../eating-ai-v1/frames",
+  "notes": "Built from the transparent 16-frame eating keyframes with FFmpeg motion-compensated interpolation. The scene, bowl, and bed remain fixed across the source keyframes; the WebP is the runtime candidate and the GIF is preview-only."
+}

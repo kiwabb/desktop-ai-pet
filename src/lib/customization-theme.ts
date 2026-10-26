@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { PetTheme } from './customization'
+import type { PetTheme, PetThemeDesign } from './customization'
 type RGB = [number, number, number]
 const mix = (a: RGB, b: RGB, amount: number): RGB => a.map((v, i) => Math.round(v * (1 - amount) + b[i] * amount)) as RGB
 const hex = (v: RGB) => '#' + v.map(n => n.toString(16).padStart(2, '0')).join('')
@@ -36,9 +36,9 @@ export function petTheme(accent: string): ThemeStyle {
   const selected = hex(mix(accentColor, ivory, .53))
   const user = hex(mix(accentColor, ivory, .78))
   const selection = hex(mix(accentColor, ivory, .35))
-  const readable = (base: RGB, backgrounds: string[]) => {
+  const readable = (base: RGB, backgrounds: string[], ratio = 4.5) => {
     let color = base
-    while (backgrounds.some(bg => contrast(hex(color), bg) < 4.5)) color = color.map(channel => Math.floor(channel * .9)) as RGB
+    while (backgrounds.some(bg => contrast(hex(color), bg) < ratio)) color = color.map(channel => Math.floor(channel * .9)) as RGB
     return hex(color)
   }
   const surfaces = [surface, chrome, action, hover, selected, user, selection]
@@ -48,7 +48,7 @@ export function petTheme(accent: string): ThemeStyle {
   return {
     '--companion-ink': ink, '--companion-muted': muted, '--companion-surface': surface,
     '--companion-chrome': chrome, '--companion-line': hex(mix([222, 218, 209], accentColor, .12)),
-    '--companion-control-line': hex(mix([222, 218, 209], accentColor, .12)),
+    '--companion-control-line': readable(mix([222, 218, 209], accentColor, .12), surfaces, 3),
     '--companion-accent': emphasis, '--companion-action': action, '--companion-action-ink': ink,
     '--companion-action-hover': hover, '--companion-focus': emphasis,
     '--companion-selected': selected, '--companion-user': user,
@@ -58,21 +58,10 @@ export function petTheme(accent: string): ThemeStyle {
   }
 }
 
-export type PaletteChoice = { name: string; theme: PetTheme }
-export function paletteChoices(colors: string[] = [], accent = '#d39964'): PaletteChoice[] {
-  const make = (palette: PetTheme['palette'], name: string, primary: string, secondary: string): PaletteChoice => ({ name, theme: { palette, primary, secondary, strength: 65 } })
-  return [
-    make('character', '它的原色', colors[0] || accent, colors[1] || '#c596a1'),
-    make('apricot', '杏桃奶糖', '#d88b4f', '#dfa391'),
-    make('rose', '莓果软糖', '#c86a91', '#b695ca'),
-    make('mint', '薄荷花园', '#459f87', '#c5b567'),
-    make('sky', '晴空汽水', '#5d91c5', '#76b8af'),
-    make('lilac', '紫藤来信', '#9b7fc3', '#d68ba4'),
-  ]
-}
 /** Complete two-color palette; absence preserves the exact legacy theme. */
 export function presetTheme(accent: string, theme?: PetTheme | null): ThemeStyle {
   if (!theme) return petTheme(accent)
+  if (theme.design) return designedTheme(theme.design)
   if (!/^#[\da-f]{6}$/i.test(theme.primary) || !/^#[\da-f]{6}$/i.test(theme.secondary) || !Number.isInteger(theme.strength) || theme.strength < 0 || theme.strength > 100) throw new Error('主题颜色或浓度无效。')
   const rgb = (color: string) => [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16)) as RGB
   const white: RGB = [255,255,255]
@@ -108,5 +97,53 @@ export function presetTheme(accent: string, theme?: PetTheme | null): ThemeStyle
     '--companion-selected': selected, '--companion-user': user, '--companion-selection': selection,
     '--companion-shadow-soft': `0 3px 8px ${ink}1f`, '--companion-shadow-panel': `0 3px 4px ${ink}1a`,
     '--companion-focus-ring': `${emphasis}29`,
+  }
+}
+
+/** Model JSON is data. Only bounded, known design roles become CSS tokens. */
+function designedTheme(design: PetThemeDesign): ThemeStyle {
+  const c = design.colors
+  const fields = ['surface', 'surface_alt', 'text', 'muted', 'primary', 'secondary', 'accent_soft', 'line'] as const
+  if (design.version !== 1 || fields.some(key => !/^#[\da-f]{6}$/i.test(c[key])) || !['matte','paper','glaze'].includes(design.material) || !['soft','solid','outlined'].includes(design.control) || !Number.isInteger(design.radius) || design.radius < 12 || design.radius > 24 || ![1,2].includes(design.border_width) || ![0,1,2,3].includes(design.shadow)) throw new Error('主题设计格式无效。')
+  const rgb = (color: string) => [1,3,5].map(i => parseInt(color.slice(i,i+2),16)) as RGB
+  const white: RGB = [255,255,255]
+  const blend = (a: string, b: string, amount: number) => hex(mix(rgb(a),rgb(b),amount))
+  // Keep shared companion text roles on a readable light surface even for an
+  // out-of-contract dark provider color. No endless contrast adjustment loops.
+  const light = (color: string) => {
+    let result = rgb(color)
+    for (let i = 0; i < 32 && contrast(hex(result),'#000000') < 7; i++) result = mix(result,white,.12)
+    return hex(result)
+  }
+  const surface = light(c.surface), chrome = light(c.surface_alt)
+  const selected = light(c.accent_soft), user = light(blend(c.secondary,surface,.70))
+  const action = design.control === 'outlined' ? surface : light(design.control === 'solid' ? c.primary : blend(c.primary,surface,.5))
+  const hover = light(blend(action,c.primary,.15)), selection = light(blend(c.secondary,surface,.45))
+  const top = design.material === 'glaze' ? blend(surface,'#ffffff',.72) : surface
+  const bottom = design.material === 'paper' ? blend(surface,chrome,.22) : design.material === 'glaze' ? blend(surface,chrome,.12) : surface
+  // RGB gradients can be darker than either endpoint. Include actual painted
+  // intermediate tones, with a small contrast margin for rounding.
+  const materialTones = Array.from({ length: 33 }, (_, i) => [blend(top,surface,i/32), blend(surface,bottom,i/32)]).flat()
+  const backgrounds = [surface,chrome,selected,user,action,hover,selection,...materialTones]
+  const readable = (seed: string, ratio: number) => {
+    let result = rgb(seed)
+    for (let i = 0; i < 64 && backgrounds.some(bg => contrast(hex(result),bg) < ratio + .05); i++) result = result.map(v => Math.floor(v*.88)) as RGB
+    return hex(result)
+  }
+  const ink = readable(c.text,4.5), muted = readable(c.muted,4.5), accent = readable(c.primary,4.5)
+  const boundary = readable(c.line,3)
+  const shadow = ['none',`0 2px 3px ${ink}12`,`0 3px 4px ${ink}1a`,`0 3px 5px ${ink}24`][design.shadow]
+  const radius = `${design.radius}px`
+  return {
+    '--companion-ink': ink, '--companion-muted': muted, '--companion-surface': surface, '--companion-chrome': chrome,
+    '--companion-line': c.line, '--companion-control-line': boundary, '--companion-accent': accent,
+    '--companion-action': action, '--companion-action-ink': ink, '--companion-action-hover': hover,
+    '--companion-focus': readable(c.primary,3), '--companion-selected': selected, '--companion-user': user, '--companion-selection': selection,
+    '--companion-focus-ring': `${accent}29`, '--companion-shadow-panel': shadow, '--companion-shadow-soft': shadow,
+    '--companion-radius': radius, '--companion-control-radius': `${Math.max(8,design.radius-5)}px`, '--companion-border-width': `${design.border_width}px`,
+    '--companion-action-border': design.control === 'outlined' ? boundary : 'transparent',
+    '--companion-material-top': top, '--companion-material-bottom': bottom,
+    '--companion-material': `linear-gradient(180deg, ${top}, ${surface} 40%, ${bottom})`,
+    '--companion-material-inset': design.material === 'glaze' ? 'inset 0 1px 0 #ffffffcc' : 'none',
   }
 }

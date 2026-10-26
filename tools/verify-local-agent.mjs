@@ -25,8 +25,15 @@ assert.ok(
 // The OS credential store is the only durable home for the key.
 for (const needle of ['keyring::Entry::new', '"desktop-ai-pet"', '"local-llm-api-key"', 'trait CredentialStore', 'pub fn hydrate', 'pub fn save_key'])
   assert.ok(credentials.includes(needle), `credentials.rs missing: ${needle}`)
-// Startup migrates legacy plaintext and rewrites the config scrubbed.
-assert.ok(/credentials::hydrate\(&mut config\.local, &credentials::PlatformStore\)/.test(backendMod), 'agent_view must hydrate/migrate the key at startup')
+// Startup hydrates the active mode and still migrates legacy plaintext. An
+// inactive encrypted local key must not block server startup on credential UI.
+assert.ok(backendMod.includes('config.hydrate_startup(&credentials::PlatformStore)'), 'agent_view must use the mode-aware startup credential path')
+assert.ok(backendMod.includes('credentials::hydrate_startup(self.mode, &mut self.local, store)'), 'Config startup must route mode and local config through the credential store')
+assert.ok(credentials.includes('mode == Mode::Local || !config.api_key.is_empty()'), 'server startup may access local credentials only to migrate legacy plaintext')
+// A failed migration must prevent every later scrubbed filesystem write,
+// including automatic session persistence; behavioral file tests live in Rust.
+const persistAt = backendMod.match(/fn persist_at\([\s\S]*?\n\}/)?.[0] ?? ''
+assert.ok(persistAt.indexOf('config.local_key_migration_pending') >= 0 && persistAt.indexOf('config.local_key_migration_pending') < persistAt.indexOf('fs::create_dir_all'), 'pending legacy migration must be checked before filesystem writes')
 // Settings save writes the keyring before persisting the config.
 assert.ok(/credentials::save_key\(&credentials::PlatformStore/.test(backendMod), 'save_agent_settings must route the key through the credential store')
 // The emitted AgentView exposes presence only, never the key itself.
@@ -66,15 +73,15 @@ const { outputText: labelJs } = ts.transpileModule(`${labelNode.getText(agentAst
 const { connectionLabel } = new Function('exports', `${labelJs}; return exports`)({})
 const base = { configured: true, connection: 'connected', model_configured: true, node_connected: true, node_error: null }
 // Server-mode branches stay byte-identical.
-assert.equal(connectionLabel(null), '助手服务未配置')
-assert.equal(connectionLabel({ ...base, connection: 'connecting' }), '正在连接助手')
-assert.equal(connectionLabel({ ...base, connection: 'disconnected' }), '连接已断开，正在重连')
-assert.equal(connectionLabel({ ...base, node_connected: false, node_error: 'x' }), '设备暂时离线，聊天可用')
-assert.equal(connectionLabel({ ...base, node_connected: false }), '对话已连接，设备正在登记')
-assert.equal(connectionLabel(base), '助手已连接')
+assert.equal(connectionLabel(null), '还没连上助手')
+assert.equal(connectionLabel({ ...base, connection: 'connecting' }), '正在连接……')
+assert.equal(connectionLabel({ ...base, connection: 'disconnected' }), '连接断了，正在重连')
+assert.equal(connectionLabel({ ...base, node_connected: false, node_error: 'x' }), '设备暂时离线，聊天照常')
+assert.equal(connectionLabel({ ...base, node_connected: false }), '我在，设备还在登记')
+assert.equal(connectionLabel(base), '我在这儿呢')
 // The partially-configured label is accurate for both modes (no "服务端").
 const partial = connectionLabel({ ...base, model_configured: false })
-assert.equal(partial, '已连接，模型未配置')
+assert.equal(partial, '我在，模型还没设置')
 assert.ok(!partial.includes('服务端'), 'the label must be neutral across modes')
 
 // pet-live-status.ts is pure; run the real function against local-mode shapes.

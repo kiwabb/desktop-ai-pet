@@ -104,6 +104,10 @@ pub struct Config {
     pub server: ServerConfig,
     #[serde(default)]
     pub local: LocalConfig,
+    /// Parsed legacy plaintext has no durable credential-store copy yet.
+    /// Every config write must preserve its source file until migration succeeds.
+    #[serde(skip)]
+    local_key_migration_pending: bool,
 }
 
 #[derive(Deserialize)]
@@ -118,7 +122,9 @@ impl Config {
     fn parse(bytes: &[u8]) -> Option<Config> {
         let value: Value = serde_json::from_slice(bytes).ok()?;
         if value.get("mode").is_some() {
-            return serde_json::from_value(value).ok();
+            let mut config: Config = serde_json::from_value(value).ok()?;
+            config.local_key_migration_pending = !config.local.api_key.is_empty();
+            return Some(config);
         }
         let legacy: LegacyConfig = serde_json::from_value(value).ok()?;
         Some(Config {
@@ -129,7 +135,30 @@ impl Config {
                 session_id: legacy.session_id,
             },
             local: LocalConfig::default(),
+            local_key_migration_pending: false,
         })
+    }
+
+    fn hydrate_startup(&mut self, store: &impl credentials::CredentialStore) -> bool {
+        if credentials::hydrate_startup(self.mode, &mut self.local, store) {
+            self.local_key_migration_pending = false;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Only explicit settings saves retry a failed migration. Automatic session
+    /// persistence never opens credential UI or overwrites the legacy source.
+    fn retry_pending_key_migration(
+        &mut self,
+        store: &impl credentials::CredentialStore,
+    ) -> Result<(), String> {
+        if self.local_key_migration_pending {
+            store.set(&self.local.api_key)?;
+            self.local_key_migration_pending = false;
+        }
+        Ok(())
     }
 }
 
@@ -173,6 +202,11 @@ pub struct View {
     pub(crate) reminders: Vec<Todo>,
     pub(crate) reminder_error: Option<String>,
     pub(crate) todo_revision: u64,
+    /// Memo review reminders run on their own poll/view channel, parallel to
+    /// the todo reminders above; the two never share a list.
+    pub(crate) memo_reviews: Vec<Memo>,
+    pub(crate) memo_review_error: Option<String>,
+    pub(crate) memo_revision: u64,
 }
 
 #[derive(Default)]
@@ -181,8 +215,10 @@ pub(crate) struct Inner {
     pub(crate) view: View,
     pub(crate) sender: Option<mpsc::Sender<Value>>,
     pub(crate) task: Option<tauri::async_runtime::JoinHandle<()>>,
-    /// Tagged with the run id so a finishing run never clears a newer handle.
+    /// Tagged with the worker id so an exiting worker never clears a newer handle.
     pub(crate) run_task: Option<(String, tauri::async_runtime::JoinHandle<()>)>,
+    /// Independent background summary slot; never owns a foreground run.
+    pub(crate) summary_task: Option<(String, tauri::async_runtime::JoinHandle<()>)>,
     /// Local mode's SQLite runtime store (None in server mode).
     pub(crate) store: Option<std::sync::Arc<crate::local_agent::store::Store>>,
     pub(crate) initialized: bool,
@@ -199,7 +235,9 @@ impl AgentState {
     /// command failing: no invariant is left half-mutated across a panic here
     /// (mutations are single-threaded field writes), so recover the guard.
     pub(crate) fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
-        self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
@@ -226,6 +264,39 @@ pub struct TodoListView {
 pub struct TodoCompletionView {
     generation: u64,
     item: Todo,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MemoKind {
+    Note,
+    Goal,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MemoStatus {
+    Active,
+    Archived,
+}
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct Memo {
+    pub(crate) id: String,
+    pub(crate) kind: MemoKind,
+    pub(crate) title: String,
+    pub(crate) content: Option<String>,
+    pub(crate) status: MemoStatus,
+    pub(crate) created_at: String,
+    pub(crate) review_at: Option<String>,
+}
+#[derive(Serialize)]
+pub struct MemoListView {
+    generation: u64,
+    items: Vec<Memo>,
+}
+#[derive(Serialize)]
+pub struct MemoMutationView {
+    generation: u64,
+    item: Memo,
 }
 
 /// One chat data source per mode; the command layer dispatches on the saved mode.
@@ -267,7 +338,14 @@ fn path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
         .join("agent-config.json"))
 }
 fn persist(app: &AppHandle, config: &Config) -> Result<(), String> {
-    let path = path(app)?;
+    persist_at(&path(app)?, config)
+}
+
+fn persist_at(path: &std::path::Path, config: &Config) -> Result<(), String> {
+    if config.local_key_migration_pending {
+        return Err("本地 API Key 尚未迁移到系统凭据存储，请在助手设置中重新保存后重试".into());
+    }
+    let bytes = serde_json::to_vec(config).map_err(|_| "配置编码失败")?;
     fs::create_dir_all(path.parent().ok_or("配置目录不存在")?)
         .map_err(|_| "无法创建助手配置目录")?;
     let temp = path.with_extension("tmp");
@@ -285,8 +363,7 @@ fn persist(app: &AppHandle, config: &Config) -> Result<(), String> {
         file.set_permissions(fs::Permissions::from_mode(0o600))
             .map_err(|_| "无法保护设备凭证")?;
     }
-    file.write_all(&serde_json::to_vec(config).map_err(|_| "配置编码失败")?)
-        .map_err(|_| "配置写入失败")?;
+    file.write_all(&bytes).map_err(|_| "配置写入失败")?;
     file.sync_all().map_err(|_| "配置写入失败")?;
     fs::rename(temp, path).map_err(|_| "配置保存失败".into())
 }
@@ -323,6 +400,29 @@ fn todo_config(inner: &Inner) -> Result<(TodoSource, u64), String> {
     }
 }
 
+/// Where memo commands read/write, dispatched on the saved mode; both sources
+/// share the same generation/epoch fencing and `agent:view` update path.
+enum MemoSource {
+    Server(ServerConfig),
+    Local(std::sync::Arc<crate::local_agent::store::Store>),
+}
+
+fn memo_config(inner: &Inner) -> Result<(MemoSource, u64), String> {
+    let config = inner.config.clone().ok_or("请先配置助手服务")?;
+    match config.mode {
+        Mode::Server => Ok((MemoSource::Server(config.server), inner.view.generation)),
+        Mode::Local => Ok((
+            MemoSource::Local(
+                inner
+                    .store
+                    .clone()
+                    .ok_or("本地存储不可用，请重新保存单机模式配置")?,
+            ),
+            inner.view.generation,
+        )),
+    }
+}
+
 fn start(app: &AppHandle, inner: &mut Inner, config: Config) {
     if let Some(task) = inner.task.take() {
         task.abort();
@@ -330,6 +430,7 @@ fn start(app: &AppHandle, inner: &mut Inner, config: Config) {
     if let Some((_, task)) = inner.run_task.take() {
         task.abort();
     }
+    crate::local_agent::context_summary::cancel(inner);
     let generation = inner.view.generation + 1;
     inner.sender = None;
     inner.store = None;
@@ -359,7 +460,10 @@ pub async fn agent_complete_todo(
 }
 
 #[tauri::command]
-pub async fn agent_create_todo(app: AppHandle, title: String) -> Result<TodoCompletionView, String> {
+pub async fn agent_create_todo(
+    app: AppHandle,
+    title: String,
+) -> Result<TodoCompletionView, String> {
     let title = validate_todo_title(&title)?;
     let (source, generation) = begin_todo_write(&app)?;
     let result = match source {
@@ -372,11 +476,17 @@ pub async fn agent_create_todo(app: AppHandle, title: String) -> Result<TodoComp
 }
 
 #[tauri::command]
-pub async fn agent_update_todo(app: AppHandle, todo_id: String, title: String) -> Result<TodoCompletionView, String> {
+pub async fn agent_update_todo(
+    app: AppHandle,
+    todo_id: String,
+    title: String,
+) -> Result<TodoCompletionView, String> {
     let title = validate_todo_title(&title)?;
     let (source, generation) = begin_todo_write(&app)?;
     let result = match source {
-        TodoSource::Server(config) => server::update_todo_title_http(&config, &todo_id, &title).await,
+        TodoSource::Server(config) => {
+            server::update_todo_title_http(&config, &todo_id, &title).await
+        }
         TodoSource::Local(store) => {
             let todo_id = uuid::Uuid::parse_str(&todo_id)
                 .map_err(|_| "待办标识不正确".to_owned())?
@@ -390,7 +500,10 @@ pub async fn agent_update_todo(app: AppHandle, todo_id: String, title: String) -
 }
 
 #[tauri::command]
-pub async fn agent_delete_todo(app: AppHandle, todo_id: String) -> Result<TodoCompletionView, String> {
+pub async fn agent_delete_todo(
+    app: AppHandle,
+    todo_id: String,
+) -> Result<TodoCompletionView, String> {
     let (source, generation) = begin_todo_write(&app)?;
     let result = match source {
         TodoSource::Server(config) => server::delete_todo_http(&config, &todo_id).await,
@@ -415,11 +528,18 @@ fn validate_todo_title(title: &str) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn agent_reopen_todo(app: AppHandle, todo_id: String) -> Result<TodoCompletionView, String> {
+pub async fn agent_reopen_todo(
+    app: AppHandle,
+    todo_id: String,
+) -> Result<TodoCompletionView, String> {
     update_todo(app, todo_id, server::TodoAction::Reopen).await
 }
 
-async fn update_todo(app: AppHandle, todo_id: String, action: server::TodoAction) -> Result<TodoCompletionView, String> {
+async fn update_todo(
+    app: AppHandle,
+    todo_id: String,
+    action: server::TodoAction,
+) -> Result<TodoCompletionView, String> {
     let (source, generation) = begin_todo_write(&app)?;
     let result = match source {
         TodoSource::Server(config) => server::update_todo_http(&config, &todo_id, action).await,
@@ -428,8 +548,13 @@ async fn update_todo(app: AppHandle, todo_id: String, action: server::TodoAction
                 .map_err(|_| "待办标识不正确".to_owned())?
                 .to_string();
             match action {
-                server::TodoAction::Complete => crate::local_agent::plugins::todo::TodoStore::new(&store).complete_todo(&todo_id),
-                server::TodoAction::Reopen => crate::local_agent::plugins::todo::TodoStore::new(&store).reopen_todo(&todo_id),
+                server::TodoAction::Complete => {
+                    crate::local_agent::plugins::todo::TodoStore::new(&store)
+                        .complete_todo(&todo_id)
+                }
+                server::TodoAction::Reopen => {
+                    crate::local_agent::plugins::todo::TodoStore::new(&store).reopen_todo(&todo_id)
+                }
             }
             .map_err(|error| error.message())
         }
@@ -446,7 +571,11 @@ fn begin_todo_write(app: &AppHandle) -> Result<(TodoSource, u64), String> {
     Ok(source)
 }
 
-fn apply_todo_write(inner: &mut Inner, generation: u64, result: Result<Todo, String>) -> Result<TodoCompletionView, String> {
+fn apply_todo_write(
+    inner: &mut Inner,
+    generation: u64,
+    result: Result<Todo, String>,
+) -> Result<TodoCompletionView, String> {
     if inner.view.generation != generation {
         return Err("助手配置已更换，请重新查询待办".into());
     }
@@ -458,7 +587,11 @@ fn apply_todo_write(inner: &mut Inner, generation: u64, result: Result<Todo, Str
     Ok(TodoCompletionView { generation, item })
 }
 
-fn finish_todo_write(app: &AppHandle, generation: u64, result: Result<Todo, String>) -> Result<TodoCompletionView, String> {
+fn finish_todo_write(
+    app: &AppHandle,
+    generation: u64,
+    result: Result<Todo, String>,
+) -> Result<TodoCompletionView, String> {
     let state = app.state::<AgentState>();
     let mut inner = state.lock();
     let result = apply_todo_write(&mut inner, generation, result);
@@ -470,24 +603,49 @@ fn finish_todo_write(app: &AppHandle, generation: u64, result: Result<Todo, Stri
 }
 
 #[tauri::command]
-pub async fn agent_set_todo_reminder(app: AppHandle, todo_id: String, remind_at: Option<String>, expected_remind_at: Option<String>) -> Result<TodoCompletionView, String> {
+pub async fn agent_set_todo_reminder(
+    app: AppHandle,
+    todo_id: String,
+    remind_at: Option<String>,
+    expected_remind_at: Option<String>,
+) -> Result<TodoCompletionView, String> {
     let (source, generation) = begin_todo_write(&app)?;
     let result = match source {
-        TodoSource::Server(config) => server::set_reminder_http(&config, &todo_id, remind_at.as_deref(), expected_remind_at.as_deref()).await,
-        TodoSource::Local(store) => local_set_reminder(&store, &todo_id, remind_at.as_deref(), expected_remind_at.as_deref()),
+        TodoSource::Server(config) => {
+            server::set_reminder_http(
+                &config,
+                &todo_id,
+                remind_at.as_deref(),
+                expected_remind_at.as_deref(),
+            )
+            .await
+        }
+        TodoSource::Local(store) => local_set_reminder(
+            &store,
+            &todo_id,
+            remind_at.as_deref(),
+            expected_remind_at.as_deref(),
+        ),
     };
     finish_todo_write(&app, generation, result)
 }
 
 /// Local-mode reminder writes validate like the server's HTTP boundary and map
 /// failures onto the same message families, so the frontend cannot tell modes apart.
-fn local_set_reminder(store: &crate::local_agent::store::Store, todo_id: &str, remind_at: Option<&str>, expected_remind_at: Option<&str>) -> Result<Todo, String> {
+fn local_set_reminder(
+    store: &crate::local_agent::store::Store,
+    todo_id: &str,
+    remind_at: Option<&str>,
+    expected_remind_at: Option<&str>,
+) -> Result<Todo, String> {
     let todo_id = uuid::Uuid::parse_str(todo_id)
         .map_err(|_| "待办标识不正确".to_owned())?
         .to_string();
     let parse = |value: Option<&str>| {
         crate::local_agent::store::parse_reminder_time(
-            &value.map_or(serde_json::Value::Null, |text| serde_json::Value::String(text.to_owned())),
+            &value.map_or(serde_json::Value::Null, |text| {
+                serde_json::Value::String(text.to_owned())
+            }),
         )
         .map_err(|_| "提醒时间无效或已经过去，请重新设置".to_owned())
     };
@@ -496,14 +654,26 @@ fn local_set_reminder(store: &crate::local_agent::store::Store, todo_id: &str, r
     crate::local_agent::plugins::todo::TodoStore::new(store)
         .set_todo_reminder(&todo_id, target, expected)
         .map_err(|error| match error {
-            crate::local_agent::store::StoreError::Conflict(_) => "待办或提醒已被修改，请刷新后重试".into(),
-            crate::local_agent::store::StoreError::Validation(_) => "提醒时间无效或已经过去，请重新设置".into(),
+            crate::local_agent::store::StoreError::Conflict(_) => {
+                "待办或提醒已被修改，请刷新后重试".into()
+            }
+            crate::local_agent::store::StoreError::Validation(_) => {
+                "提醒时间无效或已经过去，请重新设置".into()
+            }
             other => other.message(),
         })
 }
 
-pub(crate) fn apply_reminder_poll(inner: &mut Inner, generation: u64, epoch: u64, result: Result<Vec<Todo>, String>) -> bool {
-    if inner.view.generation != generation || inner.todo_mutation_epoch != epoch || inner.todo_writes_in_flight > 0 {
+pub(crate) fn apply_reminder_poll(
+    inner: &mut Inner,
+    generation: u64,
+    epoch: u64,
+    result: Result<Vec<Todo>, String>,
+) -> bool {
+    if inner.view.generation != generation
+        || inner.todo_mutation_epoch != epoch
+        || inner.todo_writes_in_flight > 0
+    {
         return false;
     }
     match result {
@@ -519,6 +689,301 @@ pub(crate) fn apply_reminder_poll(inner: &mut Inner, generation: u64, epoch: u64
             changed
         }
     }
+}
+
+/// Memo writes share the todo_mutation_epoch/todo_writes_in_flight counters on
+/// purpose: one fencing pair covers both due-poll loops and every direct write,
+/// so a memo write can never interleave with either poll's apply window.
+fn begin_memo_write(app: &AppHandle) -> Result<(MemoSource, u64), String> {
+    let state = app.state::<AgentState>();
+    let mut inner = state.lock();
+    let source = memo_config(&inner)?;
+    inner.todo_mutation_epoch += 1;
+    inner.todo_writes_in_flight += 1;
+    Ok(source)
+}
+
+fn apply_memo_write(
+    inner: &mut Inner,
+    generation: u64,
+    result: Result<Memo, String>,
+) -> Result<MemoMutationView, String> {
+    if inner.view.generation != generation {
+        return Err("助手配置已更换，请重新查询备忘".into());
+    }
+    inner.todo_mutation_epoch += 1;
+    inner.todo_writes_in_flight -= 1;
+    let item = result?;
+    // A handled item leaves the due-review list immediately (mod.rs:489 analog).
+    inner.view.memo_reviews.retain(|memo| memo.id != item.id);
+    inner.view.memo_revision += 1;
+    Ok(MemoMutationView { generation, item })
+}
+
+fn finish_memo_write(
+    app: &AppHandle,
+    generation: u64,
+    result: Result<Memo, String>,
+) -> Result<MemoMutationView, String> {
+    let state = app.state::<AgentState>();
+    let mut inner = state.lock();
+    let result = apply_memo_write(&mut inner, generation, result);
+    if result.is_ok() {
+        inner.view.revision += 1;
+        let _ = app.emit("agent:view", &inner.view);
+    }
+    result
+}
+
+pub(crate) fn apply_memo_review_poll(
+    inner: &mut Inner,
+    generation: u64,
+    epoch: u64,
+    result: Result<Vec<Memo>, String>,
+) -> bool {
+    if inner.view.generation != generation
+        || inner.todo_mutation_epoch != epoch
+        || inner.todo_writes_in_flight > 0
+    {
+        return false;
+    }
+    match result {
+        Ok(items) => {
+            let changed =
+                inner.view.memo_reviews != items || inner.view.memo_review_error.is_some();
+            inner.view.memo_reviews = items;
+            inner.view.memo_review_error = None;
+            changed
+        }
+        Err(error) => {
+            let changed = inner.view.memo_review_error.as_ref() != Some(&error);
+            inner.view.memo_review_error = Some(error);
+            changed
+        }
+    }
+}
+
+/// Shared client-side memo rules so both modes fail identically before any I/O.
+fn validate_memo_title(title: &str) -> Result<String, String> {
+    if title.trim().is_empty() || title.chars().count() > 2000 {
+        return Err("备忘标题需为 1 到 2000 个字符".into());
+    }
+    Ok(title.trim().to_owned())
+}
+
+fn validate_memo_kind(kind: Option<&str>) -> Result<MemoKind, String> {
+    match kind {
+        None => Ok(MemoKind::Note),
+        Some("note") => Ok(MemoKind::Note),
+        Some("goal") => Ok(MemoKind::Goal),
+        _ => Err("kind 仅支持 note 或 goal".into()),
+    }
+}
+
+fn validate_memo_content(content: Option<&str>) -> Result<Option<String>, String> {
+    match content {
+        None => Ok(None),
+        Some(text) if text.chars().count() > 20000 => {
+            Err("备忘正文需为不超过 20000 个字符的文本".into())
+        }
+        Some(text) => Ok(Some(text.to_owned())),
+    }
+}
+
+#[tauri::command]
+pub async fn agent_list_memos(
+    app: AppHandle,
+    kind: Option<String>,
+    include_archived: Option<bool>,
+) -> Result<MemoListView, String> {
+    // Listing filters stay absent unless explicitly given (no implicit kind).
+    let kind = kind
+        .as_deref()
+        .map(|value| validate_memo_kind(Some(value)))
+        .transpose()?;
+    let include_archived = include_archived.unwrap_or(false);
+    let (source, generation) = {
+        let state = app.state::<AgentState>();
+        let inner = state.lock();
+        memo_config(&inner)?
+    };
+    let items = match source {
+        MemoSource::Server(config) => server::fetch_memos(&config, kind, include_archived).await?,
+        MemoSource::Local(store) => crate::local_agent::plugins::memo::MemoStore::new(&store)
+            .list_memos(kind, include_archived)
+            .map_err(|error| error.message())?,
+    };
+    let state = app.state::<AgentState>();
+    let inner = state.lock();
+    if inner.view.generation != generation {
+        return Err("助手配置已更换，请重新查询备忘".into());
+    }
+    Ok(MemoListView { generation, items })
+}
+
+#[tauri::command]
+pub async fn agent_create_memo(
+    app: AppHandle,
+    title: String,
+    kind: Option<String>,
+    content: Option<String>,
+    review_at: Option<String>,
+) -> Result<MemoMutationView, String> {
+    let title = validate_memo_title(&title)?;
+    let kind = validate_memo_kind(kind.as_deref())?;
+    let content = validate_memo_content(content.as_deref())?;
+    let review_at = crate::local_agent::store::parse_reminder_time(
+        &review_at.map_or(serde_json::Value::Null, serde_json::Value::String),
+    )
+    .map_err(|_| "回顾时间无效或已经过去，请重新设置".to_owned())?;
+    // The wire time is the canonical UTC instant on both paths.
+    let review_wire = review_at.map(crate::local_agent::store::normalize_instant);
+    let (source, generation) = begin_memo_write(&app)?;
+    let result = match source {
+        MemoSource::Server(config) => {
+            server::create_memo_http(
+                &config,
+                &title,
+                kind,
+                content.as_deref(),
+                review_wire.as_deref(),
+            )
+            .await
+        }
+        MemoSource::Local(store) => crate::local_agent::plugins::memo::MemoStore::new(&store)
+            .create_memo(&title, kind, content.as_deref(), review_at)
+            .map_err(|error| error.message()),
+    };
+    finish_memo_write(&app, generation, result)
+}
+
+#[tauri::command]
+pub async fn agent_update_memo(
+    app: AppHandle,
+    memo_id: String,
+    title: Option<String>,
+    kind: Option<String>,
+    content: Option<String>,
+) -> Result<MemoMutationView, String> {
+    let title = title.as_deref().map(validate_memo_title).transpose()?;
+    let kind = kind
+        .as_deref()
+        .map(|value| validate_memo_kind(Some(value)))
+        .transpose()?;
+    let content = validate_memo_content(content.as_deref())?;
+    if title.is_none() && kind.is_none() && content.is_none() {
+        return Err("必须且只能提供 title、kind 或 content 中的至少一项".into());
+    }
+    let (source, generation) = begin_memo_write(&app)?;
+    let result = match source {
+        MemoSource::Server(config) => {
+            server::update_memo_http(
+                &config,
+                &memo_id,
+                title.as_deref(),
+                kind,
+                content.as_deref(),
+            )
+            .await
+        }
+        MemoSource::Local(store) => {
+            let memo_id = uuid::Uuid::parse_str(&memo_id)
+                .map_err(|_| "备忘标识不正确".to_owned())?
+                .to_string();
+            crate::local_agent::plugins::memo::MemoStore::new(&store)
+                .update_memo(
+                    &memo_id,
+                    title.as_deref(),
+                    kind,
+                    content.as_deref().map(Some),
+                )
+                .map_err(|error| error.message())
+        }
+    };
+    finish_memo_write(&app, generation, result)
+}
+
+#[tauri::command]
+pub async fn agent_archive_memo(
+    app: AppHandle,
+    memo_id: String,
+    archived: bool,
+) -> Result<MemoMutationView, String> {
+    let (source, generation) = begin_memo_write(&app)?;
+    let result = match source {
+        MemoSource::Server(config) => server::archive_memo_http(&config, &memo_id, archived).await,
+        MemoSource::Local(store) => {
+            let memo_id = uuid::Uuid::parse_str(&memo_id)
+                .map_err(|_| "备忘标识不正确".to_owned())?
+                .to_string();
+            crate::local_agent::plugins::memo::MemoStore::new(&store)
+                .set_memo_archived(&memo_id, archived)
+                .map_err(|error| error.message())
+        }
+    };
+    finish_memo_write(&app, generation, result)
+}
+
+#[tauri::command]
+pub async fn agent_set_memo_review(
+    app: AppHandle,
+    memo_id: String,
+    review_at: Option<String>,
+    expected_review_at: Option<String>,
+) -> Result<MemoMutationView, String> {
+    let (source, generation) = begin_memo_write(&app)?;
+    let result = match source {
+        MemoSource::Server(config) => {
+            server::set_review_http(
+                &config,
+                &memo_id,
+                review_at.as_deref(),
+                expected_review_at.as_deref(),
+            )
+            .await
+        }
+        MemoSource::Local(store) => local_set_review(
+            &store,
+            &memo_id,
+            review_at.as_deref(),
+            expected_review_at.as_deref(),
+        ),
+    };
+    finish_memo_write(&app, generation, result)
+}
+
+/// Local-mode review writes validate like the server's HTTP boundary and map
+/// failures onto the same message families, so the frontend cannot tell modes apart.
+fn local_set_review(
+    store: &crate::local_agent::store::Store,
+    memo_id: &str,
+    review_at: Option<&str>,
+    expected_review_at: Option<&str>,
+) -> Result<Memo, String> {
+    let memo_id = uuid::Uuid::parse_str(memo_id)
+        .map_err(|_| "备忘标识不正确".to_owned())?
+        .to_string();
+    let parse = |value: Option<&str>| {
+        crate::local_agent::store::parse_reminder_time(
+            &value.map_or(serde_json::Value::Null, |text| {
+                serde_json::Value::String(text.to_owned())
+            }),
+        )
+        .map_err(|_| "回顾时间无效或已经过去，请重新设置".to_owned())
+    };
+    let target = parse(review_at)?;
+    let expected = parse(expected_review_at)?;
+    crate::local_agent::plugins::memo::MemoStore::new(store)
+        .set_memo_review(&memo_id, target, expected)
+        .map_err(|error| match error {
+            crate::local_agent::store::StoreError::Conflict(_) => {
+                "备忘或回顾时间已被修改，请刷新后重试".into()
+            }
+            crate::local_agent::store::StoreError::Validation(_) => {
+                "回顾时间无效或已经过去，请重新设置".into()
+            }
+            other => other.message(),
+        })
 }
 
 #[tauri::command]
@@ -545,8 +1010,11 @@ pub async fn agent_list_todos(app: AppHandle) -> Result<TodoListView, String> {
 // Keychain and config filesystem calls may wait on OS security services. Keep
 // the existing serialized transactions, but never run them on AppKit's thread
 // or hold an async executor worker while waiting for credential I/O.
-async fn blocking_config<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
-    tauri::async_runtime::spawn_blocking(work).await
+async fn blocking_config<T: Send + 'static>(
+    work: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
         .map_err(|_| "助手配置操作中断，请重试".to_owned())
 }
 
@@ -572,9 +1040,10 @@ fn agent_view_blocking(app: AppHandle) -> View {
                 Mode::Local => true,
             });
         if let Some(mut config) = config {
-            // Move any legacy plaintext key into the OS credential store and
-            // rewrite the config scrubbed; hydrate the in-memory key either way.
-            if credentials::hydrate(&mut config.local, &credentials::PlatformStore) {
+            // Only the active local backend needs the encrypted model key.
+            // Server startup must not await an unrelated Keychain prompt.
+            // Legacy plaintext still migrates before any scrubbed rewrite.
+            if config.hydrate_startup(&credentials::PlatformStore) {
                 let _ = persist(&app, &config);
             }
             start(&app, &mut inner, config);
@@ -638,6 +1107,12 @@ fn save_agent_settings_blocking(app: AppHandle, settings: Settings) -> Result<Vi
             // is rewritten, so plaintext never reaches the disk.
             let api_key =
                 credentials::save_key(&credentials::PlatformStore, key_input, &base_url, &stored)?;
+            // A replacement has been durably stored, or the old endpoint's
+            // credential has been explicitly removed. Otherwise retry the
+            // retained legacy key before permitting the config rewrite below.
+            if !key_input.is_empty() || base_url != stored.base_url {
+                config.local_key_migration_pending = false;
+            }
             let model_input = settings.local_model.trim();
             let model = if model_input.is_empty() {
                 stored.model.clone()
@@ -653,6 +1128,7 @@ fn save_agent_settings_blocking(app: AppHandle, settings: Settings) -> Result<Vi
         }
     }
     config.mode = settings.mode;
+    config.retry_pending_key_migration(&credentials::PlatformStore)?;
     persist(&app, &config)?;
     inner.initialized = true;
     start(&app, &mut inner, config);
@@ -661,15 +1137,62 @@ fn save_agent_settings_blocking(app: AppHandle, settings: Settings) -> Result<Vi
 }
 
 #[tauri::command]
-pub async fn agent_list_models(app: AppHandle, base_url: String, api_key: String) -> Result<Vec<String>, String> {
-    let stored = {
-        let state = app.state::<AgentState>();
-        let inner = state.lock();
-        inner.config.as_ref().map(|config| config.local.effective())
-    };
+pub async fn agent_list_models(
+    app: AppHandle,
+    base_url: String,
+    api_key: String,
+) -> Result<Vec<String>, String> {
+    let (base_url, api_key) = blocking_config(move || {
+        let (stored, generation) = {
+            let state = app.state::<AgentState>();
+            let inner = state.lock();
+            (
+                inner.config.as_ref().map(|config| config.local.clone()),
+                inner.view.generation,
+            )
+        };
+        // Snapshot ownership ends the lock before any explicitly requested
+        // credential lookup. Server projections remain readable while it waits.
+        model_request_for_generation(
+            stored,
+            &base_url,
+            &api_key,
+            &credentials::PlatformStore,
+            generation,
+            || app.state::<AgentState>().lock().view.generation,
+        )
+    })
+    .await??;
+    crate::llm::list_models(&base_url, &api_key).await
+}
+
+fn model_request_for_generation(
+    stored: Option<LocalConfig>,
+    base_url: &str,
+    api_key: &str,
+    store: &impl credentials::CredentialStore,
+    generation: u64,
+    current_generation: impl FnOnce() -> u64,
+) -> Result<(String, String), String> {
+    let request = model_request_credentials(stored, base_url, api_key, store)?;
+    // A settings save can replace the one credential-store entry while this
+    // lookup waits. Never send that replacement key to the captured old URL.
+    if current_generation() != generation {
+        return Err("助手配置已更换，请重新获取模型列表".into());
+    }
+    Ok(request)
+}
+
+fn model_request_credentials(
+    stored: Option<LocalConfig>,
+    base_url: &str,
+    api_key: &str,
+    store: &impl credentials::CredentialStore,
+) -> Result<(String, String), String> {
+    let effective = stored.as_ref().map(LocalConfig::effective);
     let url_input = base_url.trim();
     let base_url = if url_input.is_empty() {
-        stored
+        effective
             .as_ref()
             .map(|config| config.base_url.clone())
             .filter(|url| !url.is_empty())
@@ -681,12 +1204,15 @@ pub async fn agent_list_models(app: AppHandle, base_url: String, api_key: String
     let api_key = if !key_input.is_empty() {
         key_input.to_owned()
     } else {
-        stored
-            .filter(|config| config.base_url == base_url)
-            .map(|config| config.api_key)
-            .unwrap_or_default()
+        match stored {
+            Some(mut config) if config.effective().base_url == base_url => {
+                config.api_key = credentials::load_saved_key(&config, store)?;
+                config.effective().api_key
+            }
+            _ => String::new(),
+        }
     };
-    crate::llm::list_models(&base_url, &api_key).await
+    Ok((base_url, api_key))
 }
 
 #[tauri::command]
@@ -697,7 +1223,11 @@ pub async fn agent_submit(app: AppHandle, request_id: String, text: String) -> R
     let mode = {
         let state = app.state::<AgentState>();
         let inner = state.lock();
-        inner.config.as_ref().map(|config| config.mode).unwrap_or_default()
+        inner
+            .config
+            .as_ref()
+            .map(|config| config.mode)
+            .unwrap_or_default()
     };
     match mode {
         Mode::Server => server::ServerBackend::submit(&app, request_id, text).await,
@@ -707,6 +1237,136 @@ pub async fn agent_submit(app: AppHandle, request_id: String, text: String) -> R
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn deferred_model_lookup_rejects_reconfiguration_before_request() {
+        use std::cell::Cell;
+        struct ReconfiguredStore<'a>(&'a Cell<u64>);
+        impl credentials::CredentialStore for ReconfiguredStore<'_> {
+            fn get(&self) -> Result<Option<String>, String> {
+                self.0.set(self.0.get() + 1);
+                Ok(Some("unit-replacement-key".into()))
+            }
+            fn set(&self, _: &str) -> Result<(), String> {
+                panic!("read-only lookup")
+            }
+            fn delete(&self) -> Result<(), String> {
+                panic!("read-only lookup")
+            }
+        }
+        let generation = Cell::new(4);
+        let stored = LocalConfig {
+            base_url: "https://old.example/v1".into(),
+            ..Default::default()
+        };
+        let result = model_request_for_generation(
+            Some(stored),
+            "",
+            "",
+            &ReconfiguredStore(&generation),
+            4,
+            || generation.get(),
+        );
+        assert_eq!(result.unwrap_err(), "助手配置已更换，请重新获取模型列表");
+    }
+
+    #[test]
+    fn failed_legacy_migration_blocks_later_persistence_until_explicit_retry() {
+        struct TestFile(std::path::PathBuf);
+        impl Drop for TestFile {
+            fn drop(&mut self) {
+                let _ = fs::remove_file(&self.0);
+            }
+        }
+        let file = TestFile(std::env::temp_dir().join(format!(
+            "desktop-pet-config-unit-{}.json",
+            uuid::Uuid::new_v4()
+        )));
+        let original = br#"{"mode":"server","local":{"base_url":"https://saved.example/v1","api_key":"unit-legacy-key"}}"#;
+        fs::write(&file.0, original).unwrap();
+        let mut config = Config::parse(original).unwrap();
+        let denied = credentials::tests::MemoryStore {
+            fail_writes: true,
+            ..credentials::tests::MemoryStore::with(None)
+        };
+        assert!(!config.hydrate_startup(&denied));
+        assert!(config.local_key_migration_pending);
+        let mut snapshot_config = config.clone();
+        snapshot_config.server.session_id = Some("unit-session".into());
+        assert!(persist_at(&file.0, &snapshot_config).is_err());
+        assert_eq!(fs::read(&file.0).unwrap(), original);
+        assert!(!file.0.with_extension("tmp").exists());
+
+        // Blank same-endpoint input retains the key but is not itself a durable
+        // migration. The explicit save must still retry before it can persist.
+        config.local.api_key =
+            credentials::save_key(&denied, "", &config.local.base_url, &config.local).unwrap();
+        assert!(config.retry_pending_key_migration(&denied).is_err());
+        assert!(persist_at(&file.0, &config).is_err());
+        assert_eq!(fs::read(&file.0).unwrap(), original);
+
+        let store = credentials::tests::MemoryStore::with(None);
+        config.retry_pending_key_migration(&store).unwrap();
+        assert_eq!(*store.secret.borrow(), Some("unit-legacy-key".to_owned()));
+        assert!(!config.local_key_migration_pending);
+        persist_at(&file.0, &config).unwrap();
+        let saved = String::from_utf8(fs::read(&file.0).unwrap()).unwrap();
+        assert!(!saved.contains("api_key"));
+        assert!(!saved.contains("unit-legacy-key"));
+        assert!(!saved.contains("migration_pending"));
+    }
+
+    #[test]
+    fn model_request_recovers_only_the_matching_saved_key() {
+        let stored = super::LocalConfig {
+            base_url: "https://saved.example/v1".into(),
+            model: "unit-model".into(),
+            ..Default::default()
+        };
+        let store = super::credentials::tests::MemoryStore::with(Some("unit-saved-key"));
+        let (url, key) =
+            super::model_request_credentials(Some(stored.clone()), "", "", &store).unwrap();
+        assert_eq!(url, stored.base_url);
+        assert_eq!(key, "unit-saved-key");
+        let (_, key) = super::model_request_credentials(
+            Some(stored.clone()),
+            "https://other.example/v1",
+            "",
+            &store,
+        )
+        .unwrap();
+        assert!(key.is_empty());
+        let (_, key) = super::model_request_credentials(
+            Some(stored),
+            "https://other.example/v1",
+            "unit-entered-key",
+            &store,
+        )
+        .unwrap();
+        assert_eq!(key, "unit-entered-key");
+    }
+
+    #[test]
+    fn model_request_reports_deferred_credential_read_failure() {
+        struct DeniedStore;
+        impl super::credentials::CredentialStore for DeniedStore {
+            fn get(&self) -> Result<Option<String>, String> {
+                Err("credential read denied".into())
+            }
+            fn set(&self, _: &str) -> Result<(), String> {
+                panic!("model listing does not write credentials")
+            }
+            fn delete(&self) -> Result<(), String> {
+                panic!("model listing does not delete credentials")
+            }
+        }
+        let stored = super::LocalConfig {
+            base_url: "https://saved.example/v1".into(),
+            model: "unit-model".into(),
+            ..Default::default()
+        };
+        assert!(super::model_request_credentials(Some(stored), "", "", &DeniedStore).is_err());
+    }
+
     #[tokio::test(flavor = "current_thread")]
     async fn credential_wait_does_not_block_the_async_executor() {
         let caller = std::thread::current().id();
@@ -714,12 +1374,21 @@ mod tests {
         let (release, wait) = std::sync::mpsc::channel();
         let task = tokio::spawn(super::blocking_config(move || {
             let _ = started.send(std::thread::current().id());
-            wait.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
+            wait.recv_timeout(std::time::Duration::from_secs(2))
+                .unwrap();
             7
         }));
-        let worker = tokio::time::timeout(std::time::Duration::from_millis(500), ready).await.unwrap().unwrap();
+        let worker = tokio::time::timeout(std::time::Duration::from_millis(500), ready)
+            .await
+            .unwrap()
+            .unwrap();
         assert_ne!(worker, caller);
-        tokio::time::timeout(std::time::Duration::from_millis(500), tokio::time::sleep(std::time::Duration::from_millis(5))).await.unwrap();
+        tokio::time::timeout(
+            std::time::Duration::from_millis(500),
+            tokio::time::sleep(std::time::Duration::from_millis(5)),
+        )
+        .await
+        .unwrap();
         release.send(()).unwrap();
         assert_eq!(task.await.unwrap().unwrap(), 7);
     }
@@ -814,6 +1483,7 @@ mod tests {
                     session_id: None,
                 },
                 local: LocalConfig::default(),
+                ..Default::default()
             }),
             ..Default::default()
         };
@@ -838,9 +1508,77 @@ mod tests {
     }
 
     fn isolated_reminder() -> Todo {
-        Todo { id: "00000000-0000-0000-0000-000000000001".into(), title: "isolated".into(),
-            status: TodoStatus::Pending, created_at: "2026-09-07T00:00:00Z".into(),
-            remind_at: Some("2026-09-07T08:00:00Z".into()) }
+        Todo {
+            id: "00000000-0000-0000-0000-000000000001".into(),
+            title: "isolated".into(),
+            status: TodoStatus::Pending,
+            created_at: "2026-09-07T00:00:00Z".into(),
+            remind_at: Some("2026-09-07T08:00:00Z".into()),
+        }
+    }
+
+    fn isolated_memo_review() -> Memo {
+        Memo {
+            id: "00000000-0000-0000-0000-000000000002".into(),
+            kind: MemoKind::Note,
+            title: "isolated".into(),
+            content: None,
+            status: MemoStatus::Active,
+            created_at: "2026-09-07T00:00:00Z".into(),
+            review_at: Some("2026-09-07T08:00:00Z".into()),
+        }
+    }
+
+    /// The memo review poll shares the todo fencing counters: a memo write in
+    /// flight (or an epoch bump from either domain) must fence both polls.
+    #[test]
+    fn memo_review_poll_shares_fencing_and_write_evicts_the_review_item() {
+        let mut inner = Inner::default();
+        inner.view.generation = 4;
+        let due = vec![isolated_memo_review()];
+        assert!(apply_memo_review_poll(&mut inner, 4, 0, Ok(due.clone())));
+        assert!(!apply_memo_review_poll(&mut inner, 4, 0, Ok(due.clone())));
+        assert!(apply_memo_review_poll(
+            &mut inner,
+            4,
+            0,
+            Err("offline".into())
+        ));
+        assert_eq!(inner.view.memo_reviews, due);
+        // Wrong generation is rejected and preserves data.
+        assert!(!apply_memo_review_poll(&mut inner, 3, 0, Ok(vec![])));
+        assert_eq!(inner.view.memo_reviews, due);
+        // A todo or memo write in flight fences the memo poll too.
+        inner.todo_mutation_epoch = 1;
+        inner.todo_writes_in_flight = 1;
+        assert!(!apply_memo_review_poll(&mut inner, 4, 0, Ok(vec![])));
+        assert!(!apply_memo_review_poll(&mut inner, 4, 1, Ok(vec![])));
+        // A successful memo write evicts the item and bumps memo_revision.
+        let mut archived = isolated_memo_review();
+        archived.status = MemoStatus::Archived;
+        archived.review_at = None;
+        apply_memo_write(&mut inner, 4, Ok(archived)).unwrap();
+        assert!(inner.view.memo_reviews.is_empty());
+        assert_eq!(inner.view.memo_revision, 1);
+        assert_eq!(inner.todo_writes_in_flight, 0);
+        // The write bumped the shared epoch, so the in-flight poll is stale.
+        assert!(!apply_memo_review_poll(&mut inner, 4, 1, Ok(due.clone())));
+        assert!(apply_memo_review_poll(&mut inner, 4, 2, Ok(vec![]))); // clears error
+                                                                       // A failed write still releases the counter and preserves the list.
+        inner.view.memo_reviews = due.clone();
+        inner.todo_writes_in_flight = 1;
+        assert!(apply_memo_write(&mut inner, 4, Err("uncertain".into())).is_err());
+        assert_eq!(inner.view.memo_reviews, due);
+        assert_eq!(inner.todo_writes_in_flight, 0);
+        assert_eq!(inner.view.memo_revision, 1);
+        // A stale-generation write changes nothing, not even the epoch.
+        let epoch = inner.todo_mutation_epoch;
+        assert!(apply_memo_write(&mut inner, 3, Ok(isolated_memo_review())).is_err());
+        assert_eq!(inner.todo_mutation_epoch, epoch);
+        // A memo write fences a pending todo-reminder poll via the same counters.
+        inner.todo_writes_in_flight = 1;
+        assert!(!apply_reminder_poll(&mut inner, 4, epoch, Ok(vec![])));
+        apply_memo_write(&mut inner, 4, Ok(isolated_memo_review())).unwrap();
     }
 
     #[test]
@@ -885,6 +1623,8 @@ mod tests {
         assert!(normalized_url("https://example.com?token=secret", "助手服务地址").is_err());
         assert!(normalized_url("http://127.0.0.1:8000", "助手服务地址").is_ok());
         assert!(normalized_url("https://example.com/", "模型服务地址").is_ok());
-        assert!(normalized_url("not a url", "模型服务地址").unwrap_err().contains("模型服务地址"));
+        assert!(normalized_url("not a url", "模型服务地址")
+            .unwrap_err()
+            .contains("模型服务地址"));
     }
 }

@@ -16,9 +16,9 @@
         "label": "main",
         "title": "橘伴",
         "width": 232,
-        "height": 380.9,
-        "minWidth": 232,
-        "minHeight": 380.9,
+        "height": 340,
+        "minWidth": 1,
+        "minHeight": 1,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -30,10 +30,10 @@
       {
         "label": "chat",
         "title": "与橘伴对话",
-        "width": 940,
-        "height": 760,
-        "minWidth": 713,
-        "minHeight": 401,
+        "width": 720,
+        "height": 680,
+        "minWidth": 1,
+        "minHeight": 1,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -44,7 +44,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {

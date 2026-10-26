@@ -154,8 +154,14 @@ impl PluginRegistry {
 }
 
 /// Built-in plugins in explicit registration order (no filesystem scan).
+/// The order also decides which plugin's fragments fill which prompt slots
+/// (todo first, then memo), mirroring `plugin_runtime.py builtin_plugins`.
 pub fn builtin_plugins() -> PluginRegistry {
-    PluginRegistry::new(vec![Box::new(super::plugins::todo::TodoPlugin::new())])
+    PluginRegistry::new(vec![
+        Box::new(super::plugins::todo::TodoPlugin::new()),
+        Box::new(super::plugins::memo::MemoPlugin::new()),
+        Box::new(super::plugins::history::HistoryPlugin),
+    ])
 }
 
 #[cfg(test)]
@@ -213,7 +219,13 @@ mod tests {
             .execute(&store, &run, &call("todo_list", "{}"))
             .unwrap()
             .unwrap();
-        assert_eq!(listed.view.result.as_ref().unwrap()["items"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            listed.view.result.as_ref().unwrap()["items"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
 
         let reminder = format!(
             r#"{{"todo_id":"{todo_id}","remind_at":"{}","expected_remind_at":null}}"#,
@@ -255,15 +267,34 @@ mod tests {
         let plugins = builtin_plugins();
         let (_session, run) = running_run(&store);
         for (name, arguments, message) in [
-            ("todo_create", r#"{"title":""}"#, "待办标题需为 1 到 2000 个字符"),
-            ("todo_create", r#"{"title":"x","extra":1}"#, "创建待办必须提供 title，仅可附加 remind_at 参数"),
+            (
+                "todo_create",
+                r#"{"title":""}"#,
+                "待办标题需为 1 到 2000 个字符",
+            ),
+            (
+                "todo_create",
+                r#"{"title":"x","extra":1}"#,
+                "创建待办必须提供 title，仅可附加 remind_at 参数",
+            ),
             ("todo_create", "[]", "工具参数必须为对象"),
             ("todo_list", r#"{"x":1}"#, "查询待办不接受额外参数"),
-            ("todo_complete", r#"{"todo_id":"nope"}"#, "完成待办只接受有效的 todo_id 参数"),
-            ("todo_reminder_set", r#"{"todo_id":"00000000-0000-0000-0000-000000000001"}"#, "设置提醒必须且只能提供 todo_id、remind_at 和 expected_remind_at"),
+            (
+                "todo_complete",
+                r#"{"todo_id":"nope"}"#,
+                "完成待办只接受有效的 todo_id 参数",
+            ),
+            (
+                "todo_reminder_set",
+                r#"{"todo_id":"00000000-0000-0000-0000-000000000001"}"#,
+                "设置提醒必须且只能提供 todo_id、remind_at 和 expected_remind_at",
+            ),
             ("unknown_tool", "{}", "不支持该工具"),
         ] {
-            let executed = plugins.execute(&store, &run, &call(name, arguments)).unwrap().unwrap();
+            let executed = plugins
+                .execute(&store, &run, &call(name, arguments))
+                .unwrap()
+                .unwrap();
             assert_eq!(executed.view.status, ToolStatus::Failed, "{name}");
             assert_eq!(executed.view.error.as_deref(), Some(message), "{name}");
         }
@@ -290,7 +321,10 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(executed.view.status, ToolStatus::Failed);
-        assert_eq!(executed.view.error.as_deref(), Some("未找到待办，请刷新核对"));
+        assert_eq!(
+            executed.view.error.as_deref(),
+            Some("未找到待办，请刷新核对")
+        );
         let created = plugins
             .execute(&store, &run, &call("todo_create", r#"{"title":"吃药"}"#))
             .unwrap()
@@ -306,7 +340,10 @@ mod tests {
             .execute(&store, &run, &call("todo_reminder_set", &stale))
             .unwrap()
             .unwrap();
-        assert_eq!(executed.view.error.as_deref(), Some("提醒已被修改，请刷新后重试"));
+        assert_eq!(
+            executed.view.error.as_deref(),
+            Some("提醒已被修改，请刷新后重试")
+        );
         let past = format!(
             r#"{{"todo_id":"{todo_id}","remind_at":"2020-01-01T00:00:00+08:00","expected_remind_at":null}}"#
         );
@@ -314,7 +351,10 @@ mod tests {
             .execute(&store, &run, &call("todo_reminder_set", &past))
             .unwrap()
             .unwrap();
-        assert_eq!(executed.view.error.as_deref(), Some("提醒时间必须晚于当前时间"));
+        assert_eq!(
+            executed.view.error.as_deref(),
+            Some("提醒时间必须晚于当前时间")
+        );
         // A repeated call id returns the committed outcome without rewriting.
         let first = plugins
             .execute(
@@ -336,6 +376,179 @@ mod tests {
         assert_eq!(repeated.view.id, first.view.id);
         let todos = super::super::plugins::todo::TodoStore::new(&store);
         assert_eq!(todos.list_todos().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn memo_tools_roundtrip_and_validation_errors_match_the_manifest() {
+        let store = Store::open_memory();
+        let plugins = builtin_plugins();
+        let (_session, run) = running_run(&store);
+        let created = plugins
+            .execute(
+                &store,
+                &run,
+                &call(
+                    "memo_create",
+                    r#"{"title":" 长期目标：跑步 ","kind":"goal"}"#,
+                ),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(created.view.status, ToolStatus::Completed);
+        assert_eq!(created.view.name, "memo.create");
+        let item = &created.view.result.as_ref().unwrap()["item"];
+        assert_eq!(item["title"], "长期目标：跑步");
+        assert_eq!(item["kind"], "goal");
+        assert_eq!(item["status"], "active");
+        let memo_id = item["id"].as_str().unwrap().to_owned();
+
+        let listed = plugins
+            .execute(&store, &run, &call("memo_list", r#"{"kind":"goal"}"#))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            listed.view.result.as_ref().unwrap()["items"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+
+        let review = format!(
+            r#"{{"memo_id":"{memo_id}","review_at":"2036-09-09T15:15:00+08:00","expected_review_at":null}}"#
+        );
+        let set = plugins
+            .execute(&store, &run, &call("memo_review_set", &review))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            set.view.result.as_ref().unwrap()["item"]["review_at"],
+            json!("2036-09-09T07:15:00.000000Z")
+        );
+
+        let archived = plugins
+            .execute(
+                &store,
+                &run,
+                &call(
+                    "memo_archive",
+                    &format!(r#"{{"memo_id":"{memo_id}","archived":true}}"#),
+                ),
+            )
+            .unwrap()
+            .unwrap();
+        let item = &archived.view.result.as_ref().unwrap()["item"];
+        assert_eq!(item["status"], "archived");
+        // Archiving clears the review time atomically.
+        assert_eq!(item["review_at"], Value::Null);
+        // Default listing hides archived rows; the flag brings them back.
+        let listed = plugins
+            .execute(&store, &run, &call("memo_list", "{}"))
+            .unwrap()
+            .unwrap();
+        assert!(listed.view.result.as_ref().unwrap()["items"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        let listed = plugins
+            .execute(
+                &store,
+                &run,
+                &call("memo_list", r#"{"include_archived":true}"#),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            listed.view.result.as_ref().unwrap()["items"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+
+        for (name, arguments, message) in [
+            (
+                "memo_create",
+                r#"{"title":""}"#,
+                "备忘标题需为 1 到 2000 个字符",
+            ),
+            (
+                "memo_create",
+                r#"{"title":"x","extra":1}"#,
+                "创建备忘必须提供 title，仅可附加 kind、content 和 review_at 参数",
+            ),
+            (
+                "memo_create",
+                r#"{"title":"x","kind":"other"}"#,
+                "kind 仅支持 note 或 goal",
+            ),
+            (
+                "memo_create",
+                r#"{"title":"x","content":42}"#,
+                "备忘正文需为不超过 20000 个字符的文本",
+            ),
+            (
+                "memo_list",
+                r#"{"include_archived":1}"#,
+                "查询备忘仅接受可选的 kind 和 include_archived 参数",
+            ),
+            (
+                "memo_update",
+                r#"{"memo_id":"00000000-0000-0000-0000-000000000001"}"#,
+                "更新备忘必须提供 memo_id，并至少提供 title、content 或 kind 之一",
+            ),
+            (
+                "memo_archive",
+                r#"{"memo_id":"nope","archived":true}"#,
+                "memo_id 必须为有效的 UUID",
+            ),
+            (
+                "memo_review_set",
+                r#"{"memo_id":"00000000-0000-0000-0000-000000000001"}"#,
+                "设置回顾时间必须且只能提供 memo_id、review_at 和 expected_review_at",
+            ),
+        ] {
+            let executed = plugins
+                .execute(&store, &run, &call(name, arguments))
+                .unwrap()
+                .unwrap();
+            assert_eq!(executed.view.status, ToolStatus::Failed, "{name}");
+            assert_eq!(executed.view.error.as_deref(), Some(message), "{name}");
+        }
+        // Business conflicts surface as failed tool results, mirroring the server.
+        let missing = format!(
+            r#"{{"memo_id":"{}","review_at":null,"expected_review_at":null}}"#,
+            uuid::Uuid::new_v4()
+        );
+        let executed = plugins
+            .execute(&store, &run, &call("memo_review_set", &missing))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            executed.view.error.as_deref(),
+            Some("未找到备忘，请刷新核对")
+        );
+        // A repeated call id returns the committed outcome without rewriting.
+        let first = plugins
+            .execute(
+                &store,
+                &run,
+                &call_with_id("call_memo_repeat", "memo_create", r#"{"title":"重复"}"#),
+            )
+            .unwrap()
+            .unwrap();
+        let repeated = plugins
+            .execute(
+                &store,
+                &run,
+                &call_with_id("call_memo_repeat", "memo_create", r#"{"title":"重复"}"#),
+            )
+            .unwrap()
+            .unwrap();
+        assert!(repeated.envelopes.is_empty());
+        assert_eq!(repeated.view.id, first.view.id);
+        let memos = super::super::plugins::memo::MemoStore::new(&store);
+        assert_eq!(memos.list_memos(None, true).unwrap().len(), 2);
     }
 
     /// AC1: a declaration-only plugin with a trivial handler loads and
@@ -374,7 +587,11 @@ mod tests {
             (model_name == "dummy_ping").then_some("dummy.ping")
         }
 
-        fn validate(&self, _business_name: &str, arguments: &Value) -> Result<Box<dyn Any>, String> {
+        fn validate(
+            &self,
+            _business_name: &str,
+            arguments: &Value,
+        ) -> Result<Box<dyn Any>, String> {
             Ok(Box::new(arguments.clone()))
         }
 
@@ -403,7 +620,13 @@ mod tests {
             .collect();
         assert_eq!(
             names,
-            ["todo_create", "todo_list", "todo_complete", "todo_reminder_set", "dummy_ping"]
+            [
+                "todo_create",
+                "todo_list",
+                "todo_complete",
+                "todo_reminder_set",
+                "dummy_ping"
+            ]
         );
 
         let (_session, run) = running_run(&store);
@@ -413,7 +636,10 @@ mod tests {
             .unwrap();
         assert_eq!(executed.view.status, ToolStatus::Completed);
         assert_eq!(executed.view.name, "dummy.ping");
-        assert_eq!(executed.view.result.as_ref().unwrap(), &json!({"pong": true}));
+        assert_eq!(
+            executed.view.result.as_ref().unwrap(),
+            &json!({"pong": true})
+        );
         // The skeleton stays idempotent for any plugin's calls.
         let repeated = plugins
             .execute(&store, &run, &call_with_id("call_ping", "dummy_ping", "{}"))
@@ -440,7 +666,11 @@ mod tests {
             fn business_name(&self, _model_name: &str) -> Option<&'static str> {
                 None
             }
-            fn validate(&self, _business_name: &str, _arguments: &Value) -> Result<Box<dyn Any>, String> {
+            fn validate(
+                &self,
+                _business_name: &str,
+                _arguments: &Value,
+            ) -> Result<Box<dyn Any>, String> {
                 Ok(Box::new(()))
             }
             fn execute(

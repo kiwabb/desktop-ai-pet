@@ -1,4 +1,5 @@
 import { markMotionDiagnostic, motionDiagnosticMode } from '../lib/motion-diagnostics'
+import { motionDuration, MOTION_EASE_OUT } from '../lib/motion'
 import { useLayoutEffect, useRef } from 'react'
 import type { ChatBubbleDockConfig } from './pet-shell-geometry'
 import type { RefObject } from 'react'
@@ -8,10 +9,11 @@ interface FrameRect { x: number; y: number; width: number; height: number }
 
 /** Total compact↔expanded morph budget: a bounded paint-settle wait (two
  * chained rAFs, ~2 frames) under full ghost cover, then a fully overlapped
- * crossfade (ghost 240ms out / destination 300ms in, shared start). */
-export const FRAME_MORPH_MS = 300
+ * crossfade (ghost160ms out / destination240ms in, shared start). */
+export const FRAME_MORPH_MS = 240
 /** Reduced-motion crossfade: opacity only, no transform. */
 const FRAME_MORPH_REDUCED_MS = 140
+const FRAME_MORPH_SETTLE_GRACE_MS = 80
 
 /** The real frame commits its final geometry at transition start, so its own
  * bounds are the authoritative interactive rect for the whole dissolve. */
@@ -167,7 +169,9 @@ export function useFrameMorph(rootRef: RefObject<HTMLElement | null>, variant: s
       // shell now that the committed destination geometry has painted. The
       // origin restores with the rest of the cleanup.
       if (!reduced) svg.style.transformOrigin = dockAnchorOrigin(svg)
-      const fadeIn = { duration: reduced ? FRAME_MORPH_REDUCED_MS : 300, easing: reduced ? 'ease-out' : 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' as FillMode }
+      const incomingDuration = reduced ? FRAME_MORPH_REDUCED_MS : motionDuration(root, 'slow', FRAME_MORPH_MS)
+      const outgoingDuration = reduced ? FRAME_MORPH_REDUCED_MS : motionDuration(root, 'exit', 160)
+      const fadeIn = { duration: incomingDuration, easing: MOTION_EASE_OUT, fill: 'both' as FillMode }
       motion = [
         // The outgoing shell dissolves and slightly contracts toward the dock
         // anchor on the standard curve; reduced motion keeps an opacity-only
@@ -177,7 +181,7 @@ export function useFrameMorph(rootRef: RefObject<HTMLElement | null>, variant: s
           { opacity: 1 }, { opacity: 0 },
         ] : [
           { opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.95)' },
-        ], { duration: reduced ? FRAME_MORPH_REDUCED_MS : 240, easing: reduced ? 'ease-in-out' : 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'both' }),
+        ], { duration: outgoingDuration, easing: reduced ? 'ease-in-out' : 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'both' }),
         // The incoming shell grows from .96 toward the same dock anchor on an
         // emphasized ease-out — fast start, gentle settle. The frame root
         // itself never scales: layout already committed at final geometry.
@@ -204,7 +208,7 @@ export function useFrameMorph(rootRef: RefObject<HTMLElement | null>, variant: s
       // and the morph would never settle. Bound it — on timeout, cancel()
       // restores the unpinned destination and the ghost simply lifts, ending
       // in the committed final state.
-      finishWatchdog = window.setTimeout(() => finish('morph-watchdog'), 1200)
+      finishWatchdog = window.setTimeout(() => finish('morph-watchdog'), Math.max(incomingDuration, outgoingDuration) + FRAME_MORPH_SETTLE_GRACE_MS)
       void Promise.all(motion.map(animation => animation.finished)).then(() => finish('morph-end'), () => { /* cancel() already owns cleanup on cancellation */ })
     }
     // Wait for the committed frame to paint before dissolving: two chained
@@ -219,13 +223,33 @@ export function useFrameMorph(rootRef: RefObject<HTMLElement | null>, variant: s
       () => { fontsReady = true; maybeStart() },
     )
     settleRaf = window.requestAnimationFrame(() => {
-      settleRaf = window.requestAnimationFrame(() => { rafDone = true; maybeStart() })
+      if (stopped) return
+      settleRaf = window.requestAnimationFrame(() => { if (!stopped) { rafDone = true; maybeStart() } })
     })
-    settleTimer = window.setTimeout(start, 200)
+    settleTimer = window.setTimeout(() => {
+      // No paint callbacks means a known-unready animation timeline. Reveal the
+      // already committed destination now instead of starting frozen WAAPI.
+      if (!rafDone) finish('morph-paint-timeout')
+      else start() // Preserve the bounded font wait once both RAFs arrived.
+    }, 200)
     activeRef.current = { cancel }
     notify(from)
     markMotionDiagnostic('morph-created')
-  }, [rootRef, variant, visible, enabled, onFrame, dock.offsetX, dock.offsetY, dock.scale])
+  }, [rootRef, variant, visible, enabled, onFrame, dock.offsetX, dock.offsetY, dock.scale, dock.preserveScale])
   useLayoutEffect(() => () => { activeRef.current?.cancel(); activeRef.current = null }, [])
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const resized = () => {
+      activeRef.current?.cancel()
+      activeRef.current = null
+      if (previousRef.current) {
+        const rect = root.getBoundingClientRect()
+        previousRef.current.rect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+      }
+    }
+    root.addEventListener('chat-frame-viewport-resize', resized)
+    return () => root.removeEventListener('chat-frame-viewport-resize', resized)
+  }, [rootRef])
   return morphingRef
 }

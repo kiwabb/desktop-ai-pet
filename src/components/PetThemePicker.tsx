@@ -1,34 +1,22 @@
-import { Check, RotateCcw, SlidersHorizontal } from 'lucide-react'
+import { Check, Send } from 'lucide-react'
 import type { PetTheme } from '../lib/customization'
-import { paletteChoices, presetTheme } from '../lib/customization-theme'
+import type { ThemeStyle } from '../lib/customization-theme'
+import { presetTheme } from '../lib/customization-theme'
 
-export function PetThemePicker({ accent, colors, value, onChange, onReset }: {
-  accent: string; colors?: string[]; value?: PetTheme
-  onChange: (theme: PetTheme) => void; onReset: () => void
-}) {
-  const choices = paletteChoices(colors, accent)
-  const current = value ?? choices[0].theme
-  return <section className="pet-theme-picker" aria-label="完整主题搭配">
-    <div className="customization-section-title"><h3>给日常换个颜色</h3><button type="button" onClick={onReset}><RotateCcw size={13} aria-hidden="true" />还原已保存</button></div>
-    <p className="customization-hint">选一套喜欢的搭配，整个面板一起换色。无需重新生成。</p>
-    <div className="pet-theme-options" role="group" aria-label="选择主题">
-      {choices.map(choice => <button key={choice.theme.palette} type="button" className="pet-theme-option" style={presetTheme(choice.theme.primary, { ...choice.theme, strength: value?.strength ?? 65 })} aria-pressed={value?.palette === choice.theme.palette} onClick={() => onChange({ ...choice.theme, strength: value?.strength ?? 65 })}>
-        <span className="pet-theme-sample" aria-hidden="true"><span /><span /><span /></span>
-        <span className="pet-theme-option-name">{choice.name}{value?.palette === choice.theme.palette && <Check size={13} aria-hidden="true" />}</span>
-      </button>)}
+const materials = { matte: '柔雾质感', paper: '纸感质地', glaze: '轻釉光泽' }
+const controls = { soft: '柔和按钮', solid: '饱满按钮', outlined: '描边按钮' }
+/** A labelled specimen, never a conversation or a selectable template gallery. */
+export function PetThemePreview({ accent, theme, saved = false }: { accent: string; theme?: PetTheme; saved?: boolean }) {
+  const design = theme?.design
+  return <section className="pet-theme-preview" style={{ ...(!design ? { '--companion-material': 'var(--companion-surface)', '--companion-material-inset': 'none', '--companion-radius': '14px', '--companion-control-radius': '99px', '--companion-border-width': '1px', '--companion-action-border': 'transparent' } : {}), ...presetTheme(accent, theme) } as ThemeStyle} aria-label="专属主题预览">
+    <div className="pet-theme-story"><h3>{design?.name || '已保存的伙伴主题'}</h3><p>{design?.summary || '保留这个伙伴已保存的配色。重新导入参考图时，AI 会为图片设计新的完整主题。'}</p></div>
+    {design && <div className="pet-theme-details"><span>{materials[design.material]}</span><span>{controls[design.control]}</span></div>}
+    <div className="pet-theme-specimen" aria-label="界面样式示意，非聊天记录">
+      <div className="pet-theme-specimen-header"><strong>界面样式示意</strong><span>不产生聊天记录</span></div>
+      <div className="pet-theme-specimen-body"><span className="pet-theme-specimen-tab"><Check size={13} aria-hidden="true" />选中项</span><span className="pet-theme-specimen-muted">辅助文字</span><span className="pet-theme-specimen-bubble">消息气泡</span></div>
+      <div className="pet-theme-specimen-footer"><span>输入区域</span><span className="pet-theme-specimen-action"><Send size={13} aria-hidden="true" />操作按钮</span></div>
     </div>
-    {!value && <p className="customization-hint">保留原配色中 · 选择搭配后开始预览</p>}
-    <label className="pet-theme-strength">色彩浓度 <span>{value ? `${value.strength}%` : '选择搭配后可调'}</span>
-      <input type="range" min="0" max="100" step="5" disabled={!value} value={value?.strength ?? 65} onChange={event => onChange({ ...current, strength: Number(event.target.value) })} />
-    </label>
-    <div className="pet-theme-specimen" aria-label="组件配色示意，非聊天记录">
-      <div className="pet-theme-specimen-header"><strong>面板配色示意</strong><span>不写入聊天记录</span></div>
-      <div className="pet-theme-specimen-body"><span className="pet-theme-specimen-tab">选中项</span><span className="pet-theme-specimen-muted">辅助文字</span><span className="pet-theme-specimen-bubble">你的消息色</span></div>
-      <div className="pet-theme-specimen-footer"><span>输入区域</span><span className="pet-theme-specimen-action">操作按钮</span></div>
-    </div>
-    <details className="pet-theme-advanced"><summary><SlidersHorizontal size={14} aria-hidden="true" />进阶调色</summary>
-      <div><label>主色<input type="color" value={current.primary} onChange={event => onChange({ ...current, palette: 'custom', primary: event.target.value })} /></label><label>辅助色<input type="color" value={current.secondary} onChange={event => onChange({ ...current, palette: 'custom', secondary: event.target.value })} /></label></div>
-      <p className="customization-hint">主色用于按钮与面板，辅助色用于输入区和消息。文字会自动保持清晰。</p>
-    </details>
+    <p className="customization-hint">{saved ? '和伙伴一起保存，应用后覆盖所有面板。' : '这是本组图片的主题预览；生成桌宠后将一起保存，当前桌面不会改变。'}</p>
+    {theme?.source && <p className="customization-hint">由 {theme.source.model} 看图设计</p>}
   </section>
 }

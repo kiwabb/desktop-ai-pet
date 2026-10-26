@@ -1,5 +1,7 @@
 # Component Guidelines
 
+> Current desktop entry uses the user-approved [Companion experience](./companion-experience.md). Its pet-only artwork, explicit chat action and independent regular frame supersede the legacy complete-PNG, paw/disk and attached-shell requirements below. Keep those legacy variants available for existing consumers; do not reintroduce their decorations into `appearance="companion"`.
+
 > How components are built in this project.
 
 ---
@@ -9,7 +11,7 @@
 函数组件 + React 19。没有类组件、没有高阶组件、没有 render props。
 组件通过 props 单向接收数据和回调，跨窗口状态用 Tauri 事件同步，不用全局 store。
 
-视觉权威：仓库根的 `PRODUCT.md`（产品事实）与 `DESIGN.md`（视觉系统：tokens、字重阶梯、材质规则）是 UI 工作的上游约束——新增/修改样式优先复用 `styles.css :root` 的 tokens 与 DESIGN.md 的 Named Rules，不要引入体系外的一次性色值/字重（中间字重如 650 禁止，用阶梯档位）。设计类任务走 Impeccable 流程（`.agents/skills/impeccable/`）。
+视觉权威：仓库根的 `PRODUCT.md`（产品事实）与 `DESIGN.md`（视觉系统：tokens、字重阶梯、材质规则）是 UI 工作的上游约束——新增/修改样式优先复用 `src/design-tokens.css :root` 的 tokens 与 DESIGN.md 的 Named Rules，不要引入体系外的一次性色值/字重（中间字重如 650 禁止，用阶梯档位）。设计类任务走 Impeccable 流程（`.agents/skills/impeccable/`）。
 
 ---
 
@@ -42,7 +44,7 @@
 
 ## Styling Patterns
 
-- **全局样式表** `src/styles.css` 承载应用与业务内容样式；无 CSS Modules / Tailwind / styled-components
+- **Global reset** `src/styles.css` owns reset, focus, scrollbars and legacy pet compatibility. `src/design-tokens.css` owns the shared vocabulary; `src/desktop-shell.css` owns attachment; component CSS owns conversation and utility presentation. No CSS Modules / Tailwind / styled-components.
 - **有范围的例外**：可复用气泡框 `ChatBubbleFrame` 自带 `src/components/ChatBubbleFrame.css`，
   由组件直接 import，选择器以组件根类 `.chat-panel` 及状态类（`.is-compact` / `.is-expanded` /
   `.is-attached` / `.is-standalone` / `.is-hidden` / `.is-entering`）为边界；
@@ -57,6 +59,12 @@
   `animateEntrance=false` must not hide the frame. Component-local reduced-motion
   selectors must override the actual animation selectors without depending on a
   global `!important` reset.
+- The frame owns a finite entrance lifecycle. Clear `is-entering` on the known
+  entrance animation's end/cancel and on an independent bounded timer; a stalled
+  CSS timeline or RAF must not leave the mask opaque and interactive content
+  transparent. Hide/unmount removes the old watcher before another entrance.
+  Reduced motion skips entrance masking entirely. Unit watcher checks and source
+  lifecycle review do not replace native first-open visibility verification.
 - Open-to-open native mode changes must not hide the entire frame or toggle the
   cat platform crop. Closed-to-open preparation is a distinct phase. A paint
   opportunity obtained through RAF is not proof that AppKit presented the frame;
@@ -222,7 +230,7 @@ frame. Keep the paw SVG's original aspect behavior unchanged.
 ### Integrated compact content composition
 
 Keep slot sizing in `ChatBubbleFrame.css` and composer/action styling in
-`styles.css`, scoped to `.chat-panel.is-attached.is-integrated.is-compact`.
+`ChatInteraction.css`, scoped to `.chat-panel.is-attached.is-integrated.is-compact`.
 The native475×278 shell joins the pet platform; its extra height must be planned
 as one content composition, not absorbed into a tall empty header. Use the
 existing four quick actions in two columns with consistent composer/action
@@ -243,12 +251,13 @@ visibility; source-based error analysis is not runtime service verification.
 ### Settings content and native state
 
 `AssistantSettings` owns settings presentation and local disclosure/credential
-visibility only. Its props are `status`, `baseUrl`, `credential`, `saving`,
-`error`, `onBaseUrlChange`, `onCredentialChange` and `onSubmit`. `ChatPanel`
+visibility only. Its props include `status`, editing `mode`, server `baseUrl`/`credential`,
+`localBaseUrl`/`localApiKey`/`localModel`, their change callbacks, and
+`saving`/`error`/`success`/`onSubmit`/`onReturnToChat`. `ChatPanel`
 continues to own the edited values and native save operation. Editing the URL
 clears the entered credential; reusing a saved endpoint preserves the existing
-empty-credential semantics. Successful save clears the draft credential and
-returns to compact. Never turn a visual test-connection control into a save call.
+empty-credential semantics. Successful save clears the draft credential and stays in settings with a visible
+saved result. The explicit return action restores the caller chat mode. Never turn a visual test-connection control into a save call.
 Synchronize the editable URL only when `status.endpoint` changes, clearing the
 credential on that endpoint change. Depending on the whole status object would
 overwrite a URL draft during connection/message updates while retaining a
@@ -294,13 +303,29 @@ real model operation.
 
 ## Todo list presentation
 
+Todo titles use the same 1–2000 Unicode code-point limit as Rust `chars().count()` and Python `len`. Validate before create/update and preserve the draft on rejection. Do not set HTML `maxLength={2000}` on these inputs: it counts UTF-16 units and silently truncates valid supplementary-plane text. A long unsaved input check proves input behavior only, not a persisted long Todo row.
+
 `TodoList.tsx` owns a scoped `TodoList.css`. Keep the task title primary and completion in a left-side control with at least a 44px hit area. Avoid repeating business status as both a pill and a prominent right-side CTA. Use quiet creation dates, retaining an exact localized timestamp for hover and assistive technology. A completed item keeps a clickable check and subtle strike-through; the same button requests restoration to pending, with an action-specific accessible label; a pending write shows progress inside the control and must await confirmed persistence. Preserve loading/error/empty states, keyboard focus, reduced motion and stale-response guards during styling changes. Changes to this list must preserve the existing cat artwork and shared bubble geometry.
+
+Todo row entrance state must be finite even when CSS animation is disabled, cancelled or suspended. Attach the row watcher after commit, accept only that row's `todo-row-enter` end/cancel, and retain an independent deadline from the normal motion token. Reduced motion schedules cleanup without waiting for an animation event. Replacing the entering item or unmounting must remove the previous timer/listeners; a stale callback must not clear the next item's entrance. Keep this cosmetic cleanup separate from persistence and deletion timing. Isolated event/timer tests do not prove the cause of a native rendering artifact.
+
+Messages use the same `watchRowEntrance` contract with `conversation-arrive`. Seed their entrance state only at mount and clear it when settled; token/tool updates and later `animate` prop changes must not restart it or extend its deadline. Restored history, including a restored pending message, must not replay as new. Keep the existing message identity and reading position unchanged. The frame's separate watcher remains responsible for its different root/descendant animation contract.
+
+## Frame transition recovery
+
+The frame's 200 ms paint-settle deadline is a recovery bound, not evidence that painting occurred. If either of its two RAF callbacks is still absent, finish with `morph-paint-timeout`, remove the ghost and pins, clear timers/RAF handles, and publish the committed destination bounds without starting WAAPI. If both callbacks arrived, retain the existing bounded font wait and normal crossfade.
+
+For an animation that started and then stalls, derive the watchdog from the longest actual incoming/outgoing duration plus the 80 ms settle grace. Use the same duration values for WAAPI and its deadline, including reduced motion and an exit token longer than entry. Natural completion, cancellation, resize, unmount and re-entry share cleanup; late RAF/font/finished callbacks must not mutate a replacement transition. Isolated lifecycle checks and a timeout recovery capture do not establish physical frame rate.
 
 ## Message content and reading continuity
 
 `MessageContent` renders Markdown through react-markdown and remark-gfm with raw HTML disabled. Preserve source text and message identity; allow explicit HTTP(S)/mailto links only and never automatically fetch model-provided images. Code copy must use the code content, report clipboard failures, and reset success feedback when streaming changes that content. Styles are scoped under `.chat-panel .message-markdown`.
 
-`useChatReading` scrolls only its own viewport, never `scrollIntoView` on an ancestor. Follow new content only near the bottom or after the user explicitly returns to latest; preserve the reading position across settings/todo navigation. Returning from secondary pages restores the initiating chat mode; successful settings save retains the compact-return contract.
+`useChatReading` scrolls only its own viewport, never `scrollIntoView` on an ancestor. Passive new content follows only near the bottom or after the user explicitly returns to latest; preserve the reading position across settings/todo navigation. An explicitly submitted message requests latest visibility only after acceptance, through the same once-only acknowledgement used to clear its draft. Capture page and reading intent at submission; apply the reveal after DOM commit only while mount, page and reading intent still match. Handle acknowledgement before or after the message snapshot, including compact-to-expanded activation. New reading gestures, scrolling, earlier-history loading, navigation or session changes invalidate a queued reveal; typing the next draft does not. Programmatic scrolling records its actual resulting position so its own scroll event cannot invalidate the request. Subsequent passive streaming still respects a newer choice to read history. Returning from secondary pages restores the initiating chat mode; successful settings save stays visible and offers an explicit return action.
+
+An effective upward reading action pauses following synchronously, before the browser's default scroll. Preserve this explicit pause across content updates, ResizeObserver notifications, unchanged scroll events and small upward steps that still fall inside the near-bottom threshold. Resume after actual downward movement back near the bottom, an explicit latest action, a current accepted-send reveal or a session reset. No-overflow, prevented/default editing actions, composition and wheel zoom must retain their existing behavior. Do not prevent the browser's normal scrolling or add a timer to guess when it finished.
+
+One committed reading update owns activation/content/send/session following. Observer installation and historical-position restoration must not perform a duplicate activation follow; keep legitimate later size observations. Cache the history window's start index with its anchor ID, validate the ID before reuse, and fall back when it moves or disappears. Preserve run-boundary widening, earlier-history access and the already-expanded window. Tests of reduced scanning/scroll calls establish those operation counts, not an FPS or end-to-end speedup.
 
 The approved pet PNG remains unchanged. `PetLiveStatus` overlays only the interior of its decorative speech bubble with actual AgentView-derived connection/model/device state. Do not punch a separately rasterized transparent mask beneath an opaque replacement: fractional edges can expose a visible seam. Keep pet pixels, original outline, and the independent open-state bottom clip untouched.
 
@@ -339,3 +364,35 @@ animation during initial entrance so two timelines do not compete.
 600ms deadline; false means not ready and requires recovery, never timed success.
 Matching dimensions and RAF callbacks do not prove AppKit actually presented a
 frame. Native acceptance requires the pet window on the current visible desktop.
+
+
+## Companion product state contracts
+
+`projectConversationMessages(messages, runs, previous)` and
+`projectConversationTools(tools, previous)` retain unchanged presentation object
+identities across full native snapshots. `ConversationFeed` initially exposes
+40 recent messages, keeps a run together at the boundary, and lets the user
+reveal earlier messages with a preserved reader anchor. Terminal errors belong
+to their run; a successful empty response is explained instead of drawing an
+empty bubble. Do not render another cat avatar in message or empty states.
+
+Keep original run errors in the projection data, but render known actionable
+failure categories instead of arbitrary transport details. Mention execution
+records only when this run actually has tool records, and do not imply those
+records succeeded. Apply the same rule to live-region announcements. Utility
+error mapping requires an explicit settings/todo/reminder context: a settings
+404 is not a missing todo. Map each error once at the presenting component.
+
+The composer accepts the next draft during streaming while acknowledgement,
+IME and active-run guards prohibit a duplicate send. Escape is handled from the
+innermost editor outwards; parent handlers respect `defaultPrevented`.
+
+Todo refreshes must not overwrite an active edit. In-flight deletion remains
+visible until confirmed; completion/deletion restores focus to a useful row.
+Settings model-list requests are fenced by configuration revision and mounting
+lifetime. Saves lock affected fields and distinguish persisted settings from
+an established connection.
+
+The administration app uses native `<dialog>.showModal()` for credential forms.
+Escape calls the same guarded close action as the close control, preserving the
+confirmation required before discarding one-time credentials.

@@ -1,0 +1,7 @@
+{"file": ".trellis/tasks/09-17-memo-plugin/prd.md", "reason": "验收标准 AC1-AC6 与范围外清单，检查交付是否对齐"}
+{"file": ".trellis/tasks/09-17-memo-plugin/design.md", "reason": "检查实现是否符合数据契约、双端对称性与 fencing/布局等关键决策"}
+{"file": ".trellis/tasks/09-17-memo-plugin/research/testing-conventions.md", "reason": "三类测试（manifest 对拍、提示词快照、行为矩阵）的位置与写法要求"}
+{"file": ".trellis/spec/backend/server-agent.md", "reason": "服务端 agent/插件层编码规范"}
+{"file": ".trellis/spec/backend/todo-reminders.md", "reason": "提醒/时间语义规范，memo 回顾需对齐"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "MemoList/MemoReviewReminders 组件规范"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "kind/status 枚举与 AgentView 类型的 TS 规范"}

@@ -14,7 +14,7 @@
   column-gap: 7px;
   padding: 0 1px;
   overflow: hidden;
-  color: #493b31;
+  color: var(--ink, #493b31);
   background: linear-gradient(180deg, #fef8ea, #fdf3e2);
   pointer-events: none;
   user-select: none;
@@ -39,12 +39,12 @@
 
 .pet-stage-reference-closed .pet-live-status-copy strong {
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 16px;
 }
 
 .pet-stage-reference-closed .pet-live-status-copy small {
-  color: #796959;
+  color: var(--muted-soft, #796959);
   font-size: 9px;
   font-weight: 500;
   line-height: 12px;

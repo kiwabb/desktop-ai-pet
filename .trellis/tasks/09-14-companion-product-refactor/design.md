@@ -22,3 +22,6 @@ Use existing real services/data or honest unavailable states; no new fake busine
 
 ## Current approved experience architecture — 2026-09-26
 `companion-experience-design.md` owns the updated composition, two-window geometry, native preference/event contract and file ownership. This explicit user-approved revision replaces the attached cream-platform presentation and pet-click-to-chat behavior while preserving character identity and business APIs. Native cold-opening must work independently of model availability.
+
+## Local context architecture — 2026-09-29
+`local-context-optimization-2026-09-29.md` owns the new Rust/SQLite context policy, module ownership and acceptance. Local policy intentionally evolves before server policy; shared business tool contracts and the existing AgentView path remain. Summary metadata stays local and original history remains immutable.

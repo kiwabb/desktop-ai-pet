@@ -1,5 +1,8 @@
 import { motionDiagnosticMode } from '../lib/motion-diagnostics'
+import { motionDuration, MOTION_EASE_OUT } from '../lib/motion'
+import { watchFrameEntrance } from '../lib/frame-entrance'
 import { useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { ReferenceChatBubbleTail, ReferenceMiniPaw, ReferencePawBadge } from './ReferenceIllustrations'
@@ -8,8 +11,10 @@ import { useFrameMorph } from './useFrameMorph'
 import { ChatBubbleShell } from './ChatBubbleShell'
 import type { ChatBubbleDockConfig } from './pet-shell-geometry'
 import './ChatBubbleFrame.css'
+import { CompanionBadge } from './CompanionBadge'
 
 export type { ChatBubbleDockConfig } from './pet-shell-geometry'
+export type ChatBubbleFrameAppearance = 'attached' | 'standalone' | 'companion'
 
 export interface ChatBubbleTailConfig {
   /** Vertical center anchor from the frame padding edge; numbers use CSS px. */
@@ -40,8 +45,8 @@ function tailPosition(value: number | string): string {
 interface ChatBubbleFrameProps {
   /** Layout mode of the frame. */
   variant: 'compact' | 'expanded'
-  /** attached = speech bubble next to the pet (tail, paw trail); standalone = plain window surface. */
-  appearance?: 'attached' | 'standalone'
+  /** companion = independent reading surface; other appearances retain their reference decoration. */
+  appearance?: ChatBubbleFrameAppearance
   /** Explicit tail fields opt into the legacy detached decoration; an empty object uses the integrated shell. */
   tail?: ChatBubbleTailConfig
   /** Placement of the integrated platform; no effect in standalone or explicit-tail mode. */
@@ -55,6 +60,8 @@ interface ChatBubbleFrameProps {
   /** Accessible name; falls back to the title. */
   ariaLabel?: string
   actions?: ReactNode
+  /** Optional labelled navigation below the window header. */
+  navigation?: ReactNode
   /** Optional bottom slot (e.g. composer); omitted entirely when not provided. */
   footer?: ReactNode
   /** Opt-in: only then does the header become a Tauri window drag region. */
@@ -85,6 +92,7 @@ export function ChatBubbleFrame({
   subtitle,
   ariaLabel,
   actions,
+  navigation,
   footer,
   draggable = false,
   className,
@@ -94,12 +102,23 @@ export function ChatBubbleFrame({
   const rootRef = useRef<HTMLElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const [geometry, setGeometry] = useState<FrameGeometry>({ width: 0, height: 0, dockShift: 0 })
+  const [entranceActive, setEntranceActive] = useState(visible && animateEntrance)
   const { width, height, dockShift } = geometry
   const attached = appearance === 'attached'
   const explicitTail = tail != null && Object.values(tail).some(value => value !== undefined)
   const integrated = attached && !explicitTail
   const morphingRef = useFrameMorph(rootRef, variant, visible, integrated, setGeometry, dock)
   const previousPageRef = useRef<{ title: string; variant: string; visible: boolean } | null>(null)
+
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root || !visible || !animateEntrance || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setEntranceActive(false)
+      return
+    }
+    setEntranceActive(true)
+    return watchFrameEntrance(root, () => setEntranceActive(false))
+  }, [visible, animateEntrance])
 
   useLayoutEffect(() => {
     if (!integrated || !rootRef.current) return
@@ -113,8 +132,19 @@ export function ChatBubbleFrame({
       const box = entries[0]?.borderBoxSize[0]
       update(box?.inlineSize ?? root.offsetWidth, box?.blockSize ?? root.offsetHeight)
     })
+    function resizeViewport() {
+      // A drag-end native refit is one layout transaction. Cancel the old
+      // dissolve, then commit the new perimeter before this viewport paints.
+      root.dispatchEvent(new Event('chat-frame-viewport-resize'))
+      flushSync(() => update(root.offsetWidth, root.offsetHeight))
+      const bounds = root.getBoundingClientRect()
+      root.dispatchEvent(new CustomEvent('chat-frame-bounds', { detail: {
+        x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
+      } }))
+    }
     observer.observe(root)
-    return () => observer.disconnect()
+    window.addEventListener('resize', resizeViewport)
+    return () => { observer.disconnect(); window.removeEventListener('resize', resizeViewport) }
   }, [integrated])
   useLayoutEffect(() => {
     const diagnostic = motionDiagnosticMode()
@@ -129,7 +159,7 @@ export function ChatBubbleFrame({
     ] : [
       { opacity: .8, transform: 'translateY(4px)' },
       { opacity: 1, transform: 'translateY(0)' },
-    ], { duration: reduced ? 140 : 190, easing: 'cubic-bezier(.2,.75,.25,1)' })
+    ], { duration: reduced ? 140 : motionDuration(rootRef.current ?? document.documentElement, 'normal', 180), easing: MOTION_EASE_OUT })
     return () => animation?.cancel()
   }, [title, variant, visible])
   const defaults = tailDefaults[variant]
@@ -141,7 +171,7 @@ export function ChatBubbleFrame({
     '--chat-tail-width': `${tailWidth}px`,
     '--chat-tail-height': `${tail?.height ?? defaults.height}px`,
   }
-  const rootClass = `chat-panel is-${variant} is-${appearance}${integrated ? ' is-integrated' : ''}${visible ? '' : ' is-hidden'}${visible && animateEntrance ? ' is-entering' : ''}${className ? ` ${className}` : ''}`
+  const rootClass = `chat-panel is-${variant} is-${appearance}${integrated ? ' is-integrated' : ''}${navigation ? ' has-navigation' : ''}${visible ? '' : ' is-hidden'}${visible && animateEntrance && entranceActive ? ' is-entering' : ''}${className ? ` ${className}` : ''}`
 
   return (
     <section
@@ -151,7 +181,7 @@ export function ChatBubbleFrame({
       aria-label={ariaLabel ?? title}
       inert={!visible}
     >
-      <ReferencePawBadge className="assistant-paw-badge" />
+      {appearance !== 'companion' && <ReferencePawBadge className="assistant-paw-badge" />}
       {integrated && width > 0 && <ChatBubbleShell width={width} height={height} dock={{ ...dock, offsetX: (dock?.offsetX ?? 0) + dockShift }} variant={variant} showFooterFootprints={variant === 'expanded' && footer == null} />}
       {attached && explicitTail && <ReferenceChatBubbleTail className="chat-bubble-tail" variant={variant} />}
 
@@ -165,6 +195,7 @@ export function ChatBubbleFrame({
       <div className="chat-panel-surface">
         <header className="chat-header" {...(draggable ? { 'data-tauri-drag-region': true } : {})}>
           <div className="assistant-identity">
+            {appearance === 'companion' && <CompanionBadge />}
             <div>
               <h1>{title}</h1>
               {subtitle && <p>{subtitle}</p>}
@@ -172,6 +203,7 @@ export function ChatBubbleFrame({
           </div>
           {actions && <div className="header-actions">{actions}</div>}
         </header>
+        {navigation && <div className="chat-panel-navigation">{navigation}</div>}
 
         <div ref={bodyRef} className="chat-panel-body">{children}</div>
         {footer != null && <div className="chat-panel-footer">{footer}</div>}

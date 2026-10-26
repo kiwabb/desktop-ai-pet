@@ -88,10 +88,10 @@ Old-store compatibility; optional omission/reset; path and candidate ownership; 
 Wrong: overwrite badge.png before manifest commit, reuse pet-sprite cache identity, silently add paid generation, or declare placeholder marks generated. Correct: immutable candidate tokens, revision-aware independent badge loading, visible explicit request and real result inspection.
 
 
-## Complete locally generated theme palettes (2026-10-03)
+## Legacy locally generated theme palettes (superseded for new imports)
 
 ### 1. Scope / trigger
-The user requires rich self-service theming, not repeated developer changes to one dominant color. Extract candidates from the saved generated base locally; theme operations must not dispatch provider requests or modify pet/badge image bytes.
+This section records compatibility for saved local palettes. The user rejected the fixed palette gallery for new imports on 2026-10-03. New imports follow the AI design contract below. Legacy local palette edits do not dispatch provider requests or modify pet/badge image bytes.
 
 ### 2. Signatures
 - `Preset.theme: Theme | null`, `Preset.colors: string[]`, `Preset.colors_version: number` default to absent/empty/zero for old stores.
@@ -121,3 +121,28 @@ Good: choose a calico-derived character theme, preview independently, save and a
 
 ### 7. Wrong versus correct
 Wrong: a lone colorwell, a gray canvas with one recolored button, or an unlabeled simulated conversation used as proof. Correct: named multi-color choices, concentration and advanced editing, explicit component color specimen, authoritative save/apply state and separately recorded real native observations.
+
+
+## AI visual design on reference import (2026-10-03)
+
+### Scope and authority
+The user explicitly chose AI design of colors, panel material and control style when an image is imported. The fixed six-theme gallery is rejected and must not return under another name. Existing stored themes remain compatible; default and saved pet assets are preserved.
+
+### IPC and data contract
+- `customization_theme_prepare({images, selectionId}) -> View` validates and normalizes the selected ordered image set, stores immutable app-owned copies, then automatically starts one bounded vision request.
+- `View.theme_draft` exposes id, selection_id, attempt, status, request_count, validated theme and error; no image bodies or credentials in events. One current draft is retained.
+- `customization_theme_retry({id})` explicitly advances the attempt. `customization_theme_clear({id})` clears only the matching draft and fences any pending work.
+- `customization_start({name, draftId, themeAttempt})` requires that exact ready draft, then freezes references and theme into the pet job. Pet generation completion saves that theme unchanged. Legacy jobs without a frozen theme retain compatibility recovery.
+- `Theme.design?` is version 1: bounded name/summary, eight hex semantic colors, matte/paper/glaze material, radius 12–24, border_width 1–2, shadow 0–3, soft/solid/outlined control style. Reject unknown fields and invalid values.
+- `Theme.source?` contains the actual model and generation time assigned by Rust. A local palette has no AI provenance.
+
+### Provider and lifecycle
+The import UI discloses the configured analysis endpoint/model and one vision request before file selection. Use the current local chat connection through Rust only; neither chat history nor tools are sent. This dedicated request does not copy chat settings into image generation settings. Downscale normalized reference copies for analysis; bound bytes, response and timeout; disable redirects. Credential access occurs outside customization locks. Recheck source config and draft/attempt after credential waits, before dispatch and before accepting results. Count actual dispatched attempts; no automatic retry or restart replay.
+
+The frontend assigns a selection epoch synchronously, serializes prepare submissions, and ignores any result not matching the current selection. Replace, append, remove and clear invalidate prior previews immediately. Cancellation does not claim provider-side refund. Restart marks running analysis interrupted. Invalid/unsupported model responses produce a real error with explicit retry, never a fixed success theme.
+
+### Rendering and persistence
+Render only whitelisted CSS tokens. Material and control style must visibly affect the actual surface/control roles, with SVG frame and DOM using compatible treatment. Preserve native geometry, clipping budget, reduced motion and semantic state clarity. Enforce text contrast >=4.5:1 and focus/input boundaries >=3:1; model color proposals do not override readability. Preview remains local until save/apply; cross-window metadata updates do not regenerate sprites. Generated raster paw marks retain their pixels.
+
+### Evidence and required tests
+Test stale completion after replacement/clear/retry; one request per import action; immutable refs/theme freezing; invalid JSON/schema/source handling; bounded timeouts/cancellation; old-store round trips; materials/control tokens and contrast; preview isolation and exact apply payload. Real acceptance must show native import of the selected reference, a real model result with request count, meaningful preview, saved theme identity, cross-window application and restart. Unit fixtures are never presented as generated themes or real conversation data.

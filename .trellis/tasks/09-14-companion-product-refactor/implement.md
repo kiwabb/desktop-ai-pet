@@ -106,3 +106,13 @@ User requests smaller visible separation; authority: `companion-distance-2026-09
 - [x] Verify real compact/expanded gap and draft reopen; reversibly install.
 
 Scoped result: `research/companion-distance-native-2026-09-26.md`.
+
+## Local context optimization — 2026-09-29
+Authority and acceptance: `local-context-optimization-2026-09-29.md`.
+- [x] Add complete-turn input budgeting, source-linked cache migration and bounded history lookup.
+- [x] Add independent cancellable summary work with contiguous source coverage and revision protection.
+- [x] Complete isolated boundary tests and independent review.
+- [x] Verify installed native local request/reply and original-data preservation with the saved configuration.
+- [x] Record final code contracts, real evidence and remaining limits.
+
+Evidence: `research/local-context-check-2026-09-29.md`, `research/local-context-native-2026-09-29.md`, source manifest and data-preservation comparison. Local slice implemented/installed; real summary threshold stayed inactive and is explicitly not claimed as live-tested. The wider companion task stays open.

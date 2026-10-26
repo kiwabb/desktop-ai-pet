@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from .auth import Auth
 from .admin import install_admin_routes
 from .config import Settings
-from .contracts import Envelope, ReminderConflict, envelope, protocol_error, reminder_arguments, uuid_string
+from .contracts import Envelope, ReminderConflict, envelope, protocol_error, reminder_arguments, reminder_time, uuid_string
 from .coordination import Coordination
 from .db import Database
 from .registry import Registry
@@ -39,6 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # Plugins only declare their endpoints (plugin.json rest_endpoints);
             # the core mounts them against the plugin's domain store.
             app.state.todo_store = service.plugins.store_for('todo')
+            app.state.memo_store = service.plugins.store_for('memo')
             install_admin_routes(app, db, settings, coordination)
             await service.start()
             yield
@@ -171,6 +172,69 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def reopen_todo(todo_id: str, request: Request):
         who = await principal(request)
         return {"item": await app.state.todo_store.reopen_todo(who.account_id, uuid_string(todo_id, "todo_id"))}
+
+    async def memo_body(request: Request, label: str) -> dict:
+        try:
+            body = await request.json()
+        except ValueError:
+            raise ValueError(f"{label}请求必须为有效 JSON") from None
+        if not isinstance(body, dict):
+            raise ValueError(f"{label}请求必须为 JSON 对象")
+        return body
+
+    @app.get("/v1/memos")
+    async def memos(request: Request):
+        who = await principal(request)
+        kind = request.query_params.get("kind")
+        if kind is not None and kind not in ("note", "goal"):
+            raise ValueError("kind 仅支持 note 或 goal")
+        raw_archived = request.query_params.get("include_archived")
+        if raw_archived not in (None, "true", "false"):
+            raise ValueError("include_archived 必须为 true 或 false")
+        return {"items": await app.state.memo_store.list_memos(who.account_id, kind, raw_archived == "true")}
+
+    @app.post("/v1/memos")
+    async def create_memo(request: Request):
+        who = await principal(request)
+        body = await memo_body(request, "备忘")
+        if "title" not in body or set(body) - {"title", "kind", "content", "review_at"}:
+            raise ValueError("必须提供 title，仅可附加 kind、content 和 review_at")
+        return {"item": await app.state.memo_store.create_memo(
+            who.account_id, body["title"], body.get("kind", "note"), body.get("content"),
+            reminder_time(body.get("review_at")))}
+
+    @app.patch("/v1/memos/{memo_id}")
+    async def update_memo(memo_id: str, request: Request):
+        who = await principal(request)
+        memo_id = uuid_string(memo_id, "memo_id")
+        body = await memo_body(request, "备忘")
+        if not body or set(body) - {"title", "kind", "content"}:
+            raise ValueError("必须且只能提供 title、kind 或 content 中的至少一项")
+        return {"item": await app.state.memo_store.update_memo(who.account_id, memo_id, body)}
+
+    @app.post("/v1/memos/{memo_id}/archive")
+    async def archive_memo(memo_id: str, request: Request):
+        who = await principal(request)
+        memo_id = uuid_string(memo_id, "memo_id")
+        body = await memo_body(request, "归档")
+        if set(body) != {"archived"} or not isinstance(body["archived"], bool):
+            raise ValueError("必须且只能提供布尔值 archived")
+        return {"item": await app.state.memo_store.set_memo_archived(who.account_id, memo_id, body["archived"])}
+
+    @app.put("/v1/memos/{memo_id}/review")
+    async def set_memo_review(memo_id: str, request: Request):
+        who = await principal(request)
+        memo_id = uuid_string(memo_id, "memo_id")
+        body = await memo_body(request, "回顾")
+        if set(body) != {"review_at", "expected_review_at"}:
+            raise ValueError("必须且只能提供 review_at 和 expected_review_at")
+        target, expected = reminder_time(body["review_at"]), reminder_time(body["expected_review_at"])
+        return {"item": await app.state.memo_store.set_memo_review(who.account_id, memo_id, target, expected)}
+
+    @app.get("/v1/memos/reviews/due")
+    async def due_memo_reviews(request: Request):
+        who = await principal(request)
+        return {"items": await app.state.memo_store.due_reviews(who.account_id)}
 
     async def websocket_auth(ws: WebSocket, role: str):
         # This application does not accept browser-originated credentialed sockets.

@@ -6,10 +6,12 @@
 
 ## Overview
 
-没有单元测试框架、没有 ESLint 配置。质量门槛是：**TypeScript 编译 +
-资源校验脚本 + 真实运行验收**。`docs/ARCHITECTURE.md` 的「验收边界」一节
-定义了每级验证能证明什么、不能证明什么——交付前按它对齐证据等级，
-不要把编译通过说成"功能可用"。
+The frontend uses Vitest (`pnpm test`) for focused behavioral regressions and
+has no ESLint configuration. TypeScript builds, resource/contract verifiers,
+and real runtime acceptance provide separate evidence. Tests never seed the
+product database or replace the real backend just to make a demo look complete.
+Follow the acceptance boundary in `docs/ARCHITECTURE.md`; a passing build does
+not establish a usable native interaction or a real model invocation.
 
 ---
 
@@ -31,14 +33,16 @@
 - 异步回调里的 `invoke` 用 `void` 前缀标记有意不等待（`void invoke(...)`）
 - 错误信息进 state 显示给用户（`role="alert"`），同时 `console.error` 留上下文，
   文案用中文：如 `console.error('重置桌宠位置失败', cause)`
+- 错误提示按发生场景转换一次，保留原始日志或运行记录；设置接口的 404 不得显示“待办不存在”。只有当前运行存在工具记录时才能提示核对执行记录，且不能把失败或未确认记录描述为成功结果。
 - 修改宠物动画资源后必须跑 `pnpm pet2d:validate`（校验三帧对齐）
 
 ## Testing Requirements
 
-- 无自动化测试，不要新增测试脚手架（除非用户明确要求）
+- Reuse the existing Vitest setup for meaningful behavior regressions. Do not add another test framework or tests that only mirror CSS literals.
 - 验证命令（`README.md`）：
 
   ```bash
+  pnpm test            # focused frontend behavioral regressions
   pnpm pet2d:validate   # 图片尺寸 / 渲染入口 / 禁用依赖检查
   pnpm build            # tsc -b && vite build，类型错误在此暴露
   cargo check --manifest-path src-tauri/Cargo.toml   # Rust 侧
@@ -87,6 +91,15 @@
   well as the outer path. Verify footprint silhouette, count, scale and visible
   placement; a print outside the native window or concealed by the composer does
   not satisfy visual completeness. Keep the preserved corner badge separate.
+
+## Native window timing evidence
+
+- The optional local diagnostic remains disabled in a normal production frontend. Use the user's authorized data scope, retain ordinary artifacts, and restore them after the check; diagnostic results are separate from ordinary-app acceptance.
+- For a passive CUA transition check, use a unique `phase-v5` request with `mode:normal`, `action:none` and `armOnNextTransition:true`. Both WebViews must report the same protocol and acknowledge the mode. The diagnostic must not perform the UI action.
+- Armed collection waits up to 30 seconds for this WebView's real `route:change-enter`, records its exact `rafSeedNow` and captures for 1500 ms. Native timeout is 35 seconds. Replacement detection polls the existing local request every 250 ms; do not describe it as instantaneous cancellation. Timeout, cancellation, unload and late reports must release their timer/RAF/armed callback and remain isolated by request ID.
+- Classify only a matching PID/request/window report. Check that actual transition marks fall within its capture and distinguish natural `morph-end` from watchdog or cancellation. A native arming status is dispatch intent, not proof that the frontend armed or captured a transition.
+- Exclude the first seed-to-callback partial interval from complete-interval statistics. N callbacks provide at most N−1 complete callback intervals. A late route file retaining the same ID is not evidence that sampling continued.
+- WebView callback intervals, passing tests and successful builds do not establish compositor FPS or release readiness. Zero callbacks do not establish that the app failed to render. Record the exact observed scope and missing evidence.
 
 ## Code Review Checklist
 

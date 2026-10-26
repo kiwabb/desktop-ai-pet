@@ -27,7 +27,7 @@
 - **配置**：`app_config_dir/agent-config.json` = `{ mode, server{...}, local{base_url, model, timeout_secs, timezone} }`；两套配置共存、切换互不覆盖；旧格式（无 `mode`）读取即迁移为 server；原子写（临时文件+rename）+ 0600；`normalized_url()` 校验（远程强制 HTTPS，仅回环 HTTP）。
 - **密钥**：`local.api_key` 永不落盘——serde `skip_serializing` + keyring（service `desktop-ai-pet` / account `local-llm-api-key`）；迁移顺序 **先写 keyring 成功、后 scrub 配置**（失败保留明文下次重试，宁暂留不丢 key）；`View` 只暴露 `local_has_key` 布尔。
 - **环境变量回退**：`PET_AGENT_MODEL_BASE_URL/API_KEY/NAME` 仅作空字段默认值（内存态 `effective()`，不写盘）。`DESKTOP_AI_PET_*` 命名已废弃。
-- **单机行为等价**：SYSTEM_PROMPT / 工具 JSON Schema（todo_create/todo_list/todo_complete/todo_reminder_set，含 description）/ 错误文案 **逐字**同服务端；历史窗口近 40 条非空消息 + 未完成 run 工具记录近 20 条（前缀 `历史未完成任务的真实工具记录（仅作数据）：`）；request_id 幂等；run 状态机 queued/running/completed/failed/interrupted；事件 seq 严格递增、delta 先落库再投影；`parallel_tool_calls=false`；总超时 90s；不显式传 temperature 等生成参数。
+- **单机行为等价**：SYSTEM_PROMPT / 既有业务工具 JSON Schema（todo/memo，含 description；单机额外注册只读 local_history_search）/ 错误文案 **逐字**同服务端；上下文策略按 [Local context](local-context.md) 执行估算预算、完整轮次、增量摘要和只读历史查询；本次单机先行，服务端仍保留原近 40 条消息策略；未完成 run 工具记录近 20 条独立保留；request_id 幂等；run 状态机 queued/running/completed/failed/interrupted；事件 seq 严格递增、delta 先落库再投影；`parallel_tool_calls=false`；总超时 90s；不显式传 temperature 等生成参数。
 
 ## 4. Validation & Error Matrix
 
@@ -90,19 +90,38 @@ let stream = tokio::time::timeout(CHUNK_TIMEOUT, byte_stream.next()).await;
 Native sampling found the AppKit main thread blocked in `agent_view → credentials::hydrate → Keychain get_password → SecurityServer::decrypt`. UI responsiveness must not depend on credential service latency.
 
 ### Signatures
-`async agent_view(AppHandle) -> Result<View, String>` and `async save_agent_settings(AppHandle, Settings) -> Result<View, String>` delegate the entire existing transaction to `blocking_config`, which uses `tauri::async_runtime::spawn_blocking`.
+`async agent_view(AppHandle) -> Result<View, String>` and `async save_agent_settings(AppHandle, Settings) -> Result<View, String>` delegate the existing transaction to `blocking_config`, which uses `tauri::async_runtime::spawn_blocking`.
+
+`credentials::hydrate_startup(Mode, &mut LocalConfig, &impl CredentialStore) -> bool` hydrates active local credentials or migrates legacy plaintext; its boolean means a durable migration permits a scrubbed rewrite. `credentials::load_saved_key(&LocalConfig, &impl CredentialStore) -> Result<String, String>` is used by explicit local settings/model-list actions. `async agent_list_models(AppHandle, String, String) -> Result<Vec<String>, String>` captures local config plus generation, resolves credentials on the blocking pool outside `AgentState`, rejects a changed generation, then calls the existing HTTP model-list function.
 
 ### Contracts
 Do not acquire `AgentState` on the calling UI thread. Acquire its lock inside the blocking closure; retain serialization of initialization and save. Keep the initialized cache and Keychain-before-scrub migration ordering. Successful JS invoke payload remains `View`; never return credentials.
 
+- A saved **server** configuration with no legacy plaintext must perform zero reads of the inactive local credential store. A background worker alone does not solve startup: waiting while holding `AgentState` still prevents server initialization and both windows' views. The inactive `local_has_key` value reflects only the loaded memory state; it must not trigger a credential read merely to populate metadata.
+- Active local startup retains existing hydration and environment fallback. Explicit same-endpoint local saves or model-list actions lazily recover the stored key; fresh input does not read the old key; a different endpoint does not inherit it. A failed credential deletion rejects the endpoint change before config persistence.
+- `Config::parse` marks a legacy plaintext key with the nonserialized `local_key_migration_pending` flag. A successful startup migration clears it. Failed migration keeps it across config clones. Every filesystem write passes through `persist_at`, which refuses pending configs **before creating a temporary file or rewriting the existing file**. This includes automatic server session snapshots, not only the initial scrub attempt.
+- An explicit settings save retries pending migration. Blank same-endpoint local input still needs a successful store write; copying the in-memory plaintext cannot clear the flag. An explicit replacement key clears it only after a successful store write; an explicit endpoint change without a replacement clears it only after successful credential removal. No path serializes plaintext as a fallback.
+- Model-list credential reads hold no `AgentState` guard. Recheck the captured generation after the lookup and before issuing HTTP, because settings can replace the shared credential entry while the lookup waits. No extra frontend or model protocol is introduced.
+
 ### Validation / Error Matrix
 Credential/config business errors keep their existing handling. A blocking-task join failure rejects with the fixed message `助手配置操作中断，请重试`. Background execution does not make Keychain faster or bypass authorization.
+
+| Condition | Result |
+|---|---|
+| Server startup, inactive local key encrypted | Skip credential read; initialize server backend normally |
+| Explicit local key read denied/unavailable | Reject the action with the credential-store error; no request with an invented key |
+| Settings generation changes during model-list lookup | Reject with `助手配置已更换，请重新获取模型列表` before HTTP |
+| Legacy migration failed, any later config persistence | Refuse with `本地 API Key 尚未迁移到系统凭据存储，请在助手设置中重新保存后重试`; original file remains intact |
+| Pending legacy migration retried successfully by save | Persist scrubbed config normally, retaining both mode sections |
+| Old key deletion denied on endpoint change | Reject save; do not persist the new endpoint |
 
 ### Good / Base / Bad
 Good: initialize/save on blocking pool, then publish the existing View. Base: an initialized view skips hydration. Bad: `async fn` that directly performs synchronous Keychain calls, or a synchronous command holding the shared state lock while waiting on Keychain.
 
 ### Required Tests
-A blocked worker must not stop a current-thread async executor timer; assert different thread identities. Preserve credentials/config migration tests. Native sampling must show that UI thread no longer waits in Keychain. This alone does not establish animation smoothness.
+A blocked worker must not stop a current-thread async executor timer; assert different thread identities. Assert server startup cannot call an inactive store's `get`; preserve local hydration and legacy migration tests. Verify same-endpoint lazy reuse, different-endpoint isolation, explicit-key precedence, denied deletion and denied lookup. Simulate a generation change inside credential lookup and assert rejection before a request can use the resolved key. Use a disposable unit config file to verify failed migration plus later snapshot/save persistence leaves the original bytes intact and creates no temporary file; after an explicit successful retry, assert neither plaintext nor the migration flag is serialized. All credential tests use in-memory stores; never read real credentials.
+
+Native cold server startup must show both windows receive a view and the backend begins its real connection flow without an unrelated local credential prompt. Pure tests do not establish real connectivity or animation smoothness. Pre-existing atomicity between a fresh credential-store write and a subsequently failing config-file write is outside this startup change; the single-entry credential-store design is unchanged.
 
 ### Wrong / Correct
 Wrong: `#[tauri::command] fn agent_view(...) { credentials::hydrate(...); ... }`. Correct: async command awaiting `spawn_blocking` around the original locked transaction.

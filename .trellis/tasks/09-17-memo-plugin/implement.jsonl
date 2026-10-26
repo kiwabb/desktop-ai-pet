@@ -1,0 +1,9 @@
+{"file": ".trellis/tasks/09-17-memo-plugin/prd.md", "reason": "需求与验收标准：memo 工具集、kind 建模、回顾唤起、页面形态的唯一权威来源"}
+{"file": ".trellis/tasks/09-17-memo-plugin/design.md", "reason": "技术设计：memos 表契约、REST/命令清单、第二路轮询与 fencing、提示词布局扩槽方案"}
+{"file": ".trellis/tasks/09-17-memo-plugin/research/server-plugin-template.md", "reason": "服务端插件包逐文件签名清单，照 todo 模板落地"}
+{"file": ".trellis/tasks/09-17-memo-plugin/research/data-model-migrations.md", "reason": "双端 DDL、迁移编号 009、user_version=2 增量机制（本地首次）"}
+{"file": ".trellis/tasks/09-17-memo-plugin/research/prompt-layout.md", "reason": "提示词固定布局硬约束：扩槽顺序与两份快照重写位置，违反即启动失败"}
+{"file": ".trellis/tasks/09-17-memo-plugin/research/rest-command-chain.md", "reason": "REST 端点、Tauri 命令、MemoSource 分发与 fencing 计数器复用要求"}
+{"file": ".trellis/tasks/09-17-memo-plugin/research/reminder-polling.md", "reason": "第二路轮询、AgentView 字段、occurrence key 与唤起卡片设计"}
+{"file": ".trellis/tasks/09-17-memo-plugin/research/frontend-presentation-panel.md", "reason": "前端展示插件、MemoList 页面、ChatPanel 页面态枚举化清单"}
+{"file": ".trellis/spec/desktop/dual-mode-llm.md", "reason": "单机模式行为以服务端插件包为蓝本的对称性要求"}

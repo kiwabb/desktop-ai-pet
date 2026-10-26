@@ -4,12 +4,14 @@ export const PET_KINDS = ['base', 'closed', 'happy', 'talk'] as const
 export type PetKind = typeof PET_KINDS[number]
 export const PET_KIND_LABELS: Record<PetKind, string> = { base: '陪伴', closed: '休息', happy: '开心', talk: '说话' }
 export type PetAsset = { width: number; height: number; anchor_x: number; anchor_y: number; connector_x?: number; connector_y?: number }
-export type PetTheme = { palette: 'character' | 'apricot' | 'rose' | 'mint' | 'sky' | 'lilac' | 'custom'; primary: string; secondary: string; strength: number }
+export type PetThemeDesign = { version: 1; name: string; summary: string; colors: Record<'surface' | 'surface_alt' | 'text' | 'muted' | 'primary' | 'secondary' | 'accent_soft' | 'line', string>; material: 'matte' | 'paper' | 'glaze'; radius: number; border_width: number; shadow: number; control: 'soft' | 'solid' | 'outlined' }
+export type ThemeDraft = { id: string; selection_id: string; attempt: number; status: 'running' | 'ready' | 'failed' | 'cancelled' | 'interrupted'; request_count: number; theme: PetTheme | null; error: string | null }
+export type PetTheme = { design?: PetThemeDesign | null; source?: { model: string; generated_at: string } | null; palette: 'character' | 'apricot' | 'rose' | 'mint' | 'sky' | 'lilac' | 'custom'; primary: string; secondary: string; strength: number }
 export type PetPreset = { theme?: PetTheme | null; colors?: string[]; id: string; name: string; accent: string; created_at: string; assets: Record<PetKind, PetAsset>; badge?: string | null }
 export type CustomizationJob = { id: string; name: string; status: 'running' | 'failed' | 'cancelled' | 'interrupted' | 'ready'; stage: PetKind | 'saving'; completed: PetKind[]; request_count: number; error: string | null }
 export type BadgeJob = { id: string; preset_id: string; status: 'running' | 'ready' | 'failed' | 'cancelled' | 'interrupted'; request_count: number; result: string | null; error: string | null }
 export type BadgeUpdate = { action: 'select'; token: string } | { action: 'reset' }
-export type CustomizationView = { revision: number; active_id: string; presets: PetPreset[]; job: CustomizationJob | null; badge_job?: BadgeJob | null; settings: { base_url: string; model: string; has_key: boolean }; warning: string | null }
+export type CustomizationView = { theme_draft?: ThemeDraft | null; theme_service?: { base_url: string; model: string; available: boolean } | null; revision: number; active_id: string; presets: PetPreset[]; job: CustomizationJob | null; badge_job?: BadgeJob | null; settings: { base_url: string; model: string; has_key: boolean }; warning: string | null }
 export type PetSprites = Record<PetKind, string>
 export type LoadedPet = { preset: PetPreset; sprites: PetSprites; badge?: string | null }
 export function newerCustomization(current: CustomizationView | null, next: CustomizationView) { return !current || next.revision > current.revision }
@@ -30,7 +32,8 @@ export function validateReferenceFiles(files: File[]) {
   if (files.some(file => file.size > 10 * 1024 * 1024)) throw new Error('单张图片不能超过 10 MB。')
   if (files.reduce((sum, file) => sum + file.size, 0) > 30 * 1024 * 1024) throw new Error('参考图合计不能超过 30 MB。')
 }
-export async function readReference(file: File): Promise<string> {
+export async function readReference(file: File, signal?: AbortSignal): Promise<string> {
+  signal?.throwIfAborted()
   const signature = new Uint8Array(await file.slice(0, 12).arrayBuffer())
   const png = [137, 80, 78, 71, 13, 10, 26, 10].every((byte, i) => signature[i] === byte)
   const jpeg = signature[0] === 255 && signature[1] === 216 && signature[2] === 255
@@ -44,8 +47,12 @@ export async function readReference(file: File): Promise<string> {
   } catch (cause) {
     throw cause instanceof Error && cause.message.startsWith('参考图') ? cause : new Error(`「${file.name}」无法解码，请更换图片。`)
   } finally { URL.revokeObjectURL(url) }
+  signal?.throwIfAborted()
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
+    const abort = () => { reader.abort(); reject(new DOMException('图片选择已更新', 'AbortError')) }
+    signal?.addEventListener('abort', abort, { once: true })
+    reader.onloadend = () => signal?.removeEventListener('abort', abort)
     reader.onerror = () => reject(new Error(`无法读取「${file.name}」，请重新选择。`))
     reader.onload = () => resolve(String(reader.result).split(',')[1])
     reader.readAsDataURL(file)

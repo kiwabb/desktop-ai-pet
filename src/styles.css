@@ -1,42 +1,4 @@
-:root {
-  font-family: Nunito, ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #431407;
-  background: transparent;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  --orange: #f97316;
-  --orange-deep: #9a3412;
-  --cream: #fff7ed;
-  --cream-strong: #ffedd5;
-  --border: #fed7aa;
-  --blue: #0f7d91;
-  --ink: #431407;
-  --muted: #7c4a37;
-  --danger: #b42318;
-  /* Polish tokens (09-11, recorded in DESIGN.md): --muted-soft is the AA-safe
-   * secondary text color on cream surfaces (≥5.1:1); --rule-strong is the
-   * hairline that stays visible on cream fills. */
-  --muted-soft: #796959;
-  --rule-strong: rgba(155, 120, 94, 0.22);
-  --focus-accent: #a45831;
-  /* Settings colorize (09-11, recorded in DESIGN.md): capsule input language
-   * (composer 准绳) + primary gradient bright stop + success status family. */
-  --input-bg: #fffdf9;
-  --input-rule: rgba(172, 144, 122, 0.45);
-  --input-focus: rgba(165, 106, 72, 0.65);
-  --input-focus-ring: rgba(165, 106, 72, 0.1);
-  --primary-hi: #bd7145;
-  --success: #76996c;
-  --success-ink: #526c44;
-  --success-bg: #f2f6e9;
-  --success-rule: #d8e1c6;
-  /* Type ladder (typeset, 09-11): role sizes; weights stay on the
-   * 400/500/600/700/800 ladder recorded in DESIGN.md. */
-  --text-caption: 11px;
-  --text-label: 12px;
-  --text-body-sm: 13px;
-  --text-body: 14px;
-}
+@import './design-tokens.css';
 
 * { box-sizing: border-box; }
 
@@ -51,9 +13,13 @@ body,
 }
 
 button,
-textarea { font: inherit; }
+textarea,
+input,
+select { font: inherit; }
 
 button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+button, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 
 .sr-only {
   position: absolute;
@@ -67,8 +33,13 @@ button { cursor: pointer; }
 }
 
 button:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(155, 94, 58, 0.28);
+textarea:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-accent);
   outline-offset: 2px;
 }
 
@@ -77,74 +48,22 @@ textarea:focus-visible {
 .chat-panel textarea,
 .chat-panel input { caret-color: var(--focus-accent); }
 
-.desktop-pet-app {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: transparent;
-  user-select: none;
+/* WKWebView ignores scrollbar-color/scrollbar-width, so the custom bars live
+ * on the WebKit pseudo-elements: a warm cocoa pill floating in a transparent
+ * track, with breathing room from the clipped transparent border. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(102, 83, 70, 0.16);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
 }
-
-.pet-stage {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 176px;
-  height: 208px;
-  cursor: grab;
-  touch-action: none;
-}
-
-.pet-shell:not(.pet-chat-closed) .pet-stage { z-index: 3; }
-
-/* Host-side desktop anchoring for the attached bubble: position, size and
- * stacking only. Everything visual (skin, radii, decorations, motion) lives
- * with the component in src/components/ChatBubbleFrame.css. */
-.pet-shell .chat-panel.is-attached {
-  position: absolute;
-  top: 10px;
-  bottom: 152px;
-  z-index: 4;
-  right: 154px;
-  left: 8px;
-}
-
-.pet-stage:active { cursor: grabbing; }
-
-.pet-character-hitbox {
-  position: absolute;
-  inset: 26px 0 18px;
-  z-index: 1;
-  cursor: grab;
-}
-
-.pet-character-hitbox:active { cursor: grabbing; }
-
-.pet-shell.pet-chat-closed .pet-stage {
-  inset: 0;
-  width: 232px;
-  height: 380.9px;
-  pointer-events: none;
-}
-
-.closed-reference-art {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 232px;
-  height: 380.9px;
-  object-fit: fill;
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.pet-shell.pet-chat-closed .pet-character-hitbox {
-  top: 0;
-  right: 5px;
-  bottom: 50px;
-  left: 14px;
-  pointer-events: auto;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 106, 72, 0.32);
+  background-clip: padding-box;
+  border-width: 2px;
 }
 
 .pet-preview,
@@ -177,7 +96,7 @@ textarea:focus-visible {
   user-select: text;
   pointer-events: auto;
   transform-origin: 100% 100%;
-  animation: reply-bubble-in 240ms cubic-bezier(0.2, 0.9, 0.3, 1.18) both;
+  animation: reply-bubble-in var(--motion-slow) var(--ease-standard) both;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
 }
@@ -280,12 +199,12 @@ textarea:focus-visible {
 
 .pet-status-copy { display: grid; line-height: 1.08; }
 .pet-status-copy strong { font-size: 12px; font-weight: 800; }
-.pet-status-copy small { margin-top: 3px; color: #8f7b70; font-size: 8px; font-weight: 620; }
+.pet-status-copy small { margin-top: 3px; color: var(--muted-soft); font-size: 8px; font-weight: 600; }
 
 .pet-state-thinking .status-dot,
 .pet-state-talking .status-dot { background: var(--blue); box-shadow: 0 0 0 3px rgba(15, 125, 145, 0.14); }
 .pet-state-error .status-dot { background: var(--danger); box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12); }
-.pet-state-sleeping .status-dot { background: #a78bfa; box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.14); }
+.pet-state-sleeping .status-dot { background: var(--muted-soft); box-shadow: 0 0 0 3px rgba(121, 105, 89, 0.12); }
 
 .preview-label {
   position: absolute;
@@ -298,13 +217,16 @@ textarea:focus-visible {
   pointer-events: none;
 }
 
-.icon-button,
-.send-button {
+.icon-button {
   display: grid;
   place-items: center;
   min-width: 44px;
   min-height: 44px;
   border: 0;
+  color: #796959;
+  background: transparent;
+  border-radius: 50%;
+  transition: background 160ms ease-out, color 160ms ease-out;
 }
 
 /* The bubble frame (.chat-panel) shell — grid structure, skin, header, slots,
@@ -328,313 +250,11 @@ textarea:focus-visible {
   border-radius: 50%;
 }
 .presence-mark span { width: 8px; height: 8px; background: #45a76f; border-radius: 50%; box-shadow: 0 0 0 3px rgba(69, 167, 111, 0.12); }
-
-.icon-button {
-  color: #796959;
-  background: transparent;
-  border-radius: 50%;
-  transition: background 160ms ease-out, color 160ms ease-out;
-}
 .icon-button:hover { color: #3b342f; background: rgba(98, 79, 67, 0.08); }
 .icon-button svg { width: 18px; height: 18px; }
 
 .chat-panel.is-compact .presence-mark { width: 24px; height: 24px; }
 .chat-panel.is-compact .presence-mark span { width: 7px; height: 7px; }
-
-.message-list {
-  min-height: 0;
-  padding: 14px 16px 18px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  background: linear-gradient(180deg, rgba(250, 244, 237, 0.6), rgba(246, 236, 227, 0.66));
-  scrollbar-color: rgba(102, 83, 70, 0.2) transparent;
-}
-
-.empty-state {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  min-height: 100%;
-  padding: 30px;
-  text-align: center;
-}
-/* The cat itself is the empty-state brand moment; no mask, just the approved
- * frame asset with the stage's own breathing rhythm and drop shadow. */
-.empty-cat {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-  transform-origin: 50% 88%;
-  animation: pet-breathe 3.2s ease-in-out infinite;
-  filter: drop-shadow(0 6px 8px rgba(67, 20, 7, 0.13));
-  pointer-events: none;
-  user-select: none;
-}
-.empty-state h2 { margin: 14px 0 8px; color: #2f2925; font-size: 20px; font-weight: 700; letter-spacing: -0.025em; }
-.empty-state p { max-width: 300px; margin: 0; color: var(--muted-soft); font-size: var(--text-body-sm); line-height: 1.65; }
-
-.configure-button,
-.save-settings-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 44px;
-  border: 0;
-  border-radius: 14px;
-  font-weight: 700;
-}
-.configure-button { margin-top: 18px; padding: 0 18px; color: white; background: #9a5d3b; box-shadow: 0 6px 14px rgba(118, 67, 39, 0.14); }
-
-.settings-form {
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 12px;
-  max-width: 380px;
-  margin: 0 auto;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(108, 88, 74, 0.1);
-  border-radius: 18px;
-  box-shadow: 0 12px 32px rgba(55, 43, 35, 0.08);
-}
-.settings-mark { display: grid; place-items: center; width: 44px; height: 44px; color: #925938; background: #f3e8e0; border-radius: 14px; }
-.settings-mark svg { width: 21px; height: 21px; }
-.settings-form h2 { margin: 2px 0 4px; color: #332c28; font-size: 17px; }
-.settings-form p { margin: 0; color: #82776f; font-size: 10px; line-height: 1.5; }
-.settings-form > label,
-.settings-field { grid-column: 1 / -1; display: grid; gap: 6px; color: #766a62; font-size: var(--text-caption); font-weight: 600; }
-.field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.field-label-row label { color: #766a62; font-size: var(--text-caption); font-weight: 600; }
-.load-models-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 32px;
-  padding: 0 10px;
-  color: #8c5739;
-  background: #f4e9e2;
-  border: 0;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 700;
-}
-.load-models-button:disabled { cursor: not-allowed; opacity: 0.45; }
-.load-models-button svg { width: 13px; height: 13px; }
-.model-count { color: #8c5739; font-size: 9px; font-weight: 700; }
-.model-input-row { position: relative; }
-.model-input-row input { padding-right: 46px; }
-.toggle-models-button {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  color: #8c5739;
-  background: #f4e9e2;
-  border: 0;
-  border-radius: 10px;
-}
-.toggle-models-button svg { width: 17px; height: 17px; transition: transform 160ms ease-out; }
-.toggle-models-button svg.is-open { transform: rotate(180deg); }
-.model-options {
-  display: grid;
-  gap: 3px;
-  max-height: 190px;
-  padding: 5px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  background: white;
-  border: 1px solid rgba(108, 88, 74, 0.14);
-  border-radius: 12px;
-  box-shadow: 0 10px 24px rgba(55, 43, 35, 0.1);
-}
-.model-options button {
-  min-height: 34px;
-  padding: 7px 10px;
-  overflow: hidden;
-  color: #332c28;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-}
-.model-options button:hover,
-.model-options button.is-selected { color: #815033; background: #f5ebe5; }
-.settings-form input {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
-  color: #332c28;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(108, 88, 74, 0.18);
-  border-radius: 12px;
-  outline: none;
-}
-.settings-form input:focus { border-color: #a56a48; box-shadow: 0 0 0 3px rgba(165, 106, 72, 0.12); }
-.settings-error { grid-column: 1 / -1; padding: 9px 11px; color: var(--danger); background: #fff1f0; border-radius: 10px; font-size: 11px; }
-.save-settings-button { grid-column: 1 / -1; width: 100%; color: white; background: #955a39; }
-.save-settings-button:disabled { cursor: wait; opacity: 0.65; }
-.save-settings-button svg { width: 17px; height: 17px; }
-
-.message { display: grid; gap: 4px; margin-bottom: 13px; }
-.message-user { justify-items: end; }
-.message-author { color: var(--muted-soft); font-size: var(--text-label); font-weight: 600; }
-.message-bubble {
-  max-width: 84%;
-  padding: 10px 13px;
-  color: #332d29;
-  background: linear-gradient(165deg, #fffefa, #fdf8f0);
-  border: 1px solid var(--rule-strong);
-  border-radius: 17px 17px 17px 6px;
-  box-shadow: 0 4px 14px rgba(92, 61, 41, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  font-size: 14px;
-  line-height: 1.7;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-  user-select: text;
-}
-.message-user .message-bubble { color: white; background: linear-gradient(150deg, #7c5c4a, #6a4c3c); border-color: transparent; border-radius: 17px 17px 6px; box-shadow: 0 5px 14px rgba(78, 54, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
-
-.inline-error {
-  margin: 8px 14px 0;
-  padding: 9px 11px;
-  color: var(--danger);
-  background: #fff1f0;
-  border: 1px solid #fecaca;
-  border-radius: 11px;
-  font-size: 12px;
-}
-
-.inline-error.compact-error {
-  margin: 5px 10px 0;
-  padding: 5px 8px;
-  overflow: hidden;
-  border-radius: 8px;
-  font-size: 10px;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.composer { padding: 10px 12px 12px; background: rgba(250, 248, 245, 0.86); }
-.composer-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 4px 4px 4px 12px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(108, 88, 74, 0.13);
-  border-radius: 18px;
-  box-shadow: 0 8px 24px rgba(55, 43, 35, 0.08);
-  transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
-}
-.composer-row:focus-within { border-color: rgba(155, 94, 58, 0.48); box-shadow: 0 0 0 3px rgba(155, 94, 58, 0.1), 0 8px 24px rgba(55, 43, 35, 0.08); }
-.composer textarea {
-  flex: 1;
-  min-width: 0;
-  min-height: 44px;
-  max-height: 96px;
-  padding: 12px 4px 10px 0;
-  resize: none;
-  color: #493b31;
-  background: transparent;
-  border: 0;
-  outline: none;
-  line-height: 1.4;
-}
-.composer textarea:focus-visible { outline: none; }
-.composer textarea:disabled { cursor: not-allowed; opacity: 0.55; }
-.composer textarea::placeholder { color: #796959; opacity: 1; }
-.send-button {
-  width: 44px;
-  height: 44px;
-  color: white;
-  background: #955a39;
-  border-radius: 14px;
-  box-shadow: 0 5px 12px rgba(115, 68, 42, 0.18);
-  transition: transform 160ms ease-out, opacity 160ms ease-out, background 160ms ease-out;
-}
-.send-button:hover:not(:disabled) { background: #824c2f; }
-.send-button:active:not(:disabled) { transform: scale(0.96); }
-.send-button:disabled { cursor: not-allowed; opacity: 0.3; box-shadow: none; }
-.send-button svg { width: 18px; height: 18px; }
-
-.chat-panel.is-compact .composer {
-  align-self: stretch;
-  padding: 8px 9px 9px;
-  background: rgba(250, 248, 245, 0.7);
-}
-.chat-panel.is-compact .composer-row {
-  padding-left: 11px;
-  border-radius: 16px;
-  box-shadow: 0 5px 16px rgba(55, 43, 35, 0.07);
-}
-.chat-panel.is-compact .composer textarea {
-  min-height: 42px;
-  padding-top: 11px;
-  padding-bottom: 9px;
-  font-size: 13px;
-}
-.chat-panel.is-compact .send-button {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  min-height: 42px;
-  border-radius: 13px;
-}
-
-/* Compact attached panel: measured from the 1672×941 reference master.
- * Host geometry lives in the pet-shell rules further down; the shell interior
- * is owned by src/components/ChatBubbleFrame.css. */
-
-.send-button .send-plane { width: 32px; height: 32px; }
-.send-button .send-sparkles {
-  position: absolute;
-  top: -16px;
-  left: -24px;
-  width: 30px;
-  height: 30px;
-  color: #ffc98f;
-  filter: drop-shadow(0 2px 4px rgba(230, 126, 49, 0.18));
-}
-
-.chat-panel.is-attached.is-expanded .message { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px; }
-.chat-panel.is-attached.is-expanded .message-user { justify-content: flex-end; }
-.chat-panel.is-attached.is-expanded .message-avatar { width: 38px; height: 38px; }
-.message-avatar {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  overflow: hidden;
-  background: linear-gradient(145deg, #ffe1c4, #fff8ef);
-  border: 1px solid rgba(244, 168, 111, 0.42);
-  border-radius: 50%;
-}
-.assistant-message-avatar img { width: 36px; height: 36px; object-fit: contain; transform: translateY(3px); }
-.user-message-avatar { color: #ec8d51; background: #fff8f1; }
-.user-message-avatar svg { width: 22px; height: 22px; }
-.message-content { display: grid; min-width: 0; max-width: calc(100% - 48px); }
-.message-user .message-content { justify-items: end; }
-.chat-panel.is-attached.is-expanded .message-author { color: var(--pet-muted); font-size: 12px; font-weight: 600; }
-.chat-panel.is-attached.is-expanded .message-bubble { max-width: 100%; margin-top: 5px; padding: 12px 15px; color: var(--pet-ink); background: linear-gradient(165deg, #ffffff, #fffaf1); border-color: rgba(172, 144, 122, 0.32); border-radius: 18px 18px 18px 6px; box-shadow: 0 5px 16px rgba(92, 61, 41, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9); }
-.chat-panel.is-attached.is-expanded .message-user .message-bubble { color: #603c27; background: linear-gradient(135deg, #fff1df, #fce5d0); border-color: #efd3bb; border-radius: 18px 18px 6px 18px; box-shadow: inset 0 1px 0 #fff9ef, 0 5px 14px rgba(146, 94, 58, 0.14); }
-.message-time { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; color: var(--muted-soft); font-size: var(--text-label); }
-.message-time svg { width: 13px; height: 13px; }
-.message-pending { display: inline-flex; align-items: center; gap: 8px; color: var(--muted-soft); font-size: var(--text-body-sm); animation: pending-breathe 1.7s ease-in-out infinite; }
-@keyframes pending-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-/* New messages arrive with a gentle rise; streaming updates never remount the
- * article, so this plays once per message, not per token. */
-.chat-panel .message { animation: message-arrive 240ms cubic-bezier(0.16, 1, 0.3, 1); }
-@keyframes message-arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-.chat-panel.is-attached.is-expanded .composer textarea { padding-left: 8px; }
-.chat-panel.is-attached.is-expanded .empty-state h2 { color: #5b4538; }
 @keyframes pet-chat-bloom { from { transform: translateX(24px) scale(0.88); } to { transform: translateX(0) scale(1); } }
 
 .spinner { width: 18px; height: 18px; animation: spin 0.85s linear infinite; }
@@ -648,290 +268,9 @@ textarea:focus-visible {
 @keyframes pet-sleep { 0%, 100% { transform: translateY(0) scale(1); opacity: 1; } 50% { transform: translateY(3px) scale(0.985); opacity: 0.9; } }
 @keyframes pet-mouth-swap { 0%, 48% { opacity: 0; } 49%, 100% { opacity: 1; } }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* Compact attached panel — host geometry, pixel-measured on the 1672×941
- * reference master, CSS = master × 0.426435 (713×401 surface).
- *
- * The panel box, re-measured 2026-09-04. The right edge was previously assumed
- * (the old comment guessed "right ~1270 master"); it is actually at master
- * x=1178. Between x=1180 and x=1246 the master is TRANSPARENT (alpha 3-30) —
- * that gap is what proves the panel ends there rather than continuing under the
- * cat, which only starts at x=1246. So:
- *   left   master   64 → 27.3    right  master 1178 → 502.3   width  475.0
- *   top    master  159 → 67.8    bottom master  681 → 290.4   height 222.6
- * The panel was 40px too wide, which stretched every interior row with it.
- * The bulge in the right edge over master y 405-493 (out to x=1222) is the
- * speech-bubble tail, not the panel, and is excluded from the box.
- *
- * Corner radii are per-corner (fits documented in ChatBubbleFrame.css).
- * The cat overlaps the panel's right side: panel z-index below .pet-stage. */
-.pet-shell.pet-chat-compact .chat-panel.is-attached {
-  top: auto;
-  right: 210.7px;
-  bottom: 55px;
-  left: auto;
-  z-index: 2;
-  width: 475px;
-  height: 278px;
-}
-
-/* Pin is a status badge, not a button: small pill, no hit-area affordance. */
-.pin-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  width: 26px;
-  height: 26px;
-  color: #a08670;
-  background: rgba(255, 244, 232, 0.72);
-  border: 1px solid rgba(203, 168, 136, 0.38);
-  border-radius: 999px;
-}
-.pin-indicator svg { width: 12px; height: 12px; stroke-width: 2.2; }
-
-/* Composer capsule: reference master (102,355)-(1135,535) → CSS (43.5,151.4)-
- * (484.2,228.2), 440.7×76.8 — left inset 16 from the panel, right inset 18,
- * top flush with the row so the 13px gap to the chips lands below. */
-.chat-panel.is-attached.is-compact .composer {
-  position: static;
-  display: flex;
-  align-items: flex-start;
-  padding: 0 18px 0 16px;
-  background: transparent;
-}
-.chat-panel.is-attached.is-compact .composer-row {
-  flex: 1;
-  min-height: 77px;
-  align-items: center;
-  padding: 4px 11px 4px 19px;
-  background: #fff;
-  border: 1.5px solid rgba(242, 199, 158, 0.95);
-  border-radius: 999px;
-  box-shadow: 0 4px 12px rgba(96, 60, 38, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-.chat-panel.is-attached.is-compact .composer-row:focus-within {
-  border-color: rgba(225, 130, 76, 0.72);
-  box-shadow: 0 0 0 2px rgba(225, 130, 76, 0.11), 0 4px 12px rgba(96, 60, 38, 0.08);
-}
-.chat-panel.is-attached.is-compact .composer-sparkle { width: 15px; height: 15px; margin-right: 7px; }
-.chat-panel.is-attached.is-compact .composer textarea {
-  min-height: 56px;
-  max-height: 56px;
-  padding: 19px 6px 12px 0;
-  color: #443a34;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-.chat-panel.is-attached.is-compact .composer textarea::placeholder { color: var(--muted-soft); }
-.chat-panel.is-attached.is-compact .composer-tool {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  min-height: 34px;
-}
-.chat-panel.is-attached.is-compact .composer-tool svg { width: 16px; height: 16px; }
-.chat-panel.is-attached.is-compact .composer-divider { height: 20px; }
-/* Send button is inscribed in the capsule: master (965,390)-(1110,505) → CSS
- * 61.9×49.1, leaving an ~11px white margin to the capsule's right edge. */
-.chat-panel.is-attached.is-compact .send-button {
-  width: 62px;
-  height: 49px;
-  min-width: 62px;
-  min-height: 49px;
-  background: linear-gradient(145deg, #f4a16f, #e8793b);
-  border-radius: 999px;
-  box-shadow: 0 4px 10px rgba(213, 104, 44, 0.22);
-  touch-action: manipulation;
-}
-.chat-panel.is-attached.is-compact .send-button .send-plane { width: 22px; height: 22px; }
-.chat-panel.is-attached.is-compact .send-button:disabled {
-  opacity: 1;
-  box-shadow: 0 4px 10px rgba(213, 104, 44, 0.22);
-}
-
-.composer-tool {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  color: #837b77;
-  background: transparent;
-  border: 0;
-  border-radius: 50%;
-}
-.composer-tool:disabled { color: #8e8783; cursor: default; opacity: 0.92; }
-.composer-tool svg { width: 22px; height: 22px; stroke-width: 2.15; }
-.composer-divider { flex: 0 0 auto; width: 1px; height: 24px; background: rgba(144, 130, 121, 0.2); }
-
-/* Quick-prompt chips: one quiet warm pill for every action — no per-child
- * candy colors. Reference CSS y=241 h=27.7, left inset 21.7, gaps ≈12.7. */
-.quick-prompts {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 0 0 0 21px;
-}
-.quick-prompts button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  min-height: 28px;
-  padding: 0 11px;
-  gap: 6px;
-  color: #695345;
-  background: linear-gradient(160deg, #fffdf8, #fcf6ee);
-  border: 1px solid rgba(197, 171, 145, 0.36);
-  border-radius: 999px;
-  box-shadow: 0 1px 3px rgba(93, 61, 39, 0.05);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.quick-prompts button:hover { border-color: rgba(181, 133, 92, 0.52); background: linear-gradient(160deg, #fffaf1, #faf0e3); box-shadow: 0 4px 10px rgba(93, 61, 39, 0.09); }
-.icon-button:focus-visible,
-.composer-tool:focus-visible,
-.send-button:focus-visible,
-.quick-prompts button:focus-visible {
+.icon-button:focus-visible {
   outline: 2px solid #a45831;
   outline-offset: 2px;
-}
-.quick-prompts button svg { width: 14px; height: 14px; color: #997345; stroke-width: 2; }
-
-/* Integrated compact content: one input capsule and a quiet 2 × 2 action
- * group share the same inset. The frame owns row spacing and slot sizing. */
-.chat-panel.is-attached.is-integrated.is-compact .composer {
-  padding: 0 22px;
-}
-.chat-panel.is-attached.is-integrated.is-compact .composer-row {
-  min-height: 78px;
-  padding: 4px 10px 4px 17px;
-  background: linear-gradient(155deg, #fffefa, #fffaf3);
-  border: 1px solid rgba(194, 156, 121, 0.38);
-  border-radius: 27px;
-  box-shadow: 0 5px 12px rgba(115, 72, 40, 0.035), 0 1px 2px rgba(115, 72, 40, 0.035), inset 0 1px 0 #fff, inset 0 -1px 0 rgba(223, 195, 169, 0.12);
-}
-.chat-panel.is-attached.is-integrated.is-compact .composer-row:focus-within {
-  border-color: rgba(195, 132, 86, 0.72);
-  box-shadow: 0 0 0 2px rgba(225, 130, 76, 0.09), 0 5px 12px rgba(115, 72, 40, 0.045), inset 0 1px 0 #fff;
-}
-.chat-panel.is-attached.is-integrated.is-compact .composer textarea {
-  font-size: 14px;
-  color: #624c3e;
-}
-.chat-panel.is-attached.is-integrated.is-compact .composer textarea::placeholder { color: var(--muted-soft); }
-.chat-panel.is-attached.is-integrated.is-compact .composer-tool { color: #967e6a; }
-.chat-panel.is-attached.is-integrated.is-compact .composer-divider { background: rgba(172, 144, 122, 0.15); }
-.chat-panel.is-attached.is-integrated.is-compact .send-button {
-  width: 54px;
-  min-width: 54px;
-  height: 44px;
-  min-height: 44px;
-  border-radius: 19px;
-  background: linear-gradient(145deg, #bd7145, #a45831);
-  border: 1px solid rgba(192, 108, 60, 0.22);
-  box-shadow: 0 3px 7px rgba(174, 91, 42, 0.14), inset 0 1px 0 rgba(255, 231, 208, 0.65), inset 0 -1px 0 rgba(165, 82, 40, 0.08);
-}
-.chat-panel.is-attached.is-integrated.is-compact .send-button:disabled {
-  background: #ead7c6;
-  color: #856953;
-  border-color: #dfc9b6;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-}
-.chat-panel.is-attached.is-integrated.is-compact .send-button:hover:not(:disabled) {
-  background: linear-gradient(145deg, #b1673c, #96502d);
-}
-.chat-panel.is-attached.is-integrated.is-compact .send-button .send-plane { width: 20px; height: 20px; }
-.chat-panel.is-attached.is-integrated.is-compact .quick-prompts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: 32px;
-  gap: 8px;
-  padding: 0 22px;
-}
-.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button {
-  height: 32px;
-  min-height: 32px;
-  justify-content: flex-start;
-  gap: 9px;
-  padding: 0 14px;
-  border: 1px solid rgba(197, 171, 145, 0.3);
-  border-radius: 11px;
-  background: linear-gradient(160deg, #fffdf8, #fcf7ef);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(115, 72, 40, 0.025);
-  color: #695345;
-  font-size: 12px;
-  font-weight: 500;
-}
-.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button svg {
-  width: 14px;
-  height: 14px;
-  color: #997345;
-  stroke-width: 1.8;
-}
-.chat-panel.is-attached.is-integrated.is-compact .quick-prompts button:hover {
-  filter: none;
-  border-color: rgba(181, 133, 92, 0.52);
-  background: linear-gradient(160deg, #fffaf1, #faf0e3);
-  box-shadow: inset 0 1px 0 #fff, 0 2px 5px rgba(115, 72, 40, 0.055);
-}
-.chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) .composer-row {
-  min-height: 66px;
-}
-.chat-panel.is-attached.is-integrated.is-compact .inline-error.compact-error {
-  margin: 0 22px 6px;
-  padding: 2px 8px;
-}
-
-/* Expanded attached panel — host geometry plus the mode-specific content
- * styling (message list, composer, send button). Frame shell, header and
- * entrance motion for this mode live in ChatBubbleFrame.css. */
-.pet-shell.pet-chat-expanded .chat-panel.is-attached {
-  top: 40px;
-  right: 224px;
-  bottom: 55px;
-  left: 40px;
-  z-index: 2;
-}
-.chat-panel.is-attached.is-expanded .message-list { padding: 20px 22px; background: linear-gradient(180deg, rgba(255, 246, 236, 0.62), rgba(249, 236, 222, 0.7)); }
-.chat-panel.is-attached.is-expanded .message-list.is-settings { border-radius: 0 0 28px 28px; }
-.chat-panel.is-attached.is-expanded .composer {
-  padding: 12px 22px 22px;
-  background: linear-gradient(180deg, rgba(255, 250, 244, 0.92), rgba(253, 243, 232, 0.94));
-  border-radius: 0 0 28px 28px;
-}
-.chat-panel.is-attached.is-expanded .composer-row {
-  align-items: center;
-  min-height: 64px;
-  padding: 7px 7px 7px 12px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(218, 181, 154, 0.66);
-  border-radius: 20px;
-  box-shadow: 0 6px 18px rgba(77, 52, 37, 0.07);
-}
-.chat-panel.is-attached.is-expanded .send-button {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  min-height: 48px;
-  background: linear-gradient(145deg, #bd7145, #a45831);
-  border-radius: 16px;
-  box-shadow: 0 3px 7px rgba(174, 91, 42, 0.14), inset 0 1px 0 rgba(255, 231, 208, 0.4);
-}
-
-.composer-sparkle {
-  flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  margin-right: 8px;
-  overflow: visible;
-  filter: drop-shadow(0 2px 3px rgba(232, 132, 41, 0.18));
 }
 .sparkle-halo { fill: #fff7de; }
 .sparkle-fill { fill: #ffad43; }
@@ -1033,103 +372,17 @@ textarea:focus-visible {
   stroke-linecap: round;
 }
 
-.chat-panel.is-attached.is-compact .composer-row { position: relative; z-index: 1; }
-.chat-panel.is-attached.is-expanded .composer-sparkle { width: 26px; height: 26px; }
-
-.pet-shell.pet-chat-compact .pet-stage {
-  top: auto;
-  right: 0;
-  bottom: 0;
-  z-index: 3;
-  width: 232px;
-  height: 380.9px;
-  pointer-events: none;
-}
-.pet-shell.pet-chat-expanded .pet-stage {
-  top: auto;
-  right: 0;
-  bottom: 0;
-  z-index: 3;
-  width: 232px;
-  height: 380.9px;
-  pointer-events: none;
-}
-.pet-shell.pet-chat-expanded .pet-character-hitbox {
-  top: 0;
-  right: 5px;
-  bottom: 50px;
-  left: 14px;
-  pointer-events: auto;
-}
-.pet-shell.pet-chat-compact .pet-character-hitbox {
-  top: 0;
-  right: 5px;
-  bottom: 50px;
-  left: 14px;
-  pointer-events: auto;
-}
-
 /* Keep the shared cat anchored during native size changes. The open frame
  * remains mounted and visible; this class must never control its visibility. */
-.pet-shell.pet-chat-resizing .pet-stage {
-  top: auto;
-  right: 0;
-  bottom: 0;
-  left: auto;
-  z-index: 3;
-  width: 232px;
-  height: 380.9px;
-  pointer-events: none;
-}
-.pet-shell.pet-chat-resizing .pet-character-hitbox {
-  top: 0;
-  right: 5px;
-  bottom: 50px;
-  left: 14px;
-  pointer-events: auto;
-}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
-  .quick-prompts button:hover, .send-button:active:not(:disabled) { transform: none; }
 
-}
-
-.chat-panel .agent-tool-result {
-  margin-top: 8px;
-  padding: 9px 12px;
-  border: 1px solid var(--pet-rule);
-  border-radius: 4px 12px 12px 12px;
-  color: var(--pet-ink);
-  font-size: var(--text-body-sm);
-  line-height: 1.65;
-  background: #f7eddd;
-}
-.chat-panel .agent-tool-result p {
-  margin: 6px 0 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  max-height: 160px;
-  overflow-y: auto;
-  font: inherit;
 }
 
 /* The integrated platform replaces only the original disk front, not the cat
  * or cushion. The alpha PNG itself is unchanged; this shallow crop follows
  * the cushion lower edge (source center y744 /893), leaving closed mode exact. */
-.pet-shell.pet-panel-visible .closed-reference-art,
-.pet-shell:not(.pet-chat-closed):has(.chat-panel.is-integrated:not(.is-hidden)) .closed-reference-art {
-  clip-path: polygon(0 0, 100% 0, 100% 78%, 96% 80%, 90% 82%, 73% 83.3%, 44% 83.3%, 22% 82%, 9% 80%, 0 77%);
-}
 
 /* One fixed native chat backing; compact keeps its approved 713x401 scene
  * anchored at the same bottom-right point as the separate cat window. */
-.pet-chat-scene.pet-chat-compact {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 713px;
-  height: 401px;
-}
-.pet-chat-scene.pet-chat-expanded { width: 940px; height: 760px; }
-.pet-chat-scene .chat-header { touch-action: none; }

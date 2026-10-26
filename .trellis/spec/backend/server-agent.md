@@ -14,6 +14,7 @@ Applies to changes crossing FastAPI, LangGraph, PostgreSQL, Redis and Rust devic
 - Authenticated `POST /v1/todos/{todo_id}/reopen` requires control and returns `{item: Todo}` with `status=pending`. Native `agent_reopen_todo(todo_id)` returns `{generation, item}`. It is a direct operation, not a new model tool.
 - Tauri `agent_list_todos()` returns `{generation, items}` from authenticated `GET /v1/todos`, without submitting an agent run or calling a model.
 - `Database.pool` uses psycopg async connections, autocommit, dictionary rows and explicit transactions. Apply `server/migrations/*.sql` in filename order and record versions.
+- Direct `POST /v1/todos` creates an account-owned Todo without an agent run/tool call. Its `source_tool_call_id` is NULL; migration `008_direct_todo_source.sql` drops the original NOT NULL requirement while preserving UNIQUE and the foreign key for real tool-created rows. Model tools continue to write their actual tool ID. Never fabricate a tool row or rewrite historical migrations to satisfy direct creation. An SQL-shape substitute does not validate PostgreSQL constraints; verify the applied column/constraints and a real authorized create/refresh path.
 
 ## 3. Contracts
 

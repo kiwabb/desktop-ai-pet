@@ -1,0 +1,79 @@
+{
+  "baseline_head": "db65924fe0f7e00dfe7ec3b62e3234e8241999dc",
+  "baseline_is_dirty_worktree_snapshot": true,
+  "installed_binary_sha256": "0451dd6e423f1d7a362cc1600757ec1c04be449fd365fe19fe38c670e4899e8d",
+  "files": [
+    {
+      "path": "src-tauri/src/local_agent/store.rs",
+      "sha256": "5757423d1dd4004db070001a47b50795ba2156b9105572bb4e2f29d58952f66e"
+    },
+    {
+      "path": "src-tauri/src/local_agent/mod.rs",
+      "sha256": "5df8d7eec76146f00d5809f625fb3fee5b11e0134b78e349d0150e25496c500b"
+    },
+    {
+      "path": "src-tauri/src/local_agent/runtime.rs",
+      "sha256": "aa7e0dae5f081622f7772326e2a7855a6b91fc22f6ece7c5bcd2807f1e71b52d"
+    },
+    {
+      "path": "src-tauri/src/local_agent/plugin_runtime.rs",
+      "sha256": "9a40cc1052e887fb249208e34ca052db7f74663976b339d8da01eb55c5e74121"
+    },
+    {
+      "path": "src-tauri/src/local_agent/plugins/mod.rs",
+      "sha256": "e6d30f7400bc7e0b5fa174ba0d6d1837bb6321da31aea1827745c6a552cdd8b6"
+    },
+    {
+      "path": "src-tauri/src/backend/mod.rs",
+      "sha256": "1cad2b7fd9736605c77fa5d28775fb162f66705060ff4a9a2d51716b8036ae94"
+    },
+    {
+      "path": "src-tauri/src/llm/mod.rs",
+      "sha256": "dc37560a2e3e7f5606ad45228f418d7398aa29f438a20212456ed612c1168bf2"
+    },
+    {
+      "path": "src-tauri/src/llm/sse.rs",
+      "sha256": "575794890da6ea3dbf9f28df5aaa3ddd33a502384c8b526a2bffb3d599281387"
+    },
+    {
+      "path": "src/lib/tool-plugins.ts",
+      "sha256": "d204a3cea0546864012c0b52af1cf6526940184aba6c69515989ac542c3ca582"
+    },
+    {
+      "path": ".trellis/spec/desktop/dual-mode-llm.md",
+      "sha256": "f5fc19158d172c6d2dd2a6717dc97e1621859085ca2c23da34a268e0c72b19c1"
+    },
+    {
+      "path": ".trellis/spec/desktop/index.md",
+      "sha256": "f60fd8dd6cf276a2da91cb8af5ec3e6ba855218faaeb05d7dbb55ef83f04c698"
+    },
+    {
+      "path": "src-tauri/src/local_agent/context.rs",
+      "sha256": "218beabcfa3f65fd07e2dbe8f71b0f4e23b52a78e44bce17b5724e0f99d865cb"
+    },
+    {
+      "path": "src-tauri/src/local_agent/context_store.rs",
+      "sha256": "875696bf0def25f003184a970ec110a9bf6bdc655de148046c806b7c130791dc"
+    },
+    {
+      "path": "src-tauri/src/local_agent/context_summary.rs",
+      "sha256": "00bbb5a5e3c18a6da58a510a110987ce17c030f677934af98265aa2f9e4da82f"
+    },
+    {
+      "path": "src-tauri/src/local_agent/plugins/history.rs",
+      "sha256": "d4fe218aa179e0bcbb33ef81ccd245e61b178ca6d34f8842aa5cc4774d9c72f8"
+    },
+    {
+      "path": "src/lib/history/presentation.ts",
+      "sha256": "2d48cfe8a70e1e1fc7f82a1d8ba07ed27b78fafdcc0170e2da37a2102f75a41a"
+    },
+    {
+      "path": "src/lib/history/presentation.test.ts",
+      "sha256": "ba22ac9c9de19988d919ae11192f2864281b594727624a14040071f49168933e"
+    },
+    {
+      "path": ".trellis/spec/desktop/local-context.md",
+      "sha256": "83f25c032624da12ad4f436d59e72d95cb56c1a4d7fd38bf531b72547b6492ff"
+    }
+  ]
+}

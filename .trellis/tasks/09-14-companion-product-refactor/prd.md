@@ -38,3 +38,6 @@ No replacement model service, new multi-session API, protocol redesign, producti
 
 ## Approved experience revision — 2026-09-26
 The user approved all recommendations in the latest user-perspective evaluation. Preserve the white cat identity while allowing its surrounding composition to change. Petting stays on the desktop; chatting has a separate labelled entrance. Repair real native opening, provide persistent size/pinning preferences and reversible hide/tray recovery, and support short conversation without forced expansion. Preserve history, tools, drafts, business data and backend contracts. These requirements supersede prior complete-PNG and attached-disk restrictions. The accepted implementation and acceptance contract is `companion-experience-design.md`; there are no outstanding product-approval questions.
+
+## Approved local context optimization — 2026-09-29
+The user authorized implementing local mode first. `local-context-optimization-2026-09-29.md` defines the current Rust/SQLite scope: estimated input budget, complete turns, source-linked incremental summaries and bounded original-history retrieval. Keep original records and existing business behavior; verify with the saved real local model and distinguish isolated tests from live evidence. This slice does not complete the wider companion objective.

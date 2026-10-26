@@ -1,4 +1,7 @@
-use super::{apply_reminder_poll, normalized_url, AgentBackend, AgentState, Config, Inner, LocalConfig, Mode, View};
+use super::{
+    apply_memo_review_poll, apply_reminder_poll, normalized_url, AgentBackend, AgentState, Config,
+    Inner, LocalConfig, Mode, View,
+};
 use crate::agent_protocol::Snapshot;
 use crate::local_agent::{runtime, store::Store};
 use chrono::Utc;
@@ -12,8 +15,8 @@ pub struct LocalBackend;
 /// "connected, model missing" shape instead of an alarming disconnect; a
 /// fully empty setup is unconfigured and the UI offers the settings page.
 fn readiness(local: &LocalConfig) -> (bool, bool) {
-    let valid_url = local.base_url.is_empty()
-        || normalized_url(&local.base_url, "模型服务地址").is_ok();
+    let valid_url =
+        local.base_url.is_empty() || normalized_url(&local.base_url, "模型服务地址").is_ok();
     let configured =
         !local.base_url.is_empty() || !local.api_key.is_empty() || !local.model.is_empty();
     (configured, valid_url && local.model_configured())
@@ -29,26 +32,29 @@ fn open_store(app: &AppHandle) -> Result<Arc<Store>, String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|_| "无法创建助手配置目录")?;
     }
-    Store::open(&path).map(Arc::new).map_err(|error| error.message())
+    Store::open(&path)
+        .map(Arc::new)
+        .map_err(|error| error.message())
 }
 
 /// Restart/generation recovery (runtime_store.recover_expired): interrupted
 /// runs are finalized, then history is restored from the durable snapshot.
-fn restore_session(store: &Store) -> Snapshot {
-    if store.recover_interrupted().is_err() {
-        return Snapshot::default();
-    }
-    let session_id = match store.latest_session() {
-        Ok(Some(id)) => id,
-        _ => match store.create_session() {
-            Ok(id) => id,
-            Err(_) => return Snapshot::default(),
-        },
+fn restore_session(store: &Store) -> Result<Snapshot, String> {
+    store
+        .recover_interrupted()
+        .map_err(|error| format!("本地会话恢复失败：{}", error.message()))?;
+    let session_id = match store
+        .latest_session()
+        .map_err(|error| format!("本地会话读取失败：{}", error.message()))?
+    {
+        Some(id) => id,
+        None => store
+            .create_session()
+            .map_err(|error| format!("本地会话创建失败：{}", error.message()))?,
     };
-    store.snapshot(&session_id).unwrap_or_else(|_| Snapshot {
-        session_id,
-        ..Default::default()
-    })
+    store
+        .snapshot(&session_id)
+        .map_err(|error| format!("本地历史加载失败：{}", error.message()))
 }
 
 /// Same 15s polling shape as the server mode, sourced from the local store.
@@ -77,6 +83,32 @@ async fn poll_reminders(app: AppHandle, generation: u64, store: Arc<Store>) {
     }
 }
 
+/// Same 15s polling shape as poll_reminders, sourced from the local memo store.
+async fn poll_memo_reviews(app: AppHandle, generation: u64, store: Arc<Store>) {
+    loop {
+        let epoch = {
+            let state = app.state::<AgentState>();
+            let inner = state.lock();
+            if inner.view.generation != generation {
+                return;
+            }
+            inner.todo_mutation_epoch
+        };
+        let result = crate::local_agent::plugins::memo::MemoStore::new(&store)
+            .due_reviews(Utc::now())
+            .map_err(|error| error.message());
+        {
+            let state = app.state::<AgentState>();
+            let mut inner = state.lock();
+            if apply_memo_review_poll(&mut inner, generation, epoch, result) {
+                inner.view.revision += 1;
+                let _ = app.emit("agent:view", &inner.view);
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+    }
+}
+
 impl AgentBackend for LocalBackend {
     fn start(
         app: &AppHandle,
@@ -86,19 +118,11 @@ impl AgentBackend for LocalBackend {
     ) -> Option<tauri::async_runtime::JoinHandle<()>> {
         let local = config.local.effective();
         let (configured, model_configured) = readiness(&local);
-        let (store, snapshot, storage_error) = match open_store(app) {
-            Ok(store) => {
-                let snapshot = restore_session(&store);
-                (Some(store), snapshot, None)
-            }
-            Err(error) => (
-                None,
-                Snapshot {
-                    session_id: uuid::Uuid::new_v4().to_string(),
-                    ..Default::default()
-                },
-                Some(error),
-            ),
+        let restored = open_store(app)
+            .and_then(|store| restore_session(&store).map(|snapshot| (store, snapshot)));
+        let (store, snapshot, storage_error) = match restored {
+            Ok((store, snapshot)) => (Some(store), snapshot, None),
+            Err(error) => (None, Snapshot::default(), Some(error)),
         };
         let storage_available = store.is_some();
         inner.store = store.clone();
@@ -125,7 +149,12 @@ impl AgentBackend for LocalBackend {
         store.map(|store| {
             let handle = app.clone();
             tauri::async_runtime::spawn(async move {
-                poll_reminders(handle, generation, store).await;
+                let memo_store = store.clone();
+                let memo_handle = handle.clone();
+                tokio::join!(
+                    poll_reminders(handle, generation, store),
+                    poll_memo_reviews(memo_handle, generation, memo_store),
+                );
             })
         })
     }
@@ -142,7 +171,10 @@ mod tests {
     #[test]
     fn readiness_mirrors_server_mode_unconfigured_shapes() {
         assert_eq!(readiness(&LocalConfig::default()), (false, false));
-        let partial = LocalConfig { base_url: "http://127.0.0.1:11434/v1".into(), ..Default::default() };
+        let partial = LocalConfig {
+            base_url: "http://127.0.0.1:11434/v1".into(),
+            ..Default::default()
+        };
         assert_eq!(readiness(&partial), (true, false));
         let full = LocalConfig {
             base_url: "http://127.0.0.1:11434/v1".into(),
@@ -151,7 +183,10 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(readiness(&full), (true, true));
-        let bad_url = LocalConfig { base_url: "http://remote.example.com".into(), ..full };
+        let bad_url = LocalConfig {
+            base_url: "http://remote.example.com".into(),
+            ..full
+        };
         assert_eq!(readiness(&bad_url), (true, false));
     }
 
@@ -165,7 +200,7 @@ mod tests {
         let claimed = store.claim(&session).unwrap().unwrap();
         store.append_delta(&claimed.run.id, "部分回复").unwrap();
         // Simulate a crash: the run is still running when the session restores.
-        let snapshot = restore_session(&store);
+        let snapshot = restore_session(&store).unwrap();
         assert_eq!(snapshot.session_id, session);
         assert_eq!(snapshot.messages.len(), 2);
         assert_eq!(snapshot.messages[0].content, "历史消息");
@@ -177,5 +212,99 @@ mod tests {
         assert!(store
             .submit(&session, &uuid::Uuid::new_v4().to_string(), "新消息")
             .is_ok());
+    }
+
+    // These regression tests use only isolated in-memory SQLite connections.
+    // Schema faults exercise real Store failures without opening user storage.
+    fn session_count(store: &Store) -> i64 {
+        store
+            .with_conn(|conn| {
+                Ok(conn.query_row("SELECT COUNT(*) FROM agent_sessions", [], |row| row.get(0))?)
+            })
+            .unwrap()
+    }
+
+    fn execute_isolated_sql(store: &Store, sql: &str) {
+        store
+            .with_conn(|conn| {
+                conn.execute_batch(sql)?;
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn restore_empty_isolated_store_creates_one_authoritative_session() {
+        let store = Store::open_memory();
+        let snapshot = restore_session(&store).unwrap();
+        assert!(!snapshot.session_id.is_empty());
+        assert!(snapshot.messages.is_empty());
+        assert!(snapshot.runs.is_empty());
+        assert!(snapshot.tool_calls.is_empty());
+        assert_eq!(
+            store.latest_session().unwrap(),
+            Some(snapshot.session_id.clone())
+        );
+        assert_eq!(session_count(&store), 1);
+
+        let restored = restore_session(&store).unwrap();
+        assert_eq!(restored.session_id, snapshot.session_id);
+        assert_eq!(session_count(&store), 1);
+    }
+
+    #[test]
+    fn restore_recovery_failure_is_an_error_and_does_not_create_a_session() {
+        let store = Store::open_memory();
+        execute_isolated_sql(&store, "DROP TABLE agent_runs");
+
+        assert_eq!(
+            restore_session(&store).unwrap_err(),
+            "本地会话恢复失败：本地存储暂时不可用，请重启应用重试"
+        );
+        assert_eq!(session_count(&store), 0);
+    }
+
+    #[test]
+    fn restore_session_read_failure_is_an_error_and_does_not_create_a_session() {
+        let store = Store::open_memory();
+        // A blob ID cannot decode as String. The table still permits normal
+        // inserts, so treating this read error as absence would create a row.
+        execute_isolated_sql(
+            &store,
+            "INSERT INTO agent_sessions(id, created_at) VALUES (x'00', '2026-01-01')",
+        );
+        assert!(store.latest_session().is_err());
+
+        assert_eq!(
+            restore_session(&store).unwrap_err(),
+            "本地会话读取失败：本地存储暂时不可用，请重启应用重试"
+        );
+        assert_eq!(session_count(&store), 1);
+    }
+
+    #[test]
+    fn restore_session_creation_failure_is_an_error() {
+        let store = Store::open_memory();
+        execute_isolated_sql(&store, "PRAGMA query_only = ON");
+
+        assert_eq!(
+            restore_session(&store).unwrap_err(),
+            "本地会话创建失败：本地存储暂时不可用，请重启应用重试"
+        );
+        assert_eq!(session_count(&store), 0);
+    }
+
+    #[test]
+    fn restore_snapshot_failure_does_not_return_an_empty_history() {
+        let store = Store::open_memory();
+        let session = store.create_session().unwrap();
+        execute_isolated_sql(&store, "DROP TABLE agent_messages");
+
+        assert_eq!(
+            restore_session(&store).unwrap_err(),
+            "本地历史加载失败：本地存储暂时不可用，请重启应用重试"
+        );
+        assert_eq!(store.latest_session().unwrap(), Some(session));
+        assert_eq!(session_count(&store), 1);
     }
 }

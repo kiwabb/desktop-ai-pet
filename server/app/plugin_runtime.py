@@ -43,8 +43,9 @@ class Plugin(Protocol):
 
 def builtin_plugins(db=None) -> list:
     """Built-in plugins in explicit registration order (no filesystem scan)."""
+    from app.plugins.memo import MemoPlugin
     from app.plugins.todo import TodoPlugin
-    return [TodoPlugin(db)]
+    return [TodoPlugin(db), MemoPlugin(db)]
 
 
 def aggregate_prompt_fragments(plugins) -> list:

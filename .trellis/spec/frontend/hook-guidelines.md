@@ -6,17 +6,18 @@
 
 ## Overview
 
-**项目目前没有任何自定义 hook**——所有 hooks 直接在组件里使用
-（`useState`、`useRef`、`useEffect`）。不要为了"抽象"而提取 hook；
-同一段逻辑真实出现第三次再考虑。
+Custom hooks already own specific lifecycles: `usePetGroupDrag`,
+`useChatReading` and `useFrameMorph`. Keep window dragging, reader continuity,
+and shell animation cancellation in their respective hooks. Extract further
+hooks only for a cohesive repeated lifecycle, not to reduce component line count.
 
 ---
 
 ## Custom Hook Patterns
 
-暂无自定义 hook。若未来需要：
+Existing custom hook conventions:
 
-- 命名 `useXxx`，放 `src/lib/use-xxx.ts`（kebab-case 文件名）
+- 命名 `useXxx`，place shared hooks in `src/lib/` and component-specific hooks beside their component, matching existing camelCase filenames
 - 返回值用对象还是元组，参考使用处可读性；本项目倾向对象
 
 ---
@@ -40,6 +41,8 @@
   （见 `PetStage.tsx:45`、`App.tsx:137`）
 - 依赖数组如实填写；需要"最新值但不想触发重跑"的用 ref 镜像
   （`petStateRef`、`chatModeRef` 模式）
+- Focus after a committed visible/view transition must not depend on an animation frame. Use a layout effect for committed DOM targets; consume quick-prompt caret intent once after the controlled draft commits, and discard it when hidden or on another page. Native focus recovery must preserve an already focused visible editor.
+- When secondary pages unmount the composer, preserve its actual DOM value and selection start/end/direction in a stable parent ref during textarea detach. Restore the snapshot once on rebind only if the new textarea value still matches, then consume it. Changed or acknowledged-and-cleared drafts invalidate old selection. Keep the ref callback stable across ordinary draft updates; do not retain a hidden focusable editor to preserve selection. Verify a selected suffix survives settings/Todo navigation and is replaced by subsequent native typing.
 
 ## Naming Conventions
 

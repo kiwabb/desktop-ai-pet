@@ -1,95 +1,308 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-11T00:00:00+08:00",
+  "generatedAt": "2026-09-26T14:02:38+08:00",
   "title": "Design System: 橘伴 Desktop AI Pet",
   "extensions": {
     "colorMeta": {
-      "primary": { "role": "primary", "displayName": "焦糖橘 Caramel Orange", "canonical": "#a45831", "tonalRamp": ["#3a1c0e", "#5c2f18", "#7d4423", "#a45831", "#c07a4e", "#d69d77", "#ebc3a7", "#fbe8d8"] },
-      "send-orange": { "role": "primary", "displayName": "蜜橘 Honey Orange", "canonical": "#e8793b", "tonalRamp": ["#4a1f08", "#74330f", "#9d4a1a", "#c96a2c", "#e8793b", "#f2985f", "#f9b98c", "#fddbbd"] },
-      "ink": { "role": "neutral", "displayName": "墨棕 Ink Brown", "canonical": "#493b31", "tonalRamp": ["#1f1712", "#332921", "#493b31", "#615146", "#7c6a5e", "#998677", "#b7a899", "#d6cbc1"] },
-      "muted-soft": { "role": "neutral", "displayName": "柔灰棕 Soft Muted Brown", "canonical": "#796959", "tonalRamp": ["#2e2620", "#4a3f36", "#796959", "#8f8071", "#a69889", "#bcb1a4", "#d1c9bf", "#e6e1da"] },
-      "surface-cream": { "role": "neutral", "displayName": "奶油面 Cream Surface", "canonical": "#fffdfa", "tonalRamp": ["#f3e3d3", "#f7ecdf", "#faf2e8", "#fcf7ef", "#fdfaf5", "#fffdfa", "#fffefb", "#ffffff"] },
-      "rule": { "role": "neutral", "displayName": "暖分隔线 Warm Rule", "canonical": "#eadfd4", "tonalRamp": ["#8a7563", "#a08b78", "#b6a18e", "#cbb7a4", "#dfcdbb", "#eadfd4", "#f4ece3", "#faf6f0"] },
-      "danger": { "role": "tertiary", "displayName": "Danger Red", "canonical": "#b42318", "tonalRamp": ["#4a0e08", "#701510", "#971d15", "#b42318", "#cf4a3e", "#e07a6d", "#eda99f", "#f8d2cb"] }
+      "primary": {
+        "role": "primary",
+        "displayName": "Apricot Action",
+        "canonical": "#f4bd7e"
+      },
+      "send-orange": {
+        "role": "primary",
+        "displayName": "蜜橘 Honey Orange",
+        "canonical": "#e8793b",
+        "tonalRamp": [
+          "#4a1f08",
+          "#74330f",
+          "#9d4a1a",
+          "#c96a2c",
+          "#e8793b",
+          "#f2985f",
+          "#f9b98c",
+          "#fddbbd"
+        ],
+        "purpose": "Legacy reference appearance only; current companion uses a pale apricot action with a dark cocoa foreground."
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Warm Cocoa",
+        "canonical": "#6c4631"
+      },
+      "muted-soft": {
+        "role": "neutral",
+        "displayName": "Soft Cocoa",
+        "canonical": "#8b6753"
+      },
+      "surface-cream": {
+        "role": "neutral",
+        "displayName": "Milk Cream",
+        "canonical": "#fffaf4"
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Apricot Rule",
+        "canonical": "#eed8bf"
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "#b42318",
+        "tonalRamp": [
+          "#4a0e08",
+          "#701510",
+          "#971d15",
+          "#b42318",
+          "#cf4a3e",
+          "#e07a6d",
+          "#eda99f",
+          "#f8d2cb"
+        ]
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "紧凑面板标题。" },
-      "title": { "displayName": "Title", "purpose": "展开面板标题、空态标题、卡片标题。" },
-      "body": { "displayName": "Body", "purpose": "消息正文与表单输入。" },
-      "label": { "displayName": "Label", "purpose": "作者名、时间戳、工具条、计数。" }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Legacy reference appearance only."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "圆润面板标题15px/600；亲切空态16px/600。"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "消息正文与表单输入。"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "作者名、时间戳、工具条、计数。"
+      }
     },
     "shadows": [
-      { "name": "surface-lift", "value": "0 4px 14px rgba(92, 61, 41, 0.06), inset 0 1px 0 rgba(255,255,255,0.8)", "purpose": "消息气泡与带框图标按钮的奶油鼓起感。" },
-      { "name": "panel-ambient", "value": "0 18px 44px rgba(99, 62, 38, 0.18)", "purpose": "外壳级环境投影，仅框架使用。" },
-      { "name": "send-lift", "value": "0 3px 7px rgba(174, 91, 42, 0.14), inset 0 1px 0 rgba(255,231,208,0.4)", "purpose": "发送键。" }
+      {
+        "name": "companion-shadow-soft",
+        "value": "0 3px 8px rgba(137, 82, 43, 0.12)",
+        "purpose": "猫脚边操作条。"
+      },
+      {
+        "name": "companion-shadow-panel",
+        "value": "0 3px 4px rgba(116, 68, 32, 0.10)",
+        "purpose": "话泡轮廓的轻投影；主体与角只投影一次，须完整留在原生绘制边界内。"
+      }
     ],
     "motion": [
-      { "name": "ease-expo-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "面板入场与状态过渡的标准缓动；禁止回弹。" },
-      { "name": "ease-ui", "value": "cubic-bezier(.2,.75,.25,1)", "purpose": "按钮按压与页内内容位移。" }
-    ]
+      {
+        "name": "standard",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Purposeful movement without overshoot"
+      },
+      {
+        "name": "duration",
+        "value": "120ms / 180ms / 240ms; exit160ms",
+        "purpose": "Shared interaction rhythm; reduced motion disables spatial movement"
+      }
+    ],
+    "companionExperience": {
+      "approvedDate": "2026-09-26",
+      "petBaseViewport": [
+        232,
+        340
+      ],
+      "scalePresets": [
+        0.8,
+        1,
+        1.2
+      ],
+      "compactMax": [
+        420,
+        380
+      ],
+      "chatBackingMax": [
+        720,
+        680
+      ],
+      "frameRadius": "24px",
+      "appearance": "companion",
+      "asset": "/pets/white-cat-companion/idle.png",
+      "luminanceMask": "/pets/white-cat-companion/idle-mask.png",
+      "sleepingAsset": "/pets/white-cat-companion/sleeping.png",
+      "expression": "One preloaded raster source through matching luminance mask; no companion vector eyelid patches.",
+      "visualRefinement": "2026-09-26",
+      "fontFamily": "ui-rounded, \"SF Pro Rounded\", -apple-system, BlinkMacSystemFont, \"PingFang SC\", sans-serif",
+      "title": {
+        "size": 15,
+        "weight": 600
+      },
+      "body": {
+        "size": 14,
+        "weight": 400
+      },
+      "controlLabel": {
+        "size": 12,
+        "weight": 400
+      },
+      "controlMin": 32,
+      "tokens": {
+        "ink": "#6c4631",
+        "muted": "#8b6753",
+        "surface": "#fffaf4",
+        "chrome": "#fff0dd",
+        "line": "#eed8bf",
+        "accent": "#a45b2b",
+        "action": "#f4bd7e",
+        "actionInk": "#704021",
+        "actionHover": "#efb174",
+        "focus": "#ae6739",
+        "selected": "#ffe4bf",
+        "user": "#ffeadb",
+        "selection": "#ffe4bf"
+      },
+      "petApprovedAndFrozen": true,
+      "interfaceRework": "2026-09-26",
+      "layout": {
+        "titlebar": "Current view title, independent settings, expand/collapse reading, close",
+        "navigation": [
+          "聊天",
+          "待办",
+          "备忘录"
+        ],
+        "selection": "Committed current page is idempotent; selecting it cancels a different queued destination and retains current dimensions",
+        "composer": "Cream20px writing surface, cocoa text, apricot send; truthful connection explanation near input",
+        "memoCreation": "Explicit inline expandable editor; closing preserves unsent draft",
+        "reminderSync": "Compact inspectable summary; due actions and all errors preserved",
+        "navigationStyle": "Separate icon-and-label soft capsules; apricot selected surface"
+      },
+      "navigationLabel": {
+        "size": 13,
+        "weight": 500,
+        "selectedWeight": 600
+      },
+      "warmThemeCorrection": "2026-09-26",
+      "visualAuthority": "User rejected graphite tool styling; the accepted cat determines cream/apricot/cocoa palette and cute rounded character.",
+      "brandMark": {
+        "component": "ReferencePawBadge",
+        "source": "src/components/ReferenceIllustrations.tsx",
+        "aspectRatio": "125 / 139",
+        "style": "Original filled cream/apricot paw; three toes; small inline header mark without square tile",
+        "userPreferenceDate": "2026-09-26",
+        "width": 28
+      },
+      "panelAttachment": {
+        "kind": "clear rounded speech corner in one body-and-corner silhouette",
+        "nativeAnchor": "PanelViewport.petAnchor, logical chat coordinates; source point 530,390 on frozen 1207x1303 art",
+        "tailBase": 48,
+        "tailProtrusion": 28,
+        "backingGutter": 16,
+        "interactive": false,
+        "changesNativeGeometry": true,
+        "fallback": "No valid anchor: retain prior placement and omit decoration",
+        "reveal": "180ms cat-facing origin, at most 8px/.985; reduced motion removes spatial movement",
+        "catFacingBodyInset": 44,
+        "paint": "one closed SVG; fine apricot edge and one small 0 3px 4px warm shadow, alpha .10",
+        "nativeGeometryChange": "Chat horizontal spacing only; cat and backing dimensions preserved"
+      },
+      "nativeSignedGap": {
+        "left": -36,
+        "right": -48,
+        "screenSafeInset": 12
+      }
+    }
   },
   "components": [
     {
       "name": "Send Button",
       "kind": "button",
       "refersTo": "send-button",
-      "description": "面板唯一主操作，焦糖橘渐变，hover 加深一档。",
-      "html": "<button class=\"ds-send\" type=\"button\" aria-label=\"发送消息\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/></svg></button>",
-      "css": ".ds-send { display: grid; place-items: center; width: 48px; height: 48px; color: #fff; background: linear-gradient(145deg, #bd7145, #a45831); border: 1px solid rgba(192, 108, 60, 0.22); border-radius: 16px; box-shadow: 0 3px 7px rgba(174, 91, 42, 0.14), inset 0 1px 0 rgba(255, 231, 208, 0.4); transition: transform 160ms ease-out, background 160ms ease-out; } .ds-send:hover { background: linear-gradient(145deg, #b1673c, #96502d); } .ds-send:active { transform: scale(0.96); } .ds-send:focus-visible { outline: 2px solid #a45831; outline-offset: 2px; }"
+      "description": "杏橘色圆润发送键，深可可图标保持对比度。",
+      "html": "<button class=\"ds-send\" type=\"button\" aria-label=\"发送消息\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m5 12 7-7 7 7M12 5v14\"/></svg></button>",
+      "css": ".ds-send { display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:13px;color:#704021;background:#f4bd7e; } .ds-send:hover:not(:disabled) { background:#efb174; } .ds-send:disabled { color:#8b6753;background:#fffaf4;border:1px solid #eed8bf; } .ds-send:focus-visible { outline:2px solid #ae6739;outline-offset:2px; }"
     },
     {
       "name": "Icon Button",
       "kind": "button",
       "refersTo": "icon-button",
-      "description": "带框暖白瓷砖，面板头部唯一图标按钮语言（展开 44px / 紧凑 33px）。",
+      "description": "32px圆润轻量控件；hover浅杏，清楚暖棕焦点。",
       "html": "<button class=\"ds-icon\" type=\"button\" aria-label=\"设置\"><svg viewBox=\"0 0 24 24\" width=\"19\" height=\"19\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2\"/></svg></button>",
-      "css": ".ds-icon { display: grid; place-items: center; width: 44px; height: 44px; color: #796959; background: linear-gradient(145deg, #fffefa, #fcf7ef); border: 1px solid #eadfd4; border-radius: 10px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 5px rgba(126,79,40,0.04); transition: background 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out; } .ds-icon:hover { color: #a3653f; border-color: rgba(203, 168, 136, 0.45); background: linear-gradient(145deg, #fffaf1, #f9ecdc); } .ds-icon:focus-visible { outline: 2px solid #a45831; outline-offset: 2px; }"
+      "css": ".ds-icon { display:grid;place-items:center;min-width:32px;min-height:32px;padding:6px;color:#8b6753;background:transparent;border:0;border-radius:999px; } .ds-icon svg { width:15px;height:15px;stroke-width:1.7; } .ds-icon:hover { color:#6c4631;background:#fff0dd; } .ds-icon:focus-visible { outline:2px solid #ae6739;outline-offset:1px; }"
     },
     {
       "name": "Quick Prompt Chip",
       "kind": "chip",
       "refersTo": "quick-prompt-chip",
-      "description": "快捷提问：单一暖白胶囊，不再逐个着色。",
+      "description": "Legacy/reference example. 快捷提问：单一暖白表面、10px 圆角；输入建议但不自动发送。",
       "html": "<button class=\"ds-chip\" type=\"button\">帮我分析</button>",
-      "css": ".ds-chip { display: inline-flex; align-items: center; height: 28px; padding: 0 11px; color: #695345; background: linear-gradient(160deg, #fffdf8, #fcf6ee); border: 1px solid rgba(197, 171, 145, 0.36); border-radius: 999px; box-shadow: 0 1px 3px rgba(93, 61, 39, 0.05); font-size: 13px; font-weight: 600; transition: background 160ms ease-out, border-color 160ms ease-out; } .ds-chip:hover { border-color: rgba(181, 133, 92, 0.52); background: linear-gradient(160deg, #fffaf1, #faf0e3); } .ds-chip:focus-visible { outline: 2px solid #a45831; outline-offset: 2px; }"
+      "css": ".ds-chip { display: inline-flex; align-items: center; min-height: 34px; padding: 5px 12px; color: #493b31; background: #fffefb; border: 1px solid #eadfd4; border-radius: 10px; font-size: 12px; font-weight: 500; } .ds-chip:hover { color: #a45831; border-color: rgba(172, 144, 122, 0.45); background: #f7f1e9; } .ds-chip:active { transform: translateY(1px); } .ds-chip:focus-visible { outline: 2px solid #a45831; outline-offset: 2px; } @media (prefers-reduced-motion: reduce) { .ds-chip:active { transform: none; } }"
     },
     {
-      "name": "Input Capsule",
+      "name": "Input Field",
       "kind": "input",
       "refersTo": "input-capsule",
-      "description": "面板内输入统一为胶囊语言；行内编辑器用 12px 圆角变体。",
+      "description": "14px清楚输入；聊天20px圆角奶油书写面。",
       "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"记录一项待办…\" />",
-      "css": ".ds-input { min-height: 40px; padding: 8px 14px; color: #493b31; background: #fffdf9; border: 1px solid rgba(172, 144, 122, 0.45); border-radius: 999px; caret-color: #a45831; font-size: 13px; outline: none; transition: border-color 160ms ease-out, box-shadow 160ms ease-out; } .ds-input::placeholder { color: #796959; } .ds-input:focus { border-color: rgba(165, 106, 72, 0.65); box-shadow: 0 0 0 3px rgba(165, 106, 72, 0.1); }"
+      "css": ".ds-input { min-height:32px;padding:8px 12px;color:#6c4631;background:#fff0dd;border:1px solid #eed8bf;border-radius:20px;font:14px ui-rounded,sans-serif;caret-color:#a45b2b; } .ds-input::placeholder { color:#8b6753; } .ds-input:focus { outline:2px solid #ae6739;outline-offset:1px; }"
     },
     {
       "name": "Assistant Bubble",
       "kind": "card",
       "refersTo": "message-bubble-assistant",
-      "description": "助手消息气泡：奶油渐变面 + 暖描边 + 低位柔影，小角指向猫头像。",
+      "description": "助手消息直接排在阅读面上，不再嵌套卡片。",
       "html": "<div class=\"ds-bubble\">好的，我看了看你的待办列表，周五之前有三件事。</div>",
-      "css": ".ds-bubble { max-width: 320px; padding: 12px 15px; color: #493b31; background: linear-gradient(165deg, #fffefa, #fdf8f0); border: 1px solid rgba(155, 120, 94, 0.22); border-radius: 18px 18px 18px 6px; box-shadow: 0 4px 14px rgba(92, 61, 41, 0.06), inset 0 1px 0 rgba(255,255,255,0.8); font-size: 14px; line-height: 1.7; }"
+      "css": ".ds-bubble { min-width:0;max-width:70ch;padding:0;color:#6c4631;background:transparent;border:0;font:14px/1.65 -apple-system,sans-serif;overflow-wrap:anywhere; }"
     },
     {
       "name": "Pin Badge",
       "kind": "custom",
       "refersTo": "pin-badge",
-      "description": "置顶状态徽章：纯指示器，不是按钮。",
+      "description": "Legacy/reference example. 置顶状态徽章：纯指示器，不是按钮。",
       "html": "<span class=\"ds-pin\" role=\"img\" aria-label=\"桌宠已置顶\"><svg viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 17v5\"/><path d=\"M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z\"/></svg></span>",
       "css": ".ds-pin { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; color: #96755a; background: rgba(255, 241, 226, 0.92); border: 1px solid rgba(203, 168, 136, 0.5); border-radius: 999px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85); }"
     }
   ],
   "narrative": {
-    "northStar": "奶油糖壳里的猫（The Cream Shell）",
-    "overview": "一体 SVG 奶油渐变外壳是视觉权威；面板内部延续同一套暖调奶油材质。密度偏松弛，控件安静、圆角柔软、动效指数缓出，唯一允许喧闹的是猫本身。已确认拒绝：彩虹糖果色 chip、回弹缓动、面向用户的技术词汇、裸色 3px 侧边条。",
-    "keyCharacteristics": ["奶油渐变材质从外壳贯穿到内部", "一套控件语言：带框图标按钮 + 胶囊输入 + 单一强调色", "字重阶梯 800/700/600/500/400", "空状态由白猫帧资产出场"],
-    "rules": [
-      { "name": "The One Voice Rule", "body": "强调橘在任何一屏占比 ≤10%；次要操作一律暖白底 + 棕字。", "section": "colors" },
-      { "name": "The Warm Gray Rule", "body": "次级文字从暖棕取色（--muted-soft），禁用中性灰。", "section": "colors" },
-      { "name": "The Weight Ladder Rule", "body": "字重只取 400/500/600/700/800 五档。", "section": "typography" },
-      { "name": "The No-Eyebrow Rule", "body": "标题上方不放 kicker/eyebrow。", "section": "typography" },
-      { "name": "The Declare-Elevation-Once Rule", "body": "细暖描边 + 低位柔影 + 内高光各司其职，不叠出幽灵卡片。", "section": "elevation" }
+    "northStar": "和奶油白猫一起住在桌面上的温暖小伙伴",
+    "overview": "用户已接受猫本身，冻结素材、表情与动作；明确否定石墨灰工具风格。按钮与面板延伸猫的奶油白、浅杏橘、暖可可色及圆润气质，保留已验证的导航、阅读、草稿和真实状态。",
+    "keyCharacteristics": [
+      "已批准白猫外观与行为冻结",
+      "奶油白与杏橘控件和猫同色系，暖可可文字可读",
+      "圆润标题、胶囊导航、柔软输入与亲切空态",
+      "稳定聊天/待办/备忘录导航，设置独立",
+      "离线与错误真实表达，不伪造内容"
     ],
-    "dos": ["次级文字与占位符用 --muted-soft (#796959)", "新增面板内表面延续奶油渐变叙事", "错误文案面向用户，原始错误进 console", "动效用 cubic-bezier(0.16, 1, 0.3, 1) 指数缓出"],
-    "donts": ["不给 chip/卡片逐个上彩虹色", "不用回弹缓动（宠物回复气泡是已记录豁免）", "不把状态指示器做成按钮形态", "不在标题上方加 eyebrow", "不改白猫三帧资产与外壳几何"]
+    "rules": [
+      {
+        "name": "Cat-matched warmth",
+        "body": "色温、轮廓和按钮触感统一呼应白猫；不回到灰色效率工具外观。",
+        "section": "colors"
+      },
+      {
+        "name": "System typography",
+        "body": "圆润系统字体，15px/600面板标题，14px/400正文，13px导航，12px说明。",
+        "section": "typography"
+      },
+      {
+        "name": "One elevation",
+        "body": "只有面板与猫操作条使用各自共享柔和投影。",
+        "section": "elevation"
+      },
+      {
+        "name": "Visible focus",
+        "body": "轻量控件仍保留清楚的2px键盘焦点。",
+        "section": "controls"
+      }
+    ],
+    "dos": [
+      "保留原始白猫资源，使用可溯源的派生独立素材",
+      "短句在紧凑面板完成，长文明确展开",
+      "状态与恢复动作清楚可读",
+      "只让猫表达局部动作，面板不呼吸"
+    ],
+    "donts": [
+      "不擅自更换白猫身份或显示第二只猫",
+      "不强制完整合成图和连续底盘",
+      "不用假连接状态或假模型回复",
+      "不给控件逐项使用彩虹色或回弹动画",
+      "不用炭黑主按钮、绿灰表面或黑色下划线导航替代可爱/Q要求"
+    ]
   }
 }

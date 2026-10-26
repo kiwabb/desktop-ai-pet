@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from app.plugin_runtime import UNSUPPORTED_TOOL_MESSAGE, PluginRegistry, aggregate_prompt_fragments
+from app.plugins.memo import MemoPlugin
 from app.plugins.todo import TodoPlugin
 from app.plugins.todo.manifest import VALIDATION_MESSAGES
 from app.registry import Registry
@@ -101,11 +102,12 @@ class PluginSeamTests(unittest.IsolatedAsyncioTestCase):
 
         conn.transaction = transaction
         db = SimpleNamespace(pool=SimpleNamespace(connection=connection))
-        await Registry(db).register_server_tools([TodoPlugin(), DummyPlugin()])
+        await Registry(db).register_server_tools([TodoPlugin(), MemoPlugin(), DummyPlugin()])
         instances = [call.args[1] for call in conn.execute.await_args_list
                      if 'INSERT INTO tool_instances' in call.args[0]]
         self.assertIn(('server:dummy.ping', 'dummy.ping', '1', 'dummy_ping'), instances)
-        self.assertEqual(len(instances), 5)
+        self.assertIn(('server:memo.review.set', 'memo.review.set', '1', 'memo_review_set'), instances)
+        self.assertEqual(len(instances), 10)
 
     def test_prompt_fragments_follow_registration_and_declaration_order(self):
         class Fragments:

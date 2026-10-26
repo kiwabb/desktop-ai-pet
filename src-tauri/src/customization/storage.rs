@@ -104,14 +104,24 @@ pub fn load(root: &Path) -> Result<Store, String> {
                 || p.colors.len() > 4
                 || p.colors.iter().any(|c| accent(c).is_err())
         })
-        || store
-            .job
-            .as_ref()
-            .is_some_and(|j| !valid_id(&j.view.id) || j.references == 0 || j.references > 4)
+        || store.job.as_ref().is_some_and(|j| {
+            !valid_id(&j.view.id)
+                || j.references == 0
+                || j.references > 4
+                || j.theme.as_ref().is_some_and(|t| t.validate().is_err())
+        })
     {
         return Err("定制记录版本或内容无效，原文件已保留".into());
     }
     let mut changed = false;
+    if let Some(draft) = store.theme_draft.as_mut() {
+        draft.validate()?;
+        if draft.status == "running" {
+            draft.status = "interrupted".into();
+            draft.error = Some("上次主题分析已中断；请手动重试".into());
+            changed = true;
+        }
+    }
     // Add bounded local palette candidates without changing any saved appearance.
     // A missing image remains the existing recoverable asset error, not a load failure.
     for preset in &mut store.presets {
@@ -193,6 +203,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("pet-custom-test-{}", uuid::Uuid::new_v4()));
         let mut store = Store::default();
         store.job = Some(Job {
+            theme: None,
             view: JobView {
                 id: uuid::Uuid::new_v4().to_string(),
                 name: "测试".into(),
@@ -284,6 +295,8 @@ mod tests {
         cached.presets[0].colors_version = 1;
         cached.presets[0].colors = vec!["#c8b8b2".into()];
         cached.presets[0].theme = Some(super::super::Theme {
+            design: None,
+            source: None,
             palette: "character".into(),
             primary: "#c8b8b2".into(),
             secondary: "#483832".into(),

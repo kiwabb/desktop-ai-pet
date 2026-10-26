@@ -32,7 +32,7 @@ export function CustomizationProvider({ children }: { children: ReactNode }) {
     // event. They do not authorize replacing any older/newer appearance state.
     if (latest.current?.revision === next.revision) {
       setError(null)
-      if (next.warning !== latest.current.warning) { latest.current = { ...latest.current, warning: next.warning }; setView(latest.current) }
+      if (next.warning !== latest.current.warning || JSON.stringify(next.theme_service) !== JSON.stringify(latest.current.theme_service)) { latest.current = { ...latest.current, warning: next.warning, theme_service: next.theme_service }; setView(latest.current) }
       return
     }
     if (!newerCustomization(latest.current, next)) return
@@ -84,8 +84,9 @@ export function CustomizationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const style = active ? presetTheme(active.preset.accent, active.preset.theme) : {}
     document.documentElement.toggleAttribute('data-custom-pet', !!active)
+    document.documentElement.toggleAttribute('data-designed-pet', !!active?.preset.theme?.design)
     Object.entries(style).forEach(([key, value]) => document.documentElement.style.setProperty(key, String(value)))
-    return () => { Object.keys(style).forEach(key => document.documentElement.style.removeProperty(key)); document.documentElement.removeAttribute('data-custom-pet') }
+    return () => { Object.keys(style).forEach(key => document.documentElement.style.removeProperty(key)); document.documentElement.removeAttribute('data-custom-pet'); document.documentElement.removeAttribute('data-designed-pet') }
   }, [active])
   const activate = useCallback(async (id: string) => {
     if (id !== 'default') {

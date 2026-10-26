@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "runs": 7,
+  "comparison": {
+    "agent_messages": {
+      "original_rows": 6,
+      "unchanged": true,
+      "current_rows": 14
+    },
+    "agent_tool_calls": {
+      "original_rows": 1,
+      "unchanged": true,
+      "current_rows": 6
+    },
+    "todos": {
+      "original_rows": 1,
+      "unchanged": true,
+      "current_rows": 1
+    }
+  },
+  "original_message_hash": "8e4cfe48caef0543d3c221b69072f866adaddd8ee81e10bb1eaec1a3856c75e9",
+  "summary_rows": 0,
+  "memo_rows": 0,
+  "saved_mode": "local"
+}

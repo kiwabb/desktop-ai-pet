@@ -19,6 +19,11 @@ function titleOf(item: unknown) {
   return typeof item === 'object' && item !== null && 'title' in item && typeof item.title === 'string' ? item.title : null
 }
 
+function statusOf(item: unknown) {
+  if (typeof item !== 'object' || item === null || !('status' in item)) return null
+  return item.status === 'pending' || item.status === 'completed' ? item.status : null
+}
+
 function reminderTime(item: object | null) {
   if (!item || !('remind_at' in item) || typeof item.remind_at !== 'string') return null
   // Require an explicit offset; never silently interpret a server time as local.
@@ -31,7 +36,7 @@ function reminderTime(item: object | null) {
   const date = new Date(item.remind_at)
   if (Number.isNaN(date.getTime())) return null
   return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZoneName: 'short',
+    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short',
   }).format(date)
 }
 
@@ -50,33 +55,50 @@ function todoToolPresentation(tool: ToolCall) {
   if (kind === 'reminder') {
     name = cleared ? '取消提醒' : '设置提醒'
     if (!title || (!cleared && !time)) {
-      status = '待核实'
+      status = '结果待确认'
       text = '提醒结果未确认，请刷新待办列表核对。'
     }
-    else text = cleared ? `已取消提醒：${title}` : `已设置提醒：${title} · ${time}`
+    else {
+      status = cleared ? '已取消提醒' : '已设置提醒'
+      text = cleared ? `已取消提醒：${title}` : `已设置提醒：${title} · ${time}`
+    }
   }
-  else if (!tool.result) return { name, status, text }
-  else if (title) {
-    text = `${kind === 'complete' ? '已完成' : '已记录'}：${title}`
-    if (kind === 'create' && hasReminderValue) {
+  else if (kind === 'complete') {
+    if (!title || statusOf(item) !== 'completed') {
+      status = '结果待确认'
+      text = '待办完成结果未确认，请刷新待办列表核对。'
+    }
+    else {
+      status = '待办已完成'
+      text = `已完成：${title}`
+    }
+  }
+  else if (kind === 'create') {
+    if (!title) return { name, status: '结果待确认', text: '待办记录结果未确认，请刷新待办列表核对。' }
+    status = '已记录'
+    text = `已记录：${title}`
+    if (hasReminderValue) {
       name = '记录待办并设置提醒'
       if (time) text += ` · 提醒时间：${time}`
       else {
-        status = '待核实'
+        status = '结果待确认'
         text += '；提醒时间未确认，请刷新待办列表核对。'
       }
     }
   }
-  else if (Array.isArray(tool.result.items)) {
-    const titles = tool.result.items.map(item => {
+  else if (kind === 'list') {
+    const items = tool.result?.items
+    if (!Array.isArray(items)) return { name, status: '结果待确认', text: '暂未收到待办查询结果，请刷新待办列表核对。' }
+    const titles = items.map(item => {
       const title = titleOf(item)
-      if (!title) return null
-      const completed = typeof item === 'object' && item !== null && 'status' in item && item.status === 'completed'
-      return `${title}（${completed ? '已完成' : '待完成'}）`
-    }).filter((value): value is string => value !== null)
-    text = tool.result.items.length === 0 ? '当前没有待办事项。' : titles.join('；') || '已返回查询结果。'
+      const itemStatus = statusOf(item)
+      if (!title || !itemStatus) return null
+      return `${title}（${itemStatus === 'completed' ? '已完成' : '待完成'}）`
+    })
+    if (titles.some(title => title === null)) return { name, status: '结果待确认', text: '待办查询结果不完整，请刷新待办列表核对。' }
+    status = '已查询'
+    text = items.length === 0 ? '当前没有待办事项。' : titles.join('；')
   }
-  else text = '执行结果已保存。'
   return { name, status, text }
 }
 

@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/09-18-pet-personality-frontend/prd.md", "reason": "验收标准 AC1-AC5 与范围外清单"}
+{"file": "DESIGN.md", "reason": "检查新动效/文案是否符合既有设计系统规约，以及 DESIGN.md 是否同步更新"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "前端质量规范"}
+{"file": ".trellis/spec/frontend/native-pet-windows.md", "reason": "原生宠物窗口约束"}

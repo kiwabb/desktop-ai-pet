@@ -1,0 +1,18 @@
+{
+  "src/lib/customization.ts": "f0fd56f6db22b1ebb96c2a056770fbeda54a39c3634df8aee8ab922bb4346e69",
+  "src/lib/customization-theme.ts": "7ec29d8edaa47f8d35546753340ec6fbb6cf4f56bb73383b4d7f5ffdbc47707b",
+  "src/lib/reference-theme-queue.ts": "dcb75f7b9d1bf97eaefc68a2e0e87838242837580000e4c62fe07aa5b7a10864",
+  "src/lib/useCustomization.tsx": "e9739c2953c89678c61dbcdfa8cb7644ee41e9f680deb58b17967c7deb18261c",
+  "src/components/PetCustomization.tsx": "cab60f9ee44966d71ba160d017b86c65030cd48decf4939fac99858c322eebef",
+  "src/components/PetCustomization.css": "cf513ee7643366e14af85c400284ba19ffd15ec0759e23956b4909746c1f0735",
+  "src/components/PetThemePicker.tsx": "0a1815e726025a113f965dcf45f14c6fe82ee2ae74103ab7f15cfed0dfb3b833",
+  "src/components/ChatBubbleFrame.css": "bf67c098a20e8d28f288ac7ed1b310ea41917e4403b7b8e74de29e5ba67e6e6d",
+  "src/App.tsx": "cb5d0e652b0a45e4200fd6174931a80d5a689b0a19f2e77323aa281545aa1be6",
+  "src/desktop-shell.css": "e195985e4d1ec9df48c3fcfd13993b73b15d7ed93982e4b73c9688813fd96f2b",
+  "src/lib/companion-attachment.ts": "2516cf2070946b97c952caaf287e88458074c6230eefbb931740b35f0b98dfa7",
+  "src-tauri/src/lib.rs": "b2ce129fe200141e64cb5fe4135e8c408da5959b06becf96938901a3ce46c9e2",
+  "src-tauri/src/customization/mod.rs": "a7c3909cbf57ef09b22a7506e364803b744d0d46638ddeac24d303917bbc4f85",
+  "src-tauri/src/customization/assets.rs": "0e3bcf0301a98345edea407a732dd63be1261e2251d7bd559e6ba87879d69f71",
+  "src-tauri/src/customization/storage.rs": "1ba74781d296a27c8034479ab1670adea784581ad4a079de58ba49c0b720955e",
+  "src-tauri/src/customization/theme_analysis.rs": "0b3326b1d373ed037c96e202db87c63d786f9935fdf373cbd6d59430c85da1fb"
+}

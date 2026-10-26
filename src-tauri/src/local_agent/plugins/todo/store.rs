@@ -3,9 +3,9 @@
 //! The domain-agnostic skeleton (start_tool / tool_outcome / fail_tool) stays
 //! in `local_agent::store`; everything that knows the todos table lives in the
 //! plugin. Direct Tauri commands mount these operations from the core.
-use crate::local_agent::store::{normalize_instant, uuid_text, Store, StoreError};
 use crate::agent_protocol::{Envelope, ToolCall};
 use crate::backend::{Todo, TodoStatus};
+use crate::local_agent::store::{normalize_instant, uuid_text, Store, StoreError};
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde_json::json;
@@ -27,12 +27,18 @@ fn todo_from_row(row: &Row) -> rusqlite::Result<Todo> {
 /// Same rule and message as the server's `validated_title` / todo.create tool.
 fn validated_title(title: &str) -> Result<String, StoreError> {
     if title.trim().is_empty() || title.chars().count() > 2000 {
-        return Err(StoreError::Validation("待办标题需为 1 到 2000 个字符".into()));
+        return Err(StoreError::Validation(
+            "待办标题需为 1 到 2000 个字符".into(),
+        ));
     }
     Ok(title.trim().to_owned())
 }
 
-fn create_todo_tx(conn: &Connection, title: &str, source_tool_call_id: Option<&str>) -> Result<Todo, StoreError> {
+fn create_todo_tx(
+    conn: &Connection,
+    title: &str,
+    source_tool_call_id: Option<&str>,
+) -> Result<Todo, StoreError> {
     Ok(conn.query_row(
         "INSERT INTO todos(id, title, source_tool_call_id, created_at) VALUES (?1, ?2, ?3, ?4) RETURNING *",
         params![uuid::Uuid::new_v4().to_string(), title, source_tool_call_id, normalize_instant(Utc::now())],
@@ -48,7 +54,11 @@ fn set_reminder_tx(
     expected: Option<DateTime<Utc>>,
 ) -> Result<Todo, StoreError> {
     let todo = conn
-        .query_row("SELECT * FROM todos WHERE id = ?1", params![todo_id], todo_from_row)
+        .query_row(
+            "SELECT * FROM todos WHERE id = ?1",
+            params![todo_id],
+            todo_from_row,
+        )
         .optional()?
         .ok_or_else(|| StoreError::NotFound("未找到待办，请刷新核对".into()))?;
     if todo.status != TodoStatus::Pending {
@@ -152,7 +162,8 @@ impl<'a> TodoStore<'a> {
         run_id: &str,
         tool_id: &str,
     ) -> Result<(ToolCall, Envelope), StoreError> {
-        self.store.tool_outcome(run_id, tool_id, |tx| Ok(json!({"items": todos_tx(tx)?})))
+        self.store
+            .tool_outcome(run_id, tool_id, |tx| Ok(json!({"items": todos_tx(tx)?})))
     }
 
     pub fn list_todos(&self) -> Result<Vec<Todo>, StoreError> {
@@ -180,12 +191,14 @@ impl<'a> TodoStore<'a> {
         expected: Option<DateTime<Utc>>,
     ) -> Result<Todo, StoreError> {
         let todo_id = uuid_text(todo_id)?;
-        self.store.with_conn(|conn| set_reminder_tx(conn, &todo_id, target, expected))
+        self.store
+            .with_conn(|conn| set_reminder_tx(conn, &todo_id, target, expected))
     }
 
     pub fn complete_todo(&self, todo_id: &str) -> Result<Todo, StoreError> {
         let todo_id = uuid_text(todo_id)?;
-        self.store.with_conn(|conn| complete_todo_tx(conn, &todo_id))
+        self.store
+            .with_conn(|conn| complete_todo_tx(conn, &todo_id))
     }
 
     pub fn reopen_todo(&self, todo_id: &str) -> Result<Todo, StoreError> {
@@ -204,7 +217,8 @@ impl<'a> TodoStore<'a> {
     /// Direct create (plugins/todo/store.py create_todo): no tool call, no run.
     pub fn create_todo(&self, title: &str) -> Result<Todo, StoreError> {
         let title = validated_title(title)?;
-        self.store.with_conn(|conn| create_todo_tx(conn, &title, None))
+        self.store
+            .with_conn(|conn| create_todo_tx(conn, &title, None))
     }
 
     /// Direct title edit (plugins/todo/store.py update_todo_title); completed rows too.
@@ -226,9 +240,13 @@ impl<'a> TodoStore<'a> {
     pub fn delete_todo(&self, todo_id: &str) -> Result<Todo, StoreError> {
         let todo_id = uuid_text(todo_id)?;
         self.store.with_conn(|conn| {
-            conn.query_row("DELETE FROM todos WHERE id = ?1 RETURNING *", params![todo_id], todo_from_row)
-                .optional()?
-                .ok_or_else(|| StoreError::NotFound("待办不存在或已删除".into()))
+            conn.query_row(
+                "DELETE FROM todos WHERE id = ?1 RETURNING *",
+                params![todo_id],
+                todo_from_row,
+            )
+            .optional()?
+            .ok_or_else(|| StoreError::NotFound("待办不存在或已删除".into()))
         })
     }
 }

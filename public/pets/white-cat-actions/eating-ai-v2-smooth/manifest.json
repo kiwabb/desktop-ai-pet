@@ -1,0 +1,23 @@
+{
+  "id": "white-cat-eating-ai-v2-smooth",
+  "action": "eating",
+  "format": "animated-webp",
+  "canvas": {
+    "width": 328,
+    "height": 299
+  },
+  "frameCount": 175,
+  "fps": 24,
+  "loop": true,
+  "durationMs": 7350,
+  "asset": "action.webp",
+  "previewGif": "action.gif",
+  "previewSheet": "preview-sheet.png",
+  "sourceKeyframes": "source-keyframes.png",
+  "anchor": {
+    "x": 164,
+    "y": 299
+  },
+  "status": "generated-interpolated-candidate",
+  "notes": "Built from the existing eating keyframes with optical-flow interpolation. The WebP is the runtime candidate; the GIF is for preview only."
+}

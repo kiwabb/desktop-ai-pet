@@ -1,0 +1,6 @@
+{"file": ".trellis/tasks/09-18-pet-personality-frontend/prd.md", "reason": "delight 论点、范围 A-E、现状锚点与验收标准"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "组件规范"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "状态管理规范"}
+{"file": ".trellis/spec/frontend/type-safety.md", "reason": "类型规范"}
+{"file": "DESIGN.md", "reason": "奶油糖壳视觉系统与动效规约（指数缓出、无回弹、reduced-motion）"}
+{"file": "PRODUCT.md", "reason": "品牌约束：猫主体资产不可替换、透明悬浮窗形态、陪伴感优先"}

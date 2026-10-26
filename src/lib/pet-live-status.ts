@@ -34,5 +34,13 @@ export function getPetLiveStatus(view: ConnectionState | null, petState: PetStat
     return status('正在整理思路', 'ready', '助手与设备已连接，正在思考', '思考中')
   if (petState === 'talking')
     return status('正在回复你', 'ready', '助手与设备已连接，正在回复', '回复中')
+  if (petState === 'error')
+    return status('打开对话查看', 'error', '最近的任务未完成，请打开对话查看详情', '需要帮助')
+  if (petState === 'curious')
+    return status('你说，我在听', 'ready', '助手已就绪，正在听你说', '在听')
+  if (petState === 'happy')
+    return status('继续陪着你', 'ready', '助手已就绪，继续陪着你', '很开心')
+  if (petState === 'sleeping')
+    return status('点我就醒来', 'ready', '助手正在休息，点击即可唤醒', '休息中')
   return status('在线待命', 'ready', '助手与设备已连接，模型已配置')
 }

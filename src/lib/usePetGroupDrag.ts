@@ -67,9 +67,15 @@ export function usePetGroupDrag({ onClick, onError, onDrag, canStart }: {
   }
 
   function onPointerDown(event: PointerEvent<HTMLElement>) {
-    if (event.button !== 0 || !event.isPrimary || canStart?.(event.target as HTMLElement) === false) return
+    const target = event.target
+    if (event.button !== 0 || !event.isPrimary || !(target instanceof Element)) return
+    const hit = target instanceof HTMLElement ? target : target.parentElement
+    if (!hit || canStart?.(hit) === false) return
     event.preventDefault()
     event.stopPropagation()
+    // preventDefault suppresses native focus; explicitly preserve keyboard
+    // access after a pointer interaction with the pet itself.
+    if (event.currentTarget.getAttribute('role') === 'button') event.currentTarget.focus({ preventScroll: true })
     const previous = lastSessionRef.current
     if (previous) { previous.cancelled = true; previous.pending = null }
     const key = crypto.randomUUID()

@@ -4,11 +4,13 @@ import { createRoot } from 'react-dom/client'
 import { PetStage } from '../src/components/PetStage'
 import type { PetState } from '../src/lib/pet-state'
 import '../src/styles.css'
+import '../src/desktop-shell.css'
 
 const states: PetState[] = ['idle', 'curious', 'thinking', 'talking', 'happy', 'sleeping', 'error']
+const initialState = states.find(state => state === new URLSearchParams(window.location.search).get('state')) ?? 'idle'
 
 function Preview() {
-  const [petState, setPetState] = useState<PetState>('idle')
+  const [petState, setPetState] = useState<PetState>(initialState)
   const [reply, setReply] = useState<string | null>(null)
 
   return (

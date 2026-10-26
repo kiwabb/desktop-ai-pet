@@ -55,6 +55,8 @@ Recovery uses the durable business terminal event, a 120-second grace period and
 
 The development proxy covers `/admin/v1`, not the `/admin/` SPA document. The UI uses no mock data service. Resource polling is single-flight, paused while hidden and cancelled/fenced on navigation. Selected payloads belong to run/call IDs; a late response cannot populate another run. URL state restores page/run/record. Model and tool rows follow causal execution order; the timeline and record selection are linked. Display actual Token values, timing, partial data and missing measurements.
 
+A sent configuration connection test continues when browser history changes the selected version. Bind its result, success notice, model failure and request rejection to the version ID captured when the test began; render that feedback only for the matching selection. Navigation does not imply request cancellation. Preserve other mutation feedback, lock cleanup, refresh behavior and publication CAS.
+
 ## 4. Validation & Error Matrix
 
 | Condition | Required result |
@@ -88,7 +90,7 @@ Bad: a static build, healthy old process or isolated mocked tests are reported a
 - Config: valid complete SSE versus HTML/302/error/EOF/oversize; latest-test eligibility; encryption failure; rollback Key selection and publication kind.
 - Admin: observer/CSRF/Origin, safe body audit ordering, stable keyset filters, provisioning retry/conflict and token-free replay, bounded login state.
 - Runtime: stalled trace writes do not stall business; cancellation/ordinary failure retain partial output; sticky gaps; stable payload upsert; complete tool protocol; version timeout; usage and distinct first-token/visible-text timing; bounded shutdown and recovery.
-- UI: request fencing, chronological rows, selected-record URL recovery, polling/follow behavior, pagination and actual copy failure handling. Use existing tools or native Node tests; do not introduce a test framework solely for this task.
+- UI: request fencing, chronological rows, selected-record URL recovery, polling/follow behavior, pagination and actual copy failure handling. Include configuration-test success, model failure and request rejection settling after a version change. Use existing tools or native Node tests; do not introduce a test framework solely for this task.
 - Record real PostgreSQL, real provider and real browser acceptance separately. No temporary/demo database, seeded business data or mock product service without explicit user authorization.
 
 ## 7. Wrong vs Correct

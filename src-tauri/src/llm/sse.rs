@@ -1,7 +1,7 @@
 use super::{classify, LlmError, CHUNK_TIMEOUT};
-use eventsource_stream::{Eventsource, EventStreamError};
+use eventsource_stream::{EventStreamError, Eventsource};
 use futures_util::{Stream, StreamExt};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// One streamed function-call fragment; `index` groups fragments of one call.
@@ -19,12 +19,28 @@ pub struct StreamChunk {
     pub content: String,
     pub tool_calls: Vec<ToolCallDelta>,
     pub finish_reason: Option<String>,
+    pub usage: Option<ProviderUsage>,
+}
+
+/// Only allowlisted numeric provider counters; never copy response bodies.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ProviderUsage {
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub total_tokens: Option<u64>,
+    pub prompt_tokens_details: Option<PromptTokenDetails>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct PromptTokenDetails {
+    pub cached_tokens: Option<u64>,
 }
 
 #[derive(Deserialize)]
 struct ChatCompletionChunk {
     #[serde(default)]
     choices: Vec<ChunkChoice>,
+    usage: Option<ProviderUsage>,
 }
 
 #[derive(Deserialize)]
@@ -67,7 +83,8 @@ fn parse_chunk(data: &str) -> Result<Option<Option<StreamChunk>>, LlmError> {
         return Ok(Some(None));
     }
     let chunk: ChatCompletionChunk = serde_json::from_str(data).map_err(|_| LlmError::Failed)?;
-    Ok(Some(chunk.choices.into_iter().next().map(|choice| StreamChunk {
+    let usage = chunk.usage;
+    let parsed = chunk.choices.into_iter().next().map(|choice| StreamChunk {
         content: choice.delta.content.unwrap_or_default(),
         tool_calls: choice
             .delta
@@ -88,6 +105,13 @@ fn parse_chunk(data: &str) -> Result<Option<Option<StreamChunk>>, LlmError> {
             })
             .collect(),
         finish_reason: choice.finish_reason,
+        usage: usage.clone(),
+    });
+    Ok(Some(parsed.or_else(|| {
+        usage.map(|usage| StreamChunk {
+            usage: Some(usage),
+            ..StreamChunk::default()
+        })
     })))
 }
 
@@ -210,10 +234,32 @@ mod tests {
     #[test]
     fn done_sentinel_and_empty_choices() {
         assert_eq!(parse_chunk("[DONE]").unwrap(), None);
-        assert_eq!(parse_chunk(&json!({"choices":[]}).to_string()).unwrap(), Some(None));
+        assert_eq!(
+            parse_chunk(&json!({"choices":[]}).to_string()).unwrap(),
+            Some(None)
+        );
         assert_eq!(parse_chunk("").unwrap(), Some(None));
         assert_eq!(parse_chunk("  ").unwrap(), Some(None));
         assert!(parse_chunk("not json").is_err());
+    }
+
+    #[test]
+    fn usage_only_chunk_is_preserved_without_becoming_visible_text() {
+        let chunk = parse_chunk(
+            &json!({"choices":[], "usage": {
+                "prompt_tokens": 120, "completion_tokens": 12, "total_tokens":132,
+                "prompt_tokens_details": {"cached_tokens": 64},
+                "provider_extra": "must not be retained"
+            }})
+            .to_string(),
+        )
+        .unwrap()
+        .flatten()
+        .unwrap();
+        assert!(chunk.content.is_empty() && chunk.tool_calls.is_empty());
+        let usage = chunk.usage.unwrap();
+        assert_eq!(usage.prompt_tokens, Some(120));
+        assert_eq!(usage.prompt_tokens_details.unwrap().cached_tokens, Some(64));
     }
 
     /// Local test socket: responds to a POST with an SSE body terminated by
@@ -269,7 +315,10 @@ mod tests {
                 .unwrap();
         });
         let response = post(&base).await;
-        let mut stream = Box::pin(chunk_stream_with_timeout(response, Duration::from_millis(80)));
+        let mut stream = Box::pin(chunk_stream_with_timeout(
+            response,
+            Duration::from_millis(80),
+        ));
         let mut text = String::new();
         while let Some(item) = stream.next().await {
             text.push_str(&item.unwrap().content);
@@ -285,9 +334,15 @@ mod tests {
             drop(socket);
         });
         let response = post(&base).await;
-        let mut stream = Box::pin(chunk_stream_with_timeout(response, Duration::from_millis(80)));
+        let mut stream = Box::pin(chunk_stream_with_timeout(
+            response,
+            Duration::from_millis(80),
+        ));
         let item = stream.next().await.unwrap();
         assert_eq!(item.unwrap_err(), LlmError::Timeout);
-        assert!(stream.next().await.is_none(), "the stream ends after one timeout");
+        assert!(
+            stream.next().await.is_none(),
+            "the stream ends after one timeout"
+        );
     }
 }

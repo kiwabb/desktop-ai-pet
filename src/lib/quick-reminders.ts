@@ -17,6 +17,11 @@ export const QUICK_REMINDER_OPTIONS: QuickReminderOption[] = [
   { key: 'next-monday-09', label: '下周一 09:00' },
 ]
 
+/** Never offer “tonight” after its cutoff or silently label tomorrow as tonight. */
+export function quickReminderOptions(now: Date = new Date()): QuickReminderOption[] {
+  return QUICK_REMINDER_OPTIONS.filter(option => option.key !== 'tonight-20' || now < atLocalTime(now, 0, 20))
+}
+
 function atLocalTime(now: Date, daysLater: number, hour: number): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysLater, hour, 0, 0, 0)
 }

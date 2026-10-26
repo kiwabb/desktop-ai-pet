@@ -191,11 +191,24 @@ impl OpenAiClient {
         messages: &[ChatMessage],
         tools: Option<&[Value]>,
     ) -> Result<impl futures_util::Stream<Item = Result<StreamChunk, LlmError>>, LlmError> {
+        self.chat_stream_with_limit(messages, tools, None).await
+    }
+
+    pub async fn chat_stream_with_limit(
+        &self,
+        messages: &[ChatMessage],
+        tools: Option<&[Value]>,
+        max_completion_tokens: Option<usize>,
+    ) -> Result<impl futures_util::Stream<Item = Result<StreamChunk, LlmError>>, LlmError> {
         let mut body = json!({
             "model": self.config.model,
             "messages": messages,
             "stream": true,
+            "stream_options": {"include_usage": true},
         });
+        if let Some(limit) = max_completion_tokens {
+            body["max_completion_tokens"] = json!(limit);
+        }
         if let Some(tools) = tools {
             body["tools"] = Value::Array(tools.to_vec());
             body["parallel_tool_calls"] = Value::Bool(false);
@@ -235,7 +248,10 @@ pub async fn list_models(base_url: &str, api_key: &str) -> Result<Vec<String>, S
         }
     })?;
     if !response.status().is_success() {
-        return Err(format!("模型列表查询失败（{}）", response.status().as_u16()));
+        return Err(format!(
+            "模型列表查询失败（{}）",
+            response.status().as_u16()
+        ));
     }
     #[derive(serde::Deserialize)]
     struct ModelEntry {
@@ -261,7 +277,12 @@ mod tests {
         assert_eq!(LlmError::Failed.message(), "模型或任务执行失败");
     }
 
-    fn delta(index: usize, id: Option<&str>, name: Option<&str>, arguments: Option<&str>) -> ToolCallDelta {
+    fn delta(
+        index: usize,
+        id: Option<&str>,
+        name: Option<&str>,
+        arguments: Option<&str>,
+    ) -> ToolCallDelta {
         ToolCallDelta {
             index,
             id: id.map(str::to_owned),
@@ -273,7 +294,12 @@ mod tests {
     #[test]
     fn accumulator_merges_streamed_fragments_by_index() {
         let mut acc = ToolCallAccumulator::default();
-        acc.push(&[delta(0, Some("call_1"), Some("todo_create"), Some("{\"tit"))]);
+        acc.push(&[delta(
+            0,
+            Some("call_1"),
+            Some("todo_create"),
+            Some("{\"tit"),
+        )]);
         acc.push(&[delta(1, Some("call_2"), Some("todo_list"), None)]);
         acc.push(&[delta(0, None, None, Some("le\":\"喝水\"}"))]);
         acc.push(&[delta(1, None, None, Some("{}"))]);
@@ -281,7 +307,10 @@ mod tests {
         assert_eq!(calls.len(), 2);
         assert_eq!(calls[0].id, "call_1");
         assert_eq!(calls[0].name, "todo_create");
-        assert_eq!(calls[0].parsed_arguments().unwrap(), json!({"title": "喝水"}));
+        assert_eq!(
+            calls[0].parsed_arguments().unwrap(),
+            json!({"title": "喝水"})
+        );
         assert_eq!(calls[1].name, "todo_list");
     }
 
@@ -308,7 +337,11 @@ mod tests {
             name: "todo_create".into(),
             arguments: "{\"title\":\"喝水\"}".into(),
         };
-        let assistant = serde_json::to_value(ChatMessage::assistant(String::new(), std::slice::from_ref(&call))).unwrap();
+        let assistant = serde_json::to_value(ChatMessage::assistant(
+            String::new(),
+            std::slice::from_ref(&call),
+        ))
+        .unwrap();
         assert_eq!(
             assistant,
             json!({"role": "assistant", "content": "", "tool_calls": [
@@ -346,7 +379,8 @@ mod tests {
                 let size = socket.read(&mut buffer).unwrap();
                 assert!(size > 0);
                 request.extend_from_slice(&buffer[..size]);
-                let Some(boundary) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n") else {
+                let Some(boundary) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n")
+                else {
                     continue;
                 };
                 let headers = String::from_utf8_lossy(&request[..boundary]).to_lowercase();

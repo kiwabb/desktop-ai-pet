@@ -15,3 +15,10 @@
 回退：关闭新入口并切default preset可恢复既有体验；不要回滚业务数据或删除用户保存的方案。风险文件：App.tsx、PetStage.tsx、PetExpression.tsx、design-tokens.css、ChatBubbleFrame.css、src-tauri/src/lib.rs、Tauri资产权限配置。
 
 开始前：最终方案获用户确认后才运行task.py start；implement.jsonl/check.jsonl必须包含真实规范与研究路径。
+
+## AI 导入主题增量执行
+
+1. Rust 与前端按固定 ThemeDesign/ThemeDraft IPC 契约并行实现，所有变更服从最新用户 AI 选择。
+2. 专项测试图片集合变化和迟到结果、失败显式重试、主题冻结、旧清单兼容、渲染对比度/材质传播。
+3. 独立 check 后构建一次原生；导入已有用户选定三花真实参考图，发起真实视觉请求并观察预览。记录实际模型、请求计数和结果，不能拿单测设计夹具做原生展示。
+4. 验证生成消费同份主题、应用跨窗、重启保留。若系统凭据或真实模型请求阻断，明确准确阻点，不声称全链路完成。

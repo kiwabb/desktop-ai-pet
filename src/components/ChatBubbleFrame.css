@@ -3,9 +3,9 @@
  * Everything here is scoped to the component root `.chat-panel` and its own
  * markup (header, body/footer slots, badge, tail, paw trail). No pet-shell /
  * pet-chat-* / chat-window-app ancestor is required. The host keeps desktop
- * coordinates, available size and z-index in src/styles.css; chat/settings
- * content classes (message-list, composer, quick-prompts, …) stay in
- * src/styles.css as well and may key off the root state classes
+ * attachment and available-space layout in src/desktop-shell.css; shared
+ * layers come from design-tokens.css. Chat/settings content belongs to its
+ * component styles and may key off the root state classes
  * `.is-compact` / `.is-expanded` / `.is-attached` / `.is-standalone`.
  *
  * State semantics:
@@ -399,15 +399,15 @@
 @keyframes pet-chat-expand { from { transform: translate(22px, 12px) scale(0.94); } to { transform: translate(0, 0) scale(1); } }
 
 .chat-panel.is-attached.is-compact.is-entering {
-  animation: component-chat-bloom 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: component-chat-bloom var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
 }
 
 .chat-panel.is-attached.is-expanded.is-entering {
-  animation: pet-chat-expand 220ms ease-out both;
+  animation: pet-chat-expand var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
 }
 
 .chat-panel.is-standalone.is-entering {
-  animation: pet-chat-expand 220ms ease-out both;
+  animation: pet-chat-expand var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -454,13 +454,13 @@
   grid-template-rows: auto auto;
   row-gap: 14px;
 }
-.chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) {
+.chat-panel.is-attached.is-integrated.is-compact:has(.compact-error) {
   --chat-frame-rows: 84px min-content auto;
 }
-.chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) > .chat-panel-surface {
+.chat-panel.is-attached.is-integrated.is-compact:has(.compact-error) > .chat-panel-surface {
   padding-bottom: 20px;
 }
-.chat-panel.is-attached.is-integrated.is-compact:has(.chat-panel-body:not(:empty)) .chat-panel-footer {
+.chat-panel.is-attached.is-integrated.is-compact:has(.compact-error) .chat-panel-footer {
   row-gap: 8px;
 }
 .chat-panel.is-attached.is-integrated.is-compact .assistant-identity h1 {
@@ -517,7 +517,7 @@
 
 /* Motion stays on content so the shared paw and pet platform remain anchored. */
 .chat-panel button {
-  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms cubic-bezier(.2,.75,.25,1);
+  transition: background-color var(--motion-fast, 120ms) ease, box-shadow var(--motion-fast, 120ms) ease, transform var(--motion-fast, 120ms) var(--ease-out, cubic-bezier(.16,1,.3,1));
 }
 .chat-panel button:active:not(:disabled) { transform: scale(.97); }
 @media (prefers-reduced-motion: reduce) {
@@ -543,21 +543,21 @@
 }
 .chat-panel.is-attached.is-integrated.is-entering { animation: none; }
 .chat-panel.is-attached.is-integrated.is-entering .shell-bubble-entrance-mask {
-  animation: integrated-shell-dissolve 280ms cubic-bezier(.2, .75, .25, 1) both;
+  animation: integrated-shell-dissolve var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
 }
 .chat-panel.is-attached.is-integrated.is-entering > .assistant-paw-badge {
-  animation: integrated-content-dissolve 280ms cubic-bezier(.2, .75, .25, 1) both;
+  animation: integrated-content-dissolve var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
 }
 .chat-panel.is-attached.is-integrated.is-entering > .chat-panel-surface {
-  animation: integrated-content-arrive 280ms cubic-bezier(.2, .75, .25, 1) both;
+  animation: integrated-content-arrive var(--motion-slow, 240ms) var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-panel.is-attached.is-integrated.is-entering .shell-bubble-entrance-mask {
-    animation: integrated-shell-dissolve 160ms ease-out both !important;
+    animation: none !important;
   }
   .chat-panel.is-attached.is-integrated.is-entering > .assistant-paw-badge,
   .chat-panel.is-attached.is-integrated.is-entering > .chat-panel-surface {
-    animation: integrated-content-dissolve 160ms ease-out both !important;
+    animation: none !important;
   }
 }
 
@@ -577,3 +577,152 @@
 }
 .chat-panel[data-frame-morphing] > .assistant-paw-badge { filter: none; }
 .chat-panel[data-frame-morphing] > .chat-bubble-tail { filter: none; }
+
+/* A narrow desktop work area keeps actions available in a second header row.
+   Container width describes the usable panel, independently of display DPI. */
+.chat-panel { container: companion-frame / inline-size; }
+@container companion-frame (max-width: 430px) {
+  .chat-panel .chat-header { flex-wrap: wrap; row-gap: 4px; padding-right: 12px; }
+  .chat-panel .assistant-identity { flex: 1 1 100%; }
+  .chat-panel .header-actions { margin: 0 0 0 auto; }
+  .chat-panel.is-attached.is-compact .header-actions { margin-top: 0; }
+  .chat-panel.is-attached.is-compact .assistant-identity > div { padding-top: 15px; }
+  .chat-panel.is-attached.is-compact .assistant-identity h1 { font-size: 17px; }
+  .chat-panel.is-attached.is-compact .assistant-identity p { margin-top: 3px; font-size: 11px; }
+  .chat-panel.is-attached.is-compact .chat-header { padding-bottom: 4px; }
+  .chat-panel.is-attached.is-expanded .chat-header { min-height: 96px; }
+}
+
+/* Independent companion surface. The frame owns the readable rectangle;
+   its desktop host owns placement and the continuous speech silhouette. */
+/* The companion surface owns its palette locally. Legacy frame appearances
+   and their reference geometry continue to use the original shared values. */
+.chat-panel.is-companion {
+  --pet-ink: var(--companion-ink, #6c4631);
+  --pet-muted: var(--companion-muted, #8b6753);
+  --pet-accent: var(--companion-accent, #a45b2b);
+  --pet-surface: var(--companion-surface, #fffaf4);
+  --pet-rule: var(--companion-line, #eed8bf);
+  --pet-focus: var(--companion-focus, #ae6739);
+  --ink: var(--pet-ink);
+  --ink-deep: var(--pet-ink);
+  --muted: var(--pet-muted);
+  --muted-soft: var(--pet-muted);
+  --surface-base: var(--pet-surface);
+  --surface-raised: var(--pet-surface);
+  --surface-soft: color-mix(in srgb, var(--companion-chrome, #fff0dd) 45%, var(--pet-surface));
+  --surface-user: color-mix(in srgb, var(--companion-user, #ffeadb) 65%, var(--pet-surface));
+  --rule: var(--pet-rule);
+  --rule-strong: var(--pet-rule);
+  --primary: var(--companion-action, #f4bd7e);
+  --primary-hi: var(--primary);
+  --primary-strong: var(--companion-action-hover, #efb174);
+  --focus-accent: var(--pet-focus);
+  --input-bg: var(--pet-surface);
+  --input-rule: var(--companion-control-line, var(--pet-focus));
+  --input-focus: var(--pet-focus);
+  --input-focus-ring: var(--companion-focus-ring, rgba(174, 103, 57, 0.16));
+  --shadow-control: none;
+  --shadow-surface: none;
+  --chat-frame-corner-radius: 24px;
+  --chat-frame-top-right-radius: 24px;
+  --chat-frame-bottom-right-radius: 24px;
+  --chat-frame-bottom-left-radius: 24px;
+  --chat-frame-min-width: 0px;
+  --chat-frame-min-height: 0px;
+  --chat-frame-rows: auto minmax(0, 1fr) auto;
+  color: var(--pet-ink);
+  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  background: var(--pet-surface);
+  border: 1px solid transparent;
+  box-shadow: var(--companion-shadow-panel, 0 3px 4px rgba(116, 68, 32, .10));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.chat-panel.is-companion ::selection { color: var(--pet-ink); background: var(--companion-selection, #ffe4bf); }
+.chat-panel.is-companion input, .chat-panel.is-companion textarea { caret-color: var(--pet-ink); }
+.chat-panel.is-companion ::-webkit-scrollbar { width: 6px; height: 6px; }
+.chat-panel.is-companion ::-webkit-scrollbar-thumb { background: var(--pet-rule); border-radius: 3px; }
+.chat-panel.is-companion ::-webkit-scrollbar-thumb:hover { background: var(--pet-muted); }
+.chat-panel.is-companion.has-navigation { --chat-frame-rows: auto auto minmax(0, 1fr) auto; }
+.chat-panel.is-companion .chat-header {
+  min-height: 48px;
+  padding: 8px 12px 8px 18px;
+  flex-wrap: nowrap;
+  gap: 10px;
+  border-bottom: 0;
+}
+.chat-panel.is-companion.is-compact .chat-header { min-height: 40px; padding: 4px 12px 4px 16px; }
+.chat-panel.is-companion .assistant-identity { display: flex; align-items: center; flex: 1 1 auto; gap: 8px; }
+.chat-panel.is-companion .assistant-identity h1 { color: var(--pet-ink); font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: 0; }
+.chat-panel.is-companion .companion-brand-mark { display: block; flex: none; width: 28px; height: auto; aspect-ratio: 125 / 139; }
+.chat-panel.is-companion .assistant-identity p { max-width: 100%; margin-top: 2px; font-size: 12px; font-weight: 400; line-height: 1.5; }
+.chat-panel.is-companion .header-actions { flex: none; gap: 2px; margin: 0; }
+.chat-panel.is-companion .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  gap: 5px;
+  min-width: 32px;
+  min-height: 32px;
+  width: auto;
+  height: auto;
+  padding: 6px;
+  color: var(--pet-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.chat-panel.is-companion .chat-labelled-action { padding-inline: 8px; white-space: nowrap; }
+.chat-panel.is-companion .icon-button svg { width: 15px; height: 15px; stroke-width: 1.7; }
+.chat-panel.is-companion .icon-button:hover:not(:disabled) { color: var(--pet-ink); background: var(--surface-soft); }
+.chat-panel.is-companion .icon-button.is-active { color: var(--pet-ink); background: var(--surface-soft); }
+.chat-panel.is-companion .icon-button:active:not(:disabled) { background: var(--pet-rule); }
+.chat-panel.is-companion .icon-button:disabled { opacity: .5; cursor: not-allowed; }
+.chat-panel.is-companion .icon-button:focus-visible { outline: 2px solid var(--pet-focus); outline-offset: 1px; }
+.chat-panel.is-companion .chat-panel-navigation { min-width: 0; padding: 0 16px 4px; border: 0; }
+.chat-panel.is-companion.is-compact .chat-panel-navigation { padding-bottom: 2px; }
+.chat-panel.is-companion .chat-panel-footer { min-width: 0; border: 0; }
+.chat-panel.is-companion.is-entering {
+  transform-origin: var(--companion-origin-x, 100%) var(--companion-origin-y, 50%);
+  animation: companion-panel-arrive 180ms var(--ease-out, cubic-bezier(.16,1,.3,1)) both;
+}
+@keyframes companion-panel-arrive { from { opacity: .85; transform: scale(.985); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .chat-panel.is-companion.is-entering { animation: none; }
+}
+
+[data-custom-pet] .chat-panel.is-companion .paw-sticker { fill: var(--companion-chrome); stroke: var(--companion-line); }
+[data-custom-pet] .chat-panel.is-companion .paw-pad { fill: var(--companion-action); }
+
+img.companion-brand-mark { height: 31px; object-fit: contain; }
+
+/* AI designs are bounded tokens, never provider CSS. One SVG perimeter owns
+   material and radius on the attached native panel; DOM remains transparent. */
+[data-designed-pet] .chat-panel.is-companion {
+  --chat-frame-corner-radius: var(--companion-radius);
+  --chat-frame-top-right-radius: var(--companion-radius);
+  --chat-frame-bottom-right-radius: var(--companion-radius);
+  --chat-frame-bottom-left-radius: var(--companion-radius);
+  background: var(--companion-material);
+}
+[data-designed-pet] .companion-chat-host.has-pet-anchor .chat-panel.is-companion { background: transparent; }
+[data-designed-pet] .companion-panel-silhouette { stroke-width: var(--companion-border-width); }
+[data-designed-pet] .chat-panel.is-companion .chat-header { box-shadow: var(--companion-material-inset); }
+[data-designed-pet] .chat-panel.is-companion :is(button, input, select, .composer-row) { border-radius: var(--companion-control-radius); }
+[data-designed-pet] .chat-panel.is-companion :is(.send-button, .customization-primary, .assistant-settings-save, .todo-add-form button[type="submit"], .memo-add-form button[type="submit"]) {
+  border: var(--companion-border-width) solid var(--companion-action-border);
+  box-shadow: var(--companion-material-inset);
+}
+[data-designed-pet] .chat-panel.is-companion :is(.composer-row, input:not([type="checkbox"]):not([type="range"]):not([type="file"]), select) { border-width: var(--companion-border-width); }
+[data-designed-pet] .chat-panel.is-companion .message-user .message-bubble { border-radius: var(--companion-radius) var(--companion-radius) 6px var(--companion-radius); }

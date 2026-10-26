@@ -41,6 +41,50 @@ export function deleteTodo(todoId: string) {
   return invoke<TodoCompletionView>('agent_delete_todo', { todoId })
 }
 
+export type MemoKind = 'note' | 'goal'
+export type MemoStatus = 'active' | 'archived'
+export interface Memo {
+  id: string
+  kind: MemoKind
+  title: string
+  content: string | null
+  status: MemoStatus
+  review_at: string | null
+  created_at: string
+}
+export const memoKindLabel: Record<MemoKind, string> = { note: '备忘', goal: '长期目标' }
+export const memoStatusLabel: Record<MemoStatus, string> = { active: '进行中', archived: '已归档' }
+export interface MemoListView {
+  generation: number
+  items: Memo[]
+}
+export interface MemoListFilter {
+  kind?: MemoKind
+  /** Server defaults to false; the memo page needs every row because it
+   * toggles archived visibility client-side, so callers pass true. */
+  includeArchived?: boolean
+}
+export function listMemos(filter: MemoListFilter = {}) {
+  // Tauri converts the camelCase keys to the Rust snake_case parameters.
+  return invoke<MemoListView>('agent_list_memos', { kind: filter.kind ?? null, includeArchived: filter.includeArchived ?? false })
+}
+export interface MemoMutationView {
+  generation: number
+  item: Memo
+}
+export function createMemo(title: string, kind: MemoKind, content: string | null, reviewAt: string | null) {
+  return invoke<MemoMutationView>('agent_create_memo', { title, kind, content, reviewAt })
+}
+export function updateMemo(memoId: string, fields: { title?: string; content?: string | null; kind?: MemoKind }) {
+  return invoke<MemoMutationView>('agent_update_memo', { memoId, ...fields })
+}
+export function archiveMemo(memoId: string, archived: boolean) {
+  return invoke<MemoMutationView>('agent_archive_memo', { memoId, archived })
+}
+export function setMemoReview(memoId: string, reviewAt: string | null, expectedReviewAt: string | null) {
+  return invoke<MemoMutationView>('agent_set_memo_review', { memoId, reviewAt, expectedReviewAt })
+}
+
 export interface AgentMessage {
   id: string
   role: 'user' | 'assistant'
@@ -70,6 +114,9 @@ export interface AgentView {
   reminders: Todo[]
   reminder_error: string | null
   todo_revision: number
+  memo_reviews: Memo[]
+  memo_review_error: string | null
+  memo_revision: number
   configured: boolean
   endpoint: string | null
   connection: 'unconfigured' | 'connecting' | 'connected' | 'disconnected'
@@ -92,11 +139,11 @@ export interface AgentView {
   }
 }
 export const connectionLabel = (view: AgentView | null) => !view?.configured
-  ? '助手服务未配置'
+  ? '还没连上助手'
   : view.connection !== 'connected'
-    ? view.connection === 'connecting' ? '正在连接助手' : '连接已断开，正在重连'
-    : !view.model_configured ? '已连接，模型未配置'
-      : !view.node_connected ? view.node_error ? '设备暂时离线，聊天可用' : '对话已连接，设备正在登记' : '助手已连接'
+    ? view.connection === 'connecting' ? '正在连接……' : '连接断了，正在重连'
+    : !view.model_configured ? '我在，模型还没设置'
+      : !view.node_connected ? view.node_error ? '设备暂时离线，聊天照常' : '我在，设备还在登记' : '我在这儿呢'
 
 export function getAgentView() {
   return invoke<AgentView>('agent_view')

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-26",
+  "tool": "built-in image_gen",
+  "source": "public/pets/white-cat-v2/idle.png",
+  "identity": "Approved white longhair cat, golden eyes, pink nose and ears, red-brown collar, gold paw medallion.",
+  "rendering": "idle.png and sleeping.png are opaque RGB. Render exactly one with matching idle-mask.png as a luminance mask. Do not show the checkerboard as transparency. All three images are 1207x1303; preserve source assets. Sleeping art uses the same registered seated pose and silhouette.",
+  "assets": {
+    "idle.png": {
+      "prompt": "Use case: background-extraction / identity-preserve. Edit the provided existing approved white cat asset into a clean transparent desktop-pet sprite. Preserve exactly this recognizable white long-haired cat: same head and face proportions, golden amber eyes, pink nose and inner ears, warm white fur, red-brown collar with gold paw medallion, front seated pose and fluffy tail curled to the viewer's right. Remove ONLY the entire peach cushion, circular metallic platform, paw logo on the cushion, and any background. Reconstruct the small lower silhouette only where it was occluded by the cushion so the original four paws and tail sit naturally on a flat invisible ground line. Keep the original cat's pose, identity, fur rendering, lighting and fine fur edges; do not stylize or redesign the cat, add a different animal, change the eyes, duplicate body parts or add accessories. Isolated single cat, ears and tail fully included, generous tiny transparent margin, close crop vertically, centered portrait composition. A genuine alpha-transparent PNG, no white/black/checkerboard background painted into pixels, no floor, no backdrop, no text, no speech bubble, no hearts, no stars, no pad, no disk, no pedestal, no shadow outside the natural paw contact. Production-quality fur alpha edges.",
+      "origin": "imagegen exec-12eab6e7-8cef-42c2-80ce-49c6255a2278"
+    },
+    "idle-mask.png": {
+      "prompt": "Create an exact grayscale segmentation matte of the supplied image for production compositing. Output a binary-style monochrome MASK IMAGE, not a cat illustration. Keep the EXACT original canvas size 1207 by 1303 and exact silhouette/position: all pixels belonging to the whole cat, including ears, whiskers, paws, long fluffy tail, collar, medallion, fur, eyes and every interior detail must be solid pure white #ffffff (featureless white silhouette). Every pixel outside the cat, including ALL checkerboard pattern, must be solid pure black #000000. Only the very thin antialiased fur edge may use grayscale. No transparent output is needed. No face details, no eye holes, no body shading, no checker pattern, no floor, no text, no border. The result must look like one featureless white silhouette of THIS seated cat on a uniform solid black canvas, aligned precisely to the reference pixel positions.",
+      "origin": "imagegen exec-308a35ec-579e-4aa2-84b3-9defe1aeeb01"
+    },
+    "sleeping.png": {
+      "prompt": "Use case: precise-object-edit / identity-preserve.\nEdit target: the supplied 1207 by 1303 full-body white longhair desktop cat image.\nChange ONLY the two eyes from open to naturally and peacefully closed. Create believable closed feline eyelids with fine white fur continuing seamlessly across the lids and soft anatomical shading, not human eyelids, not painted oval patches, not cartoon strokes or crescents. The cat is gently resting while sitting in exactly the same posture.\nStrict registration is essential for an animated app: preserve canvas dimensions, camera, head placement, all body/ear/tail/paw contours, nose/mouth/whiskers, red-brown collar, gold paw pendant, lighting and every area outside the eye sockets. Do not resize, move, crop, reframe or add anything. Keep the exact same background grid unchanged as well; the app applies a separate matching alpha matte. Same lovely recognizable cat, premium soft realistic rendering. No text, no icon, no prop, no shadow disk.",
+      "origin": "imagegen exec-a9c2e870-fa84-49af-bf49-a85f834e6ee5",
+      "reference": "public/pets/white-cat-companion/idle.png"
+    }
+  }
+}

@@ -2,6 +2,8 @@
 mod assets;
 mod provider;
 mod storage;
+pub mod theme_analysis;
+use theme_analysis::{ThemeDesign, ThemeDraft, ThemeService, ThemeSource};
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -40,6 +42,10 @@ pub struct Preset {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Theme {
+    #[serde(default)]
+    pub design: Option<ThemeDesign>,
+    #[serde(default)]
+    pub source: Option<ThemeSource>,
     pub palette: String,
     pub primary: String,
     pub secondary: String,
@@ -61,12 +67,32 @@ impl Theme {
         {
             return Err("主题搭配或色彩浓度无效".into());
         }
+        if let Some(design) = &self.design {
+            design.validate()?;
+            if self.primary != design.colors.primary || self.secondary != design.colors.secondary {
+                return Err("主题设计颜色与主辅色不一致".into());
+            }
+        }
+        if self.design.is_some() != self.source.is_some() {
+            return Err("AI 主题设计与来源必须同时存在".into());
+        }
+        if let Some(source) = &self.source {
+            if source.model.is_empty()
+                || source.model.len() > 200
+                || source.model.chars().any(char::is_control)
+                || chrono::DateTime::parse_from_rfc3339(&source.generated_at).is_err()
+            {
+                return Err("主题来源记录无效".into());
+            }
+        }
         storage::accent(&self.primary)?;
         storage::accent(&self.secondary)?;
         Ok(())
     }
     fn character(colors: &[String], fallback: &str) -> Self {
         Self {
+            design: None,
+            source: None,
             palette: "character".into(),
             primary: colors.first().cloned().unwrap_or_else(|| fallback.into()),
             secondary: colors.get(1).cloned().unwrap_or_else(|| "#d49b98".into()),
@@ -86,6 +112,8 @@ pub struct JobView {
 }
 #[derive(Clone, Serialize, Deserialize)]
 struct Job {
+    #[serde(default)]
+    theme: Option<Theme>,
     view: JobView,
     references: usize,
     #[serde(default)]
@@ -112,6 +140,8 @@ pub struct View {
     presets: Vec<Preset>,
     job: Option<JobView>,
     badge_job: Option<BadgeJob>,
+    theme_draft: Option<ThemeDraft>,
+    theme_service: Option<ThemeService>,
     settings: SettingsView,
     warning: Option<String>,
 }
@@ -124,6 +154,8 @@ struct Store {
     job: Option<Job>,
     #[serde(default)]
     badge_job: Option<BadgeJob>,
+    #[serde(default)]
+    theme_draft: Option<ThemeDraft>,
     settings: Settings,
     warning: Option<String>,
 }
@@ -136,6 +168,7 @@ impl Default for Store {
             presets: vec![],
             job: None,
             badge_job: None,
+            theme_draft: None,
             settings: Settings::default(),
             warning: None,
         }
@@ -149,6 +182,8 @@ impl Store {
             presets: self.presets.clone(),
             job: self.job.as_ref().map(|j| j.view.clone()),
             badge_job: self.badge_job.clone(),
+            theme_draft: self.theme_draft.clone(),
+            theme_service: None,
             settings: SettingsView {
                 base_url: self.settings.base_url.clone(),
                 model: self.settings.model.clone(),
@@ -172,6 +207,7 @@ struct Inner {
     store: Option<Store>,
     cancel: Option<tokio::sync::watch::Sender<bool>>,
     badge_cancel: Option<tokio::sync::watch::Sender<bool>>,
+    theme_cancel: Option<tokio::sync::watch::Sender<bool>>,
 }
 #[derive(Default, Clone)]
 pub struct CustomizationState {
@@ -254,6 +290,7 @@ fn terminal_commit(root: &Path, inner: &mut Inner, mut next: Store) -> View {
     }
 }
 fn publish(app: &AppHandle, mut view: View) -> View {
+    view.theme_service = theme_analysis::service(app);
     if app.emit("customization:changed", &view).is_err() {
         let notification = "窗口通知失败；重新打开面板后会恢复同步";
         view.warning = Some(match view.warning.take() {
@@ -271,7 +308,12 @@ fn publish(app: &AppHandle, mut view: View) -> View {
 }
 #[tauri::command]
 pub async fn customization_view(app: AppHandle) -> Result<View, String> {
-    access(app, |_, inner| Ok(inner.store.as_ref().unwrap().view())).await
+    let mut view = access(app.clone(), |_, inner| {
+        Ok(inner.store.as_ref().unwrap().view())
+    })
+    .await?;
+    view.theme_service = theme_analysis::service(&app);
+    Ok(view)
 }
 #[tauri::command]
 pub async fn customization_asset(
@@ -475,7 +517,8 @@ pub async fn customization_use_chat_connection(
 pub async fn customization_start(
     app: AppHandle,
     name: String,
-    images: Vec<String>,
+    draft_id: String,
+    theme_attempt: u64,
 ) -> Result<View, String> {
     let (view, cancel) = access(app.clone(), move |root, inner| {
         let mut next = inner.store.as_ref().unwrap().clone();
@@ -486,7 +529,7 @@ pub async fn customization_start(
             return Err("请先配置图片服务".into());
         }
         let name = storage::name(&name)?;
-        let refs = assets::import(&images)?;
+        let (refs, theme) = theme_analysis::freeze(root, &next, &draft_id, theme_attempt)?;
         let id = uuid::Uuid::new_v4().to_string();
         for (index, bytes) in refs.iter().enumerate() {
             storage::atomic(
@@ -495,6 +538,7 @@ pub async fn customization_start(
             )?;
         }
         next.job = Some(Job {
+            theme: Some(theme),
             view: JobView {
                 id,
                 name,
@@ -715,6 +759,11 @@ pub async fn customization_update(
                 .iter_mut()
                 .find(|p| p.id == id)
                 .ok_or("找不到这个桌宠方案")?;
+            if theme.design != preset.theme.as_ref().and_then(|t| t.design.clone())
+                || theme.source != preset.theme.as_ref().and_then(|t| t.source.clone())
+            {
+                return Err("AI 主题设计及来源只能由图片分析生成".into());
+            }
             preset.accent = theme.primary.clone();
             preset.theme = Some(theme);
         }
@@ -923,7 +972,10 @@ async fn run_job(app: AppHandle, id: String, attempt: u64) -> Result<(), String>
             &storage::asset_path(root, &id, "base")?,
             storage::MAX_DISK_IMAGE,
         )?)?;
-        let theme = Theme::character(&colors, &accent);
+        let theme = job
+            .theme
+            .clone()
+            .unwrap_or_else(|| Theme::character(&colors, &accent));
         let accent = theme.primary.clone();
         next.presets.push(Preset {
             theme: Some(theme),
@@ -1087,6 +1139,8 @@ mod tests {
         assert!(preset.theme.is_none());
         assert!(preset.colors.is_empty());
         let mut theme = Theme {
+            design: None,
+            source: None,
             palette: "mint".into(),
             primary: "#459f87".into(),
             secondary: "#c5b567".into(),
@@ -1273,6 +1327,7 @@ mod tests {
 
     fn job(id: String, attempt: u64) -> Job {
         Job {
+            theme: None,
             view: JobView {
                 id,
                 name: "测试".into(),
@@ -1364,6 +1419,7 @@ mod tests {
             store: Some(Store::default()),
             cancel: None,
             badge_cancel: None,
+            theme_cancel: None,
         };
         let mut next = Store::default();
         next.active_id = uuid::Uuid::new_v4().to_string();
@@ -1380,6 +1436,7 @@ mod tests {
             store: Some(Store::default()),
             cancel: None,
             badge_cancel: None,
+            theme_cancel: None,
         };
         let next = Store::default();
         let view = commit(&dir, &mut inner, next).unwrap();

@@ -30,7 +30,7 @@ export function resetToolPresentations() {
 }
 
 export function toolStatusText(status: ToolCall['status']) {
-  return { running: '执行中', completed: '已完成', failed: '失败', needs_reconciliation: '待核实' }[status]
+  return { running: '橘伴处理中…', completed: '执行成功', failed: '失败', needs_reconciliation: '结果待确认' }[status]
 }
 
 /** Unregistered tools never surface a bare English tool name to the user:

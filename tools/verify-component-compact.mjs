@@ -26,12 +26,12 @@ if (referenceHash !== REFERENCE_SHA256)
 if (referenceSize.width !== REFERENCE_WIDTH || referenceSize.height !== REFERENCE_HEIGHT)
   fail(`approved reference dimensions changed (${referenceSize.width}x${referenceSize.height})`)
 
-const component = readFileSync(resolve('src/components/ChatPanel.tsx'), 'utf8')
+const component = readFileSync(resolve('src/components/ChatPanel.tsx'), 'utf8') + readFileSync(resolve('src/components/ChatComposer.tsx'), 'utf8')
 const frame = readFileSync(resolve('src/components/ChatBubbleFrame.tsx'), 'utf8')
 const frameCss = readFileSync(resolve('src/components/ChatBubbleFrame.css'), 'utf8')
 const app = readFileSync(resolve('src/App.tsx'), 'utf8')
 const html = readFileSync(resolve('index.html'), 'utf8')
-const css = readFileSync(resolve('src/styles.css'), 'utf8')
+const css = readFileSync(resolve('src/styles.css'), 'utf8') + readFileSync(resolve('src/desktop-shell.css'), 'utf8') + readFileSync(resolve('src/components/ChatInteraction.css'), 'utf8')
 const rust = readFileSync(resolve('src-tauri/src/lib.rs'), 'utf8')
 
 for (const [name, source] of [['ChatPanel', component], ['ChatBubbleFrame', frame], ['App', app], ['index.html', html]]) {
@@ -65,11 +65,11 @@ for (const required of [
 // The approved composer now contains working text/send controls only. Keep
 // verifying their real form wiring rather than requiring unavailable tools.
 const composer = component.match(/<form\b[^>]*className="composer"[\s\S]*?<\/form>/)?.[0]
-if (!composer || !composer.includes('onSubmit={submit}'))
+if (!composer || !composer.includes('onSubmit={onSubmit}') || !component.includes('onSubmit={submit}'))
   fail('compact composer must retain the real submit form')
 if ((composer?.match(/<textarea\b/g) ?? []).length !== 1
     || !composer?.includes('value={draft}')
-    || !composer?.includes('setDraft(event.target.value)'))
+    || !composer?.includes('onDraftChange(event.target.value)') || !component.includes('onDraftChange={setDraft}'))
   fail('compact composer must retain one editable controlled textarea')
 const sendControl = composer?.match(/<button\b[^>]*className="send-button"[\s\S]*?<\/button>/)?.[0]
 if (!sendControl?.includes('type="submit"') || !sendControl.includes('<Send'))
@@ -96,7 +96,7 @@ for (const selector of [
 }
 
 for (const selector of [
-  '.composer-tool:focus-visible',
+  '.composer-row:focus-within',
   '.quick-prompts button:focus-visible',
 ]) {
   if (!css.includes(selector))
@@ -107,8 +107,8 @@ if (css.includes('.pet-shell.pet-chat-compact .assistant-paw-badge'))
   fail('compact paw badge rule still lives in the global stylesheet instead of ChatBubbleFrame.css')
 
 const compactScene = css.match(/\.pet-chat-scene\.pet-chat-compact\s*\{([^}]+)\}/)?.[1] ?? ''
-if (!compactScene.includes('width: 713px') || !compactScene.includes('height: 401px'))
-  fail('compact inner scene must remain 713x401 within the stable native backing')
+if (!compactScene.includes('width: min(713px, 100%)') || !compactScene.includes('height: min(401px, 100%)'))
+  fail('compact scene must preserve713x401 on normal displays and fit smaller backing dimensions')
 
 // The approved corner sticker keeps the compact reference's 53.3 x 59.27
 // dimensions in every mode. One root-relative rule must replace all old flex
@@ -160,8 +160,8 @@ for (const [prop, expected] of [
 if (/\b(?:margin|transform):/.test(badgeRule))
   fail('corner badge must not depend on flex margins or transforms')
 const badgeNodes = frame.match(/<ReferencePawBadge\b/g) ?? []
-if (badgeNodes.length !== 1 || !/<section\b[^>]*>\s*<ReferencePawBadge className="assistant-paw-badge" \/>/.test(frame))
-  fail('the shared paw badge must be a direct frame child, outside the header')
+if (badgeNodes.length !== 1 || !/<section\b[^>]*>\s*\{appearance !== 'companion' && <ReferencePawBadge className="assistant-paw-badge" \/>\}/.test(frame))
+  fail('the compatibility paw badge must be a direct frame child and omitted from the companion appearance')
 if (!badgeBody.includes('aria-hidden="true"'))
   fail('the shared corner badge must remain decorative')
 const rootRule = frameCss.match(/\.chat-panel \{([^}]+)\}/)
@@ -174,8 +174,9 @@ if (!rootRule[1].includes('--chat-frame-corner-radius: 72px;') || !rootRule[1].i
   fail('the shared frame must own the approved 72px top-left corner')
 const frameVariantRules = [...frameCss.matchAll(/([^{}]+)\{([^{}]+)\}/g)]
   .filter(match => /\.chat-panel\.is-[a-z.-]+\s*$/.test(match[1].trim()))
+  .filter(match => !match[1].includes('.is-companion'))
 if (frameVariantRules.some(match => /(?:border-radius|border-top-left-radius|--chat-frame-corner-radius)\s*:/.test(match[2])))
-  fail('a frame variant overrides the shared top-left corner geometry')
+  fail('a compatibility frame variant overrides the shared top-left corner geometry')
 const surfaceRule = frameCss.match(/\.chat-panel > \.chat-panel-surface \{([^}]+)\}/)
 if (!surfaceRule || !/overflow:\s*hidden/.test(surfaceRule[1]) || !/border-radius:\s*inherit/.test(surfaceRule[1]))
   fail('a full-height shared surface must clip header and body to the same corner')

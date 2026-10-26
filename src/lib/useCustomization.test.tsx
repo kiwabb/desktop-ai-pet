@@ -62,6 +62,16 @@ describe('appearance synchronization (isolated hook tests, no native runtime)', 
     expect(controller.active?.preset.theme?.secondary).toBe('#d68ba4')
     expect(host.assets).toHaveBeenCalledOnce()
   })
+  it('refreshes same-revision analysis service metadata without starting analysis', async () => {
+    render(); await settle()
+    host.ipc.mockResolvedValue({ ...view(1), theme_service: { base_url: 'https://vision.example/v1', model: 'vision', available: true } })
+    await controller.refresh(); await settle()
+    expect(controller.view?.theme_service?.model).toBe('vision')
+    expect(host.ipc.mock.calls.every(([command]) => command === 'customization_view')).toBe(true)
+    host.ipc.mockResolvedValue({ ...view(1), theme_service: null })
+    await controller.refresh(); await settle()
+    expect(controller.view?.theme_service).toBeNull()
+  })
   it('retries a transient asset failure even when authoritative revision is unchanged', async () => {
     host.assets.mockRejectedValueOnce(new Error('decode')).mockResolvedValue({ pet: { preset, sprites }, warning: null })
     render(); await settle(); expect(controller.error).toContain('图片读取失败'); expect(controller.active).toBeNull()

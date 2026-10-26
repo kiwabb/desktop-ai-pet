@@ -25,6 +25,31 @@ function App() {
   const query = useQuery(), page = nav.some(item => item[0] === query.get('page')) ? query.get('page')! : 'overview'
   const [user, setUser] = useState<User | null>(null), [checking, setChecking] = useState(true), [error, setError] = useState(''), [notice, setNotice] = useState(''), [sidebar, setSidebar] = useState(false), [leaving, setLeaving] = useState(false)
   const generation = useRef(0), logoutLock = useRef(false)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 980px)').matches)
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 980px)')
+    const changed = () => { setMobile(media.matches); if (!media.matches) setSidebar(false) }
+    media.addEventListener('change', changed)
+    return () => media.removeEventListener('change', changed)
+  }, [])
+  useEffect(() => {
+    if (!mobile || !sidebar || !user) return
+    const surface = sidebarRef.current
+    if (!surface) return
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const controls = () => Array.from(surface.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+    controls().find(button => button.getAttribute('aria-current') === 'page')?.focus()
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setSidebar(false); return }
+      if (event.key !== 'Tab') return
+      const items = controls(), first = items[0], last = items.at(-1)
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+    }
+    surface.addEventListener('keydown', keydown)
+    return () => { surface.removeEventListener('keydown', keydown); if (previous?.isConnected) previous.focus() }
+  }, [mobile, sidebar, user])
   async function check() {
     const own = ++generation.current; setChecking(true); setError('')
     try { const result = await api<{ user: User }>('/auth/me'); if (own === generation.current) setUser(result.user) }
@@ -47,7 +72,7 @@ function App() {
   if (checking) return <Loading />
   if (!user) return error ? <main className="login-shell"><ErrorState message={error} retry={() => void check()} /></main> : <Login notice={notice} onLogin={value => { setUser(value); setError(''); setNotice('') }} />
   const content = page === 'overview' ? <OverviewPage /> : page === 'accounts' ? <AccountsPage user={user} /> : page === 'runs' ? <RunsPage user={user} /> : page === 'todos' ? <TodosPage user={user} /> : page === 'model' ? <ModelPage user={user} /> : page === 'tools' ? <ToolsPage /> : <SystemPage user={user} />
-  return <div className="app-shell"><aside className={`sidebar ${sidebar ? 'open' : ''}`}><div className="sidebar-brand"><div className="brand-mark"><Bot size={19} aria-hidden /></div><div><strong>桌宠服务</strong><small>内部控制台</small></div><button className="icon-button mobile-close" onClick={() => setSidebar(false)} aria-label="关闭菜单"><X size={17} aria-hidden /></button></div><nav className="sidebar-nav" aria-label="管理页面">{nav.map(([key, text, Icon]) => <button key={key} className={`nav-item ${key === page ? 'active' : ''}`} aria-current={key === page ? 'page' : undefined} onClick={() => { updateQuery({ page: key }); setSidebar(false) }}><Icon size={17} aria-hidden /><span>{text}</span>{key === page && <ChevronRight size={15} aria-hidden />}</button>)}</nav><div className="sidebar-footer"><div className="user-chip"><div className="avatar">{user.username.slice(0, 1)}</div><div><strong>{user.username}</strong><small>{user.role === 'admin' ? '管理员' : '只读观察者'}</small></div></div><button className="logout-button" disabled={leaving} onClick={() => void logout()}><LogOut size={15} aria-hidden />{leaving ? '退出中…' : '退出登录'}</button></div></aside><main className="main-content"><header className="topbar"><button className="icon-button menu-button" onClick={() => setSidebar(true)} aria-label="打开菜单"><Menu size={19} aria-hidden /></button><div className="crumb"><span>服务端管理</span><ChevronRight size={14} aria-hidden /><strong>{nav.find(item => item[0] === page)?.[1]}</strong></div><span className="muted">内部工作区</span></header><div className="page-content"><ErrorLine error={error} />{content}</div></main></div>
+  return <div className="app-shell"><aside ref={sidebarRef} id="admin-navigation" className={`sidebar ${sidebar ? 'open' : ''}`} role={mobile && sidebar ? 'dialog' : undefined} aria-modal={mobile && sidebar ? true : undefined} aria-label="管理菜单"><div className="sidebar-brand"><div className="brand-mark"><Bot size={19} aria-hidden /></div><div><strong>桌宠服务</strong><small>内部控制台</small></div><button className="icon-button mobile-close" onClick={() => setSidebar(false)} aria-label="关闭菜单"><X size={17} aria-hidden /></button></div><nav className="sidebar-nav" aria-label="管理页面">{nav.map(([key, text, Icon]) => <button key={key} className={`nav-item ${key === page ? 'active' : ''}`} aria-current={key === page ? 'page' : undefined} onClick={() => { updateQuery({ page: key }); setSidebar(false) }}><Icon size={17} aria-hidden /><span>{text}</span>{key === page && <ChevronRight size={15} aria-hidden />}</button>)}</nav><div className="sidebar-footer"><div className="user-chip"><div className="avatar">{user.username.slice(0, 1)}</div><div><strong>{user.username}</strong><small>{user.role === 'admin' ? '管理员' : '只读观察者'}</small></div></div><button className="logout-button" disabled={leaving} onClick={() => void logout()}><LogOut size={15} aria-hidden />{leaving ? '退出中…' : '退出登录'}</button></div></aside>{mobile && sidebar && <button className="sidebar-backdrop" tabIndex={-1} aria-label="关闭管理菜单" onClick={() => setSidebar(false)} />}<main className="main-content" inert={mobile && sidebar}><header className="topbar"><button className="icon-button menu-button" onClick={() => setSidebar(true)} aria-label="打开菜单" aria-expanded={sidebar} aria-controls="admin-navigation"><Menu size={19} aria-hidden /></button><div className="crumb"><span>服务端管理</span><ChevronRight size={14} aria-hidden /><strong>{nav.find(item => item[0] === page)?.[1]}</strong></div><span className="muted">内部工作区</span></header><div className="page-content"><ErrorLine error={error} />{content}</div></main></div>
 }
 const root = document.getElementById('root')
 if (root) createRoot(root).render(<App />)
