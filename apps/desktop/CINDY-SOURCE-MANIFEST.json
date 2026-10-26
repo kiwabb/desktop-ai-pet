@@ -4,6 +4,13 @@
   "license": "Apache-2.0",
   "notice": "Cindy Copyright 2026 XD Inc.",
   "status": "partial-source-import",
+  "productIntegration": {
+    "entry": "apps/desktop/renderer/main-entry.tsx",
+    "productShell": "apps/desktop/src/renderer/cindy/MainShell.tsx",
+    "sourcePrimitiveUsed": "apps/desktop/src/renderer/cindy/FadeSwitcher.tsx",
+    "status": "electron-main-shell-with-partial-cindy-source",
+    "notes": "The product shell owns the narrow Electron bridge and Pi run projection. It does not claim Cindy MainLayout or screen parity."
+  },
   "records": [
     {
       "sourcePath": "apps/desktop/src/renderer/components/layout/FadeSwitcher.tsx",

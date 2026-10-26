@@ -434,3 +434,97 @@ setTimeout(() => pet.show('完成'), animationDuration)
 // The host owns lifecycle truth and sends only a compact projection.
 runtime.onEvent((event) => setPetActivity(windows, petActivityFromAgentEvent(event)))
 ```
+
+## Electron main renderer source-backed shell (migration)
+
+### 1. Scope / Trigger
+
+This contract applies to the bounded Electron main renderer slice under
+`apps/desktop/renderer/` and `apps/desktop/src/renderer/cindy/`. It is triggered
+when the Electron main page moves beyond the migration notice while the full Cindy
+renderer closure is still deferred. The copied source primitive and the
+product-authored shell must remain distinguishable in the provenance manifest.
+
+### 2. Signatures
+
+The renderer may consume only the existing typed bridge:
+
+```ts
+window.desktop.submitRun(request: AgentRunRequest): Promise<AgentRunAcceptedEvent>
+window.desktop.cancelRun(request: AgentRunCancelRequest): Promise<AgentRunCancelRequestedEvent>
+window.desktop.onRunEvent(listener: (event: AgentRunEvent) => void): () => void
+window.desktop.openPet(): Promise<void>
+window.desktop.hidePet(): Promise<void>
+```
+
+The product-owned Vite entry is `apps/desktop/renderer/main-entry.tsx`; its
+application entry is `apps/desktop/src/renderer/cindy/MainShell.tsx`. A copied
+Cindy `FadeSwitcher` is a visual primitive, not an application-service boundary.
+
+### 3. Contracts
+
+- The renderer keeps one stable local `sessionId` in a versioned local-storage key;
+  each send creates a fresh `runId` and `requestId`.
+- Every incoming event is ignored unless its `(sessionId, runId, requestId)` matches
+  the currently active run. A renderer reload must not submit a second run.
+- `run.accepted`/`run.record` map to running, `run.cancel_requested` maps to
+  cancelling, and `run.settled` maps to completed/cancelled/failed.
+- Renderer text extraction accepts only explicit text/delta fields from a record;
+  it must not render raw Pi records, provider response bodies, credentials, or tool
+  arguments as a fallback.
+- If the bridge is absent, the composer remains disabled and the page states that it
+  is a static/non-Electron view. No fake assistant response is inserted.
+- The Vite build must bundle the renderer entry into `apps/desktop/dist/renderer`
+  and must not reference the external Cindy checkout or its absolute path.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+|---|---|
+| Bridge unavailable | Show an explicit unavailable notice; disable send |
+| Empty prompt or active run | Do not submit another request |
+| Pi accepts prompt | Show running state; do not treat acceptance as completion |
+| Matching record with text delta | Append/merge only the safe text projection |
+| Mismatched or late event | Drop it without changing visible state |
+| Pi process/submit failure | Show a generic actionable runtime error; do not expose provider response text |
+| Cancel request rejected | Show failure and keep the run ownership explicit for a later host event |
+| Pet open/hide failure | Keep the main chat usable; do not mark the Agent run as failed |
+
+### 5. Good / Base / Bad Cases
+
+- Good: the main shell is source-backed by the copied transition primitive, uses the
+  narrow bridge, and makes deferred Cindy capabilities explicit.
+- Base: the shell can run in an unconfigured state and preserves user-entered drafts
+  without inventing history.
+- Bad: wholesale-copy Cindy's preload, read `window.require`, render a raw Pi JSON
+  record, or label a product-authored shell as full Cindy UI parity.
+
+### 6. Tests Required
+
+- Run `pnpm desktop:typecheck`, `pnpm desktop:test`, and `pnpm desktop:build`.
+- Assert the emitted `dist/renderer/main.html` points to a bundled local asset and
+  that the output contains no reference-checkout path.
+- Keep runtime tests for identity matching, cancellation, settlement mapping and
+  Pi child failure in the desktop test suite; report real Pi/native checks separately.
+- Native acceptance still requires an actual Electron binary, window interaction,
+  screenshots and installed-package checks; a Vite build is not sufficient.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// Broad Cindy bridge or a synthetic success lets the page look complete while
+// bypassing the product's host authorization and runtime truth.
+window.electronAPI = new Proxy({}, { get: () => () => Promise.resolve({}) })
+```
+
+#### Correct
+
+```ts
+// Use the product-owned bridge and render only events owned by this run.
+const stop = window.desktop?.onRunEvent((event) => {
+  if (event.sessionId !== active.sessionId || event.runId !== active.runId) return
+  renderRunEvent(event)
+})
+```

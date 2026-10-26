@@ -27,6 +27,7 @@ be recorded before copying additional Cindy code:
 - adaptation reason for every changed copied file;
 - excluded accounts, endpoints, telemetry, credentials, caches and private data.
 
-Until the full manifest, dependency closure, and copied-file diff are reviewed, the
-Electron pages in this slice remain explicit migration-boundary placeholders. They
-must not be described as Cindy UI parity.
+The Electron main page now has a product-owned, source-backed shell using the
+copied `FadeSwitcher` primitive and the typed Pi bridge. Until the full manifest,
+dependency closure, and copied-file diff are reviewed, it must not be described as
+Cindy UI parity; the full Cindy renderer remains an explicit deferred boundary.

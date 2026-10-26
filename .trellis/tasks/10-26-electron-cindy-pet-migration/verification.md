@@ -157,5 +157,34 @@ Apache-2.0/NOTICE provenance, proposed destinations, and exclusions.
 | Source-copy acceptance | Not yet accepted: no application source, dependency, asset, or native module has been copied |
 
 No build or typecheck was rerun for this documentation-only inventory slice. The
-next code slice must generate the file-level copied-source manifest before changing
-the current Electron renderer or replacing the existing window/preload owners.
+next full-source slice must generate the file-level copied-source manifest before
+replacing the current product-owned renderer or window/preload owners.
+
+## Current Electron main renderer shell
+
+Date: 2026-10-26 (Asia/Shanghai).
+
+The current code slice replaces the Electron main-window migration notice with a
+product-owned Vite React entry. It uses the pinned Cindy `FadeSwitcher` source
+primitive, a source-backed provenance record, the existing narrow `window.desktop`
+bridge, and the host-owned Pi run event projection. The shell provides a real
+conversation input, stable local session identity, run status, cancellation, honest
+failure handling, settings/pet controls, and an independent pet entry. It does not
+claim Cindy `MainLayout`/router parity, durable conversation history, or live model
+execution.
+
+| Check | Result |
+|---|---|
+| `pnpm desktop:typecheck` | Passed |
+| `pnpm desktop:build` | Passed; Vite emitted `dist/renderer/main.html` plus bundled JS/CSS, and pet assets were copied |
+| `pnpm desktop:test` | Passed: 4 files, 14 tests |
+| `pnpm test` | Passed: 31 files, 246 tests |
+| `git diff --check` | Passed |
+| Renderer bundle reference-path check | Passed: no runtime reference to the external Cindy checkout in the emitted renderer |
+| Native Electron startup | Not accepted: Electron 45 binary download stalled in this environment and was terminated; no native window screenshot/interaction evidence |
+| Pi executable/model invocation | Not accepted: no real `pi` executable/model run; only the typed boundary and injected/runtime tests are verified |
+| Full Cindy visual parity | Not accepted: `MainLayout`, `App`, router, broad preload and service dependency closure remain deferred and are recorded in `SOURCE-IMPORT-INVENTORY.md` |
+
+These results establish source/type/test/build evidence only. They do not establish
+native window composition, installed packaging, real Pi output, Cindy screen parity,
+legacy-data migration, or credential transfer.

@@ -65,7 +65,12 @@ Do not start cloud/mobile implementation as a side effect of any child.
 
 ### P1. Source import and Electron shell
 
-- [ ] **First application-code change: copy the pinned Cindy source**, with its required
+- [x] **First bounded application-code change: copy the pinned Cindy source primitive**
+  `FadeSwitcher.tsx` with a provenance record; the full renderer closure is still
+  intentionally deferred because the pinned entry imports unreviewed host services.
+- [x] Add a product-owned Vite main entry and a usable Electron main shell that
+  keeps the typed preload boundary and does not load the reference checkout.
+- [ ] **Full source import:** copy the pinned Cindy source, with its required
   Electron/preload/shared/package dependency closure and source manifest. Do not create
   a newly designed replacement UI before importing the reference.
 - [ ] Preserve a reviewable source-import diff/commit; adapt configuration separately.
@@ -85,7 +90,8 @@ Do not start cloud/mobile implementation as a side effect of any child.
 - [ ] Bind copied preload methods to application services; retain useful upstream API
   names instead of spreading translation logic through visual components.
 - [x] Bind the current product-owned main preload to typed submit/cancel/event methods;
-  Cindy renderer API mapping remains deferred until the approved screen closure is imported.
+  the first product shell consumes this bridge while the full Cindy renderer API mapping
+  remains deferred until its approved screen closure is imported.
 - [ ] Add real session operations required by the copied UI; document project/workspace
   mapping and permission grants rather than manufacturing placeholder entities.
 - [ ] Give the host lifecycle ownership and enforce one executor per run. Keep stores,

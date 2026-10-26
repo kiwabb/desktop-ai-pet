@@ -1,8 +1,8 @@
-# Cindy source import inventory (pre-copy)
+# Cindy source import inventory (partial import)
 
 Status: **reference audit complete; one low-coupling Cindy renderer component has
-now been imported as a separately manifested slice**. The full Cindy renderer and
-host closure remain unimported.
+now been imported as a separately manifested slice and is used by the first
+Electron main shell**. The full Cindy renderer and host closure remain unimported.
 
 This document freezes the first import boundary for the implementation task. It
 is not a full copied-file manifest and does not claim that the Electron renderer
@@ -35,7 +35,7 @@ The product currently has a deliberately small Electron shell:
 
 | Product path | Current responsibility | Import constraint |
 |---|---|---|
-| `apps/desktop/renderer/main.html` | CSP, root element, and honest migration placeholder | Keep as the product-owned HTML entry until the Cindy renderer has a reviewed build entry |
+| `apps/desktop/renderer/main.html` | CSP, root element, and Vite entry for the product-owned Electron main shell | Keep as the product-owned HTML entry; it must not load the reference checkout |
 | `apps/desktop/src/main/main.ts` | Electron app lifecycle, single-instance handling, main/pet creation | Remains the lifecycle owner; do not replace it with Cindy's bootstrap wholesale |
 | `apps/desktop/src/main/desktop-windows.ts` | Main/pet `BrowserWindow` lifecycle and sender-checked pet IPC | Remains the window owner; adapt only reviewed window behavior |
 | `apps/desktop/src/preload/main-preload.ts` | Narrow main-window bridge | Do not replace with the broad Cindy preload object |
@@ -96,6 +96,22 @@ files, 23 preload files, and 394 shared files. Renderer assets and tests were
 excluded by the sparse checkout, so these counts are not a complete build
 closure and do not prove that the source can build in this product.
 
+## Current Electron renderer slice
+
+The current build uses `apps/desktop/renderer/main-entry.tsx` as a product-owned
+Vite wrapper. It renders `apps/desktop/src/renderer/cindy/MainShell.tsx`, which
+uses the copied Cindy `FadeSwitcher` primitive and the product's narrow
+`window.desktop` bridge for submit/cancel/run events and pet visibility. The shell
+has one stable local session identity and does not create fake history or model
+output. If the Pi bridge is unavailable or rejects a request, the UI shows an
+explicit unavailable/error state.
+
+This is a usable Electron shell, not Cindy UI parity. Cindy's `main-entry.tsx`,
+`App.tsx`, `router.tsx`, `MainLayout.tsx`, broad preload, and service dependency
+closure remain deferred because they import authentication, remote services,
+plugins, persistence and other host capabilities that have not been mapped to
+this product's contracts.
+
 ## Import and exclusion policy
 
 ### Candidate reuse in the first source-import commit
@@ -140,5 +156,5 @@ actual selected closure with:
   mapping, with `available`, `deferred`, or `rejected` status;
 - a reviewable exclusion list and an explicit no-absolute-reference check.
 
-Until that gate passes, keep the current main/pet placeholders and the existing
-Tauri/server paths intact.
+Until that gate passes, keep the partial main shell and independent pet window
+explicitly bounded; preserve the existing Tauri/server paths intact.
