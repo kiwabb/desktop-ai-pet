@@ -1,0 +1,7 @@
+{"file":".trellis/spec/frontend/index.md","reason":"Frontend guidelines entry; preserve relevant tests and typed UI boundaries."}
+{"file":".trellis/spec/desktop/index.md","reason":"Inventory existing desktop capabilities before moving host responsibilities."}
+{"file":".trellis/spec/desktop/dual-mode-llm.md","reason":"Preserve event ordering, deduplication, credential and local/server behavior; transport-specific rules are migration baselines."}
+{"file":".trellis/spec/frontend/companion-experience.md","reason":"Preserve drafts, errors, focus and native evidence; old main styling and coupled geometry are superseded only by approved migration scope."}
+{"file":".trellis/spec/desktop/pet-customization.md","reason":"Retain custom pet asset ownership, storage and selection across the shell change."}
+{"file":".trellis/spec/backend/todo-reminders.md","reason":"Retain reminder scheduling, CAS and offline semantics."}
+{"file":".trellis/tasks/10-26-electron-cindy-pet-migration/research/source-audit.md","reason":"Pinned source evidence, dependency boundaries, reference behavior and known unknowns."}

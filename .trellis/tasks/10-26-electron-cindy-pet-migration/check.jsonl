@@ -1,0 +1,6 @@
+{"file":".trellis/spec/frontend/index.md","reason":"Check frontend guideline applicability and visual/behavioral parity."}
+{"file":".trellis/spec/desktop/dual-mode-llm.md","reason":"Check compatibility, durable state, cancellation and credential invariants."}
+{"file":".trellis/spec/frontend/companion-experience.md","reason":"Check retained user-state and native-evidence safeguards without reimposing superseded UI geometry."}
+{"file":".trellis/spec/desktop/pet-customization.md","reason":"Check existing pet assets and customization survive migration."}
+{"file":".trellis/spec/backend/todo-reminders.md","reason":"Check reminder conflicts, scheduling and duplicate prevention."}
+{"file":".trellis/tasks/10-26-electron-cindy-pet-migration/research/source-audit.md","reason":"Review claims against pinned local evidence; distinguish planned, source-inspected and native-tested behavior."}
