@@ -203,11 +203,13 @@ directory and `copy-renderer.mjs` bundles both narrow preloads while keeping
 | Check | Result |
 |---|---|
 | Electron binary | Passed: `pnpm exec electron --version` downloaded and reported `v45.0.0` through the configured local proxy |
+| Pi runtime package | Passed: `@earendil-works/pi-coding-agent@1.4.0` is locked in the workspace and `pnpm exec pi --version` reports `1.4.0` |
+| Pi RPC process | Passed: `pi --mode rpc --offline --no-approve --no-extensions` returned a valid `get_state` response; the smoke session reported an unknown model rather than inventing one |
 | Native main window | Passed: Electron loaded `file:///.../apps/desktop/dist/renderer/main.html`; the shell, composer, settings controls, and pet controls were visible in the native accessibility tree and screenshot |
 | Main preload bridge | Passed: `window.desktop` was an object in the native renderer; submitting a real test prompt reached the host and produced the real Pi-runtime failure state |
 | Independent pet window | Passed: Electron DevTools reported a second native page at `dist/renderer/pet.html`; `window.pet` was present, the page was visible, and idle/action assets had nonzero natural dimensions |
 | Pet action interaction | Passed: clicking the real `吃饭` control changed the native pet renderer to `pet-stage is-action` and loaded `eating-ai-v2-smooth/action.webp` |
-| Pi executable/model invocation | Not accepted: the native submit path reached the Pi boundary and logged `spawn pi ENOENT`; no model output was shown and no fake response was inserted |
+| Pi executable/model invocation | Partial: the native submit path now starts Pi and returns the real `No API key found for the selected model` error; no model output was shown and no fake response was inserted |
 | Full Cindy visual parity | Not accepted: this remains a product-owned shell using the copied `FadeSwitcher`; `MainLayout`, router, broad preload, service closure, and installed-package acceptance remain deferred |
 
 This is native Electron renderer/preload/window evidence, not live-model evidence.

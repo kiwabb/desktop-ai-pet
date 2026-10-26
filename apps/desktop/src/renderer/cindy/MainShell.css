@@ -87,6 +87,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .setting-icon { width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 auto; color: #6d745c; background: #e5e8dc; border-radius: 10px; }
 .setting-card h2 { margin: 1px 0 9px; color: #44453f; font-size: 14px; font-weight: 650; }
 .setting-card p { margin: 0; color: #8a8b84; font-size: 12px; line-height: 1.65; }
+.setting-card .setting-error { margin-top: 10px; color: #9d5e54; }
 .setting-actions { display: flex; gap: 8px; margin-top: 23px; }
 .setting-actions button { padding: 7px 9px; border: 1px solid #dedfd8; border-radius: 8px; color: #6f7069; background: #fbfbf9; font-size: 11px; }
 .setting-actions button:hover { color: #20211f; border-color: #c7c8c0; }

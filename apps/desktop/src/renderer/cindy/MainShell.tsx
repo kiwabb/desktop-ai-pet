@@ -117,6 +117,13 @@ function settledPhase(event: AgentRunSettledEvent): RunPhase {
 
 function userFacingRuntimeError(error: string | null): string {
   if (!error) return 'Pi 运行未完成，请检查运行时配置。'
+  const normalized = error.toLowerCase()
+  if (normalized.includes('no api key found') || normalized.includes('api key') || normalized.includes('use /login')) {
+    return 'Pi 已启动，但当前模型没有 API Key；请先登录或配置对应的 provider。'
+  }
+  if (normalized.includes('timed out') || normalized.includes('timeout')) {
+    return 'Pi 请求超时，请检查模型配置和网络后重试。'
+  }
   if (error.startsWith('Pi process exited')) return 'Pi 运行进程已退出，请检查 Pi 安装和配置。'
   return 'Pi 未能完成这次请求，请检查配置后重试。'
 }
@@ -193,9 +200,7 @@ export function MainShell() {
       if (activeRunRef.current?.runId !== run.runId) return
       activeRunRef.current = null
       setPhase('failed')
-      setError(cause instanceof Error && cause.message.startsWith('Pi process exited')
-        ? 'Pi 运行进程已退出，请检查 Pi 安装和配置。'
-        : 'Pi 运行时未能接受请求，请检查 Pi 安装和配置。')
+      setError(userFacingRuntimeError(cause instanceof Error ? cause.message : null))
     })
   }
 
@@ -276,7 +281,7 @@ export function MainShell() {
                 onOpenSettings={() => setPanel('settings')}
                 onSubmit={submit}
               />
-            : <SettingsView bridgeReady={bridgeReady} onHidePet={() => void bridge?.hidePet()} onOpenPet={() => void bridge?.openPet()} />}
+            : <SettingsView bridgeReady={bridgeReady} runtimeError={error} onHidePet={() => void bridge?.hidePet()} onOpenPet={() => void bridge?.openPet()} />}
         </FadeSwitcher>
       </section>
     </main>
@@ -319,6 +324,6 @@ function ChatView({ bridgeReady, draft, error, isBusy, messages, phase, onCancel
   </div>
 }
 
-function SettingsView({ bridgeReady, onHidePet, onOpenPet }: { bridgeReady: boolean; onHidePet: () => void; onOpenPet: () => void }) {
-  return <div className="settings-view"><div className="settings-heading"><p className="eyebrow">WORKSPACE SETTINGS</p><h1>让工作区保持轻盈。</h1><p>这一页只管理 Electron 窗口和桌宠，不会读取或显示模型密钥。</p></div><div className="settings-grid"><section className="setting-card"><div className="setting-icon"><Cat size={18} aria-hidden="true" /></div><div><h2>独立桌宠</h2><p>桌宠窗口拥有自己的生命周期。隐藏它不会中断主窗口里的任务。</p><div className="setting-actions"><button type="button" onClick={onOpenPet}>打开桌宠</button><button type="button" onClick={onHidePet}>隐藏桌宠</button></div></div></section><section className="setting-card"><div className="setting-icon"><Bot size={18} aria-hidden="true" /></div><div><h2>Pi 运行边界</h2><p>{bridgeReady ? '主窗口已经连接到 Electron preload；模型未配置时会显示真实失败状态。' : '未连接 Electron preload，当前页面只适合做静态检查。'}</p><span className={`setting-status ${bridgeReady ? 'is-ready' : ''}`}><span aria-hidden="true" />{bridgeReady ? 'Electron bridge 已连接' : '等待 Electron bridge'}</span></div></section></div></div>
+function SettingsView({ bridgeReady, runtimeError, onHidePet, onOpenPet }: { bridgeReady: boolean; runtimeError: string | null; onHidePet: () => void; onOpenPet: () => void }) {
+  return <div className="settings-view"><div className="settings-heading"><p className="eyebrow">WORKSPACE SETTINGS</p><h1>让工作区保持轻盈。</h1><p>这一页只管理 Electron 窗口和桌宠，不会读取或显示模型密钥。</p></div><div className="settings-grid"><section className="setting-card"><div className="setting-icon"><Cat size={18} aria-hidden="true" /></div><div><h2>独立桌宠</h2><p>桌宠窗口拥有自己的生命周期。隐藏它不会中断主窗口里的任务。</p><div className="setting-actions"><button type="button" onClick={onOpenPet}>打开桌宠</button><button type="button" onClick={onHidePet}>隐藏桌宠</button></div></div></section><section className="setting-card"><div className="setting-icon"><Bot size={18} aria-hidden="true" /></div><div><h2>Pi 运行边界</h2><p>{bridgeReady ? '主窗口已经连接到 Electron preload；模型未配置时会显示真实失败状态。' : '未连接 Electron preload，当前页面只适合做静态检查。'}</p>{runtimeError && <p className="setting-error">最近一次运行：{runtimeError}</p>}<span className={`setting-status ${bridgeReady ? 'is-ready' : ''}`}><span aria-hidden="true" />{bridgeReady ? 'Electron bridge 已连接' : '等待 Electron bridge'}</span></div></section></div></div>
 }

@@ -103,6 +103,8 @@ Do not start cloud/mobile implementation as a side effect of any child.
 
 ### P3. Runtime and existing business features
 
+- [x] Add the pinned Pi CLI package and verify its RPC startup path; provider
+  authentication and the full tool/session integration remain acceptance work.
 - [ ] Pi branch, if approved: pin protocol/runtime/adapter; integrate managed RPC,
   persistence, event mapping, cancellation, pending input, permissions, packaging,
   and the existing business-tool bridge. Audit the full imported dependency closure.
