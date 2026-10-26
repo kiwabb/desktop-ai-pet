@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>桌宠 Electron 迁移</title>
+    <style>
+      :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+      body { margin: 0; min-height: 100vh; background: #fffaf5; color: #3f3028; }
+      main { max-width: 720px; margin: 15vh auto; padding: 32px; }
+      h1 { margin: 0 0 12px; font-size: 28px; }
+      p { line-height: 1.7; color: #705d52; }
+      code { padding: 2px 6px; border-radius: 6px; background: #f5e9dd; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Electron 主窗口边界已就绪</h1>
+      <p>Cindy 的实际 renderer 尚未导入。当前页面是迁移边界提示，不是最终产品界面。</p>
+      <p>完成源码 provenance 审核后，主窗口会加载 Cindy 的真实界面；现有 Tauri 链路仍保留。</p>
+    </main>
+  </body>
+</html>

@@ -1,4 +1,4 @@
-# Planning delivery verification
+# Planning delivery verification (historical)
 
 Date: 2026-10-26 (Asia/Singapore).
 
@@ -52,3 +52,26 @@ configured only in this repository, without changing global Git settings.
 Final delivery requires rerunning staged validation, committing, pushing without
 force, and verifying the remote branch SHA. The outcome is reported in the chat;
 this file intentionally does not contain its own commit hash.
+
+## Implementation slice: Electron/Pi boundary
+
+Date: 2026-10-26 (Asia/Shanghai).
+
+The user subsequently selected Pi and approved implementation. The first bounded
+slice adds an isolated Electron host/preload boundary, honest main/pet migration
+placeholders, and a typed Pi RPC client. The existing Tauri path was not removed.
+
+| Check | Result |
+|---|---|
+| `pnpm desktop:typecheck` | Passed |
+| `pnpm desktop:test` | Passed: 1 file, 4 tests |
+| `pnpm desktop:build` | Passed |
+| `pnpm test` | Passed: 28 files, 236 tests |
+| `pnpm build` | Passed; existing Vite chunk-size warning remains |
+| Electron process smoke test | Not completed: Electron 45 arm64 binary download stalled around 4% and was stopped; no native startup claim |
+| Pi executable/model invocation | Not run: `pi` is not installed in this workspace |
+| Cindy source import/UI parity | Blocked: pinned `D:\atcs\cindy` checkout is unavailable here; no lookalike source was fabricated |
+
+The passing checks establish source/type/test/build evidence only. They do not prove
+native Electron windows, real Pi execution, Cindy visual parity, data migration,
+credential transfer, or installed-package acceptance.

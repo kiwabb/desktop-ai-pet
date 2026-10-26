@@ -19,6 +19,7 @@ migrating live data, or starting implementation.
 | D3 | The pet is an independently switchable floating window in the same application; hiding it does not affect the main UI or Agent. | Explicit window-isolation answer. |
 | D4 | Local Agent execution is primary, with UI, execution, and future cloud responsibilities separated. | Earlier accepted architectural direction. |
 | D5 | Write and push the plan; implementation remains a separate review gate. | "可以 写完推送" |
+| D6 | Select Pi as the local Agent engine and begin implementation of the approved migration plan. | User confirmation: "推荐的 Pi" after the implementation gate was explained. |
 
 Baseline: `56192fb`, branch `codex/companion-product-refactor`. Read-only reference:
 Cindy `ae50e8e1afd9b95e51801085d1a2ed9dfe8b16af`, inspected at `D:\atcs\cindy`.
@@ -128,12 +129,13 @@ packages, not just React components. Electron reduces adaptation, not dependency
 - Deploying cloud services, a mobile client, multi-device control, or synchronization.
 - Deleting Tauri/server code or retiring server mode before a reviewed cutover.
 
-## Open decision and readiness
+## Implementation readiness
 
-**Q1 — Agent engine:** Pi is recommended, not approved. Asking whether Pi could work
-with Tauri and then selecting Electron did not authorize replacing the current loop.
-Alternatives and conditional work are in [design.md](design.md#4-agent-runtime-decision).
+**Q1 — Agent engine: resolved.** Pi is selected for the new Electron runtime. The
+existing Rust loop remains available as the recoverable legacy path until the new
+runtime passes its acceptance gates; it is not a second new executor.
 
-These documents may be committed and pushed with Q1 open. They are reviewable, not
-implementation-approved. Keep task status `planning`; do not run `task.py start`
-until the engine decision and latest implementation summary have explicit approval.
+Implementation is now approved and the task is `in_progress`. The pinned Cindy
+checkout is not present in the current workspace, so source-copy work must stop at
+the provenance boundary rather than inventing a lookalike UI; independently valid
+Electron host and Pi protocol work may proceed while that source is supplied.

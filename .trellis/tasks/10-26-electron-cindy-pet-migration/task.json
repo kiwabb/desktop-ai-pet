@@ -2,8 +2,8 @@
   "id": "electron-cindy-pet-migration",
   "name": "electron-cindy-pet-migration",
   "title": "Electron + Cindy UI migration and independent pet",
-  "description": "Plan the approved Electron shell migration, direct reuse of Cindy frontend, local runtime boundaries, legacy data migration and independent optional pet window; no product implementation.",
-  "status": "planning",
+  "description": "Implement the approved Electron shell migration with direct Cindy frontend reuse, Pi runtime boundaries, legacy data migration and an independent optional pet window; preserve Tauri during the transition.",
+  "status": "in_progress",
   "dev_type": null,
   "scope": "desktop-architecture",
   "package": null,
@@ -27,11 +27,11 @@
     ".trellis/tasks/10-26-electron-cindy-pet-migration/research/source-audit.md",
     ".trellis/tasks/10-26-electron-cindy-pet-migration/verification.md"
   ],
-  "notes": "User approved writing and pushing planning artifacts only. Electron, direct Cindy UI reuse and an independent pet window are confirmed. Pi is recommended but pending Q1. No implementation approval, task start, child-task creation or product migration.",
+  "notes": "The initial planning-only delivery was superseded by the user's 2026-10-26 approval to execute the task and select Pi. Electron, direct Cindy UI reuse and an independent pet window remain confirmed. The pinned Cindy checkout is not present in this workspace; do not fabricate UI parity. Keep Tauri and legacy data recoverable until acceptance.",
   "meta": {
-    "artifact_scope": "planning-only",
-    "engine_decision": "pending",
-    "implementation_approved": false,
+    "artifact_scope": "implementation",
+    "engine_decision": "Pi",
+    "implementation_approved": true,
     "reference_commit": "ae50e8e1afd9b95e51801085d1a2ed9dfe8b16af"
   }
 }

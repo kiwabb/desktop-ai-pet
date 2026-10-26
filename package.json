@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "desktop:build": "tsc -p apps/desktop/tsconfig.json",
+    "desktop:typecheck": "tsc -p apps/desktop/tsconfig.json --noEmit",
+    "desktop:test": "vitest run apps/desktop/src",
+    "desktop:run": "pnpm desktop:build && electron apps/desktop/dist/main/main.js",
     "test": "vitest run src",
     "closed:extract": "node tools/extract-closed-reference.mjs",
     "closed:verify": "node tools/verify-closed-reference.mjs",
@@ -24,9 +28,11 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "24.10.1",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
+    "electron": "45.0.0",
     "typescript": "~5.9.2",
     "vite": "^7.1.7",
     "vitest": "^5.0.0"

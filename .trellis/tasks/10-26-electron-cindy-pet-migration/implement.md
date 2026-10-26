@@ -1,24 +1,26 @@
 # Implementation plan and review gates
 
-Status: **planning only; implementation not started**. This file describes future
-work, not completed checkboxes. Read [prd.md](prd.md) and [design.md](design.md) first.
+Status: **implementation in progress**. This file is the execution plan; unchecked
+items are not evidence of completed work. Read [prd.md](prd.md) and [design.md](design.md)
+first.
 
 ## 1. Current delivery and implementation prerequisites
 
-The present delivery is the task metadata, PRD, technical design, execution plan,
-source audit, context manifests, and documentation verification. Commit and push only
-these files to `codex/companion-product-refactor`. Do not run application builds,
-install dependencies, migrate data, copy Cindy code, or activate implementation now.
+The planning delivery is complete and Pi has been selected. Implementation proceeds
+in bounded slices on `codex/companion-product-refactor`; preserve the existing Tauri
+launch path until Electron acceptance passes. The Cindy source checkout is absent from
+this workspace, so do not fabricate source parity or copy unverified files.
 
 Before any future implementation:
 
-- [ ] Resolve PRD Q1: select Pi or preserve/extract the Rust runtime. Record the choice;
-  delete the unselected execution path from the work checklist, not from historical rationale.
+- [x] Resolve PRD Q1: Pi selected. Keep the Rust runtime only as the recoverable legacy
+  path during transition; do not implement a second new local executor.
 - [ ] Review the final scope, screen inventory strategy, proposed close/quit behavior,
   target-platform coverage, data migration, and rollback boundaries with the user.
 - [ ] Perform the lossless PRD convergence pass and obtain approval of the latest summary.
-- [ ] Create independently reviewable child tasks from the map below if implementation
-  is approved. This planning delivery does not create or start those children.
+- [ ] Create independently reviewable child tasks from the map below only when a slice
+  needs separate ownership; this parent remains the coordination task for the current
+  implementation pass.
 - [ ] Curate each child's applicable context and run its validation before `task.py start`.
   Start the next actual deliverable, not this coordination parent by default.
 
@@ -178,13 +180,11 @@ Add targeted tests for IPC, source parity, migrations and pet lifecycle to that 
 Do not claim current Tauri-specific native verification scripts validate Electron
 unchanged; port their semantic assertions and preserve the baseline evidence.
 
-## 5. Documentation-only delivery checks
+## 5. Implementation delivery checks
 
-For the current task, validate JSON/context manifests, referenced local evidence paths,
-requirement-to-acceptance coverage, no unresolved template placeholders, and whitespace.
-Review the PRD once top-to-bottom for duplicated decisions or invented approvals.
-Record results in [verification.md](verification.md). Confirm every staged file is
-inside this new task, commit the plan, push without force, and verify the remote SHA.
-
-Leave the task in `planning`. A successful push proves document delivery only, not
-application correctness, implementation approval, or a completed migration.
+For each implementation slice, validate the changed contracts, focused tests and
+relevant build/type checks. Keep source provenance, runtime, native, migration and
+packaging evidence separate; a successful build does not prove Cindy parity or real
+Pi/model execution. Commit and push only reviewed changes, without force, and verify
+the remote SHA. Do not archive this task until the acceptance matrix and rollback
+review are complete.

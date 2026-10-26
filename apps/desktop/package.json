@@ -1,0 +1,7 @@
+{
+  "name": "@desktop-ai-pet/electron-shell",
+  "private": true,
+  "version": "0.1.0",
+  "type": "commonjs",
+  "main": "dist/main/main.js"
+}
