@@ -1,8 +1,9 @@
 # Technical design: Electron, copied Cindy UI, independent pet
 
 Status: proposed implementation design, 2026-10-26. Electron/source-copy/window
-decisions are confirmed in [prd.md](prd.md); the Agent engine is still open.
-Nothing in this document claims that migration or runtime validation has occurred.
+decisions and the Pi engine choice are confirmed in [prd.md](prd.md); the pinned
+Cindy reference is available locally but has not been imported. Nothing in this
+document claims that migration or runtime validation has occurred.
 
 ## 1. Architecture and ownership
 

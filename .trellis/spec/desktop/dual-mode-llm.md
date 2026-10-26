@@ -125,3 +125,117 @@ Native cold server startup must show both windows receive a view and the backend
 
 ### Wrong / Correct
 Wrong: `#[tauri::command] fn agent_view(...) { credentials::hydrate(...); ... }`. Correct: async command awaiting `spawn_blocking` around the original locked transaction.
+
+## Electron/Pi runtime boundary (migration)
+
+### 1. Scope / Trigger
+
+This contract applies to the new Electron host adapter under
+`apps/desktop/src/main/` and `apps/desktop/src/shared/`. It is triggered by the
+Pi subprocess choice and covers the cross-layer boundary between a renderer-facing
+run service and the Pi RPC transport. It does not replace the existing Tauri
+backend, persistence, credential storage, or server mode.
+
+### 2. Signatures
+
+```ts
+interface AgentRunRequest {
+  sessionId: string
+  runId: string
+  requestId: string
+  prompt: string
+  streamingBehavior?: 'steer' | 'followUp'
+}
+
+class PiAgentRuntime {
+  submit(request: AgentRunRequest): Promise<AgentRunAcceptedEvent>
+  cancel(sessionId: string, runId: string): Promise<AgentRunCancelRequestedEvent>
+  onEvent(listener: (event: AgentRunEvent) => void): () => void
+  dispose(): void
+}
+```
+
+The transport must expose typed `prompt`, `abort`, `onRecord`, and `onExit`
+operations. Pi wire records stay host-side; renderers receive `AgentRunEvent` only.
+
+### 3. Contracts
+
+- `sessionId`, `runId`, `requestId`, and `prompt` are non-empty strings.
+- A request identity is the tuple `(sessionId, runId, requestId, prompt,
+  streamingBehavior)`. Re-submitting the exact same identity returns the original
+  acceptance promise and sends no second prompt.
+- A `runId` or `requestId` cannot be rebound to a different identity. In particular,
+  reusing a `runId` with another `requestId` is rejected.
+- Acceptance emits `run.accepted` with the Pi disposition and does not imply that
+  model work has completed. Completion is a separate `run.settled` event.
+- Every emitted event has a host-owned, strictly increasing `sequence` beginning at
+  1. Pi records observed before prompt acceptance are buffered and emitted after the
+  acceptance event.
+- Only one non-settled Pi run is active. `cancel` first awaits a successful Pi
+  `abort` response; only then may a buffered `agent_settled` record produce the
+  cancellation event.
+- Pi `agent_settled` has no run ID. The first run may attribute it directly; later
+  runs require a fresh `agent_start` fence so a late settlement cannot complete the
+  next run.
+- Child exit before settlement produces `run.settled` with `outcome: 'failed'` and
+  an explicit exit error. No prompt or tool is replayed automatically.
+
+### 4. Validation & Error Matrix
+
+| Condition | Result |
+|---|---|
+| Empty session/run/request/prompt field | Reject before invoking Pi |
+| Same request identity submitted twice | Return the original acceptance; one Pi prompt |
+| Same request ID with different payload | Reject as a rebound identity |
+| Same run ID with different request ID | Reject as a rebound identity |
+| Another run submitted while one is active | Reject; do not queue implicitly |
+| Cancel before prompt acceptance | Reject; caller must wait for `run.accepted` |
+| Pi abort rejected | Reject cancellation and restore the accepted state |
+| Settlement before abort response | Buffer it; attribute it only after abort acceptance |
+| Late settlement without a new `agent_start` | Ignore for a later run |
+| Pi process exits before settlement | Emit one failed settlement with exit details |
+
+### 5. Good / Base / Bad Cases
+
+- Good: persist or project the accepted request in an application service, subscribe
+  to ordered `run.record` and `run.settled` events, and reconcile after a sequence
+  gap from authoritative storage once persistence exists.
+- Base: use the injected fake transport to test acceptance, stream records, settle,
+  cancel, duplicate identity, and child exit without claiming a live model run.
+- Bad: resolve `submit()` only after `agent_settled`, infer completion from a prompt
+  response, or attribute the first settlement after every new prompt without a
+  start fence.
+
+### 6. Tests Required
+
+- Assert empty identity fields are rejected before `prompt` is called.
+- Assert exact duplicate requests call `prompt` once and return the same acceptance.
+- Assert conflicting `requestId` and `runId` reuse is rejected.
+- Assert event types and sequences are
+  `run.accepted -> run.record* -> run.settled`.
+- Assert late settlement is ignored until a new `agent_start` is observed.
+- Assert cancellation emits `run.cancel_requested` only after a successful abort and
+  emits one cancelled settlement after Pi confirms termination.
+- Assert rejected abort restores the active run and does not publish cancellation.
+- Assert child exit emits one failed settlement and no automatic retry.
+- Keep fake-transport checks separate from real Pi/model and native Electron checks.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// `agent_settled` has no run ID, so this can complete a newer run with an old event.
+transport.onRecord((record) => {
+  if (record.type === 'agent_settled') finish(activeRun)
+})
+```
+
+#### Correct
+
+```ts
+// After the first run, require a new Pi start boundary before attribution.
+if (record.type === 'agent_settled' && (!run.requireStartFence || run.started)) {
+  emitSettled(run, record.aborted ? 'cancelled' : 'completed')
+}
+```

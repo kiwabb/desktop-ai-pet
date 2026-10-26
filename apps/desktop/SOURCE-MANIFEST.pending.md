@@ -1,8 +1,15 @@
 # Pending Cindy source manifest
 
-The implementation task selects Cindy commit `ae50e8e1afd9b95e51801085d1a2ed9dfe8b16af`
-as the read-only source reference. The audited checkout was recorded at
-`D:\atcs\cindy`, but that path is not available in the current macOS workspace.
+The implementation task selects Cindy repository `makecindy/cindy` at commit
+`ae50e8e1afd9b95e51801085d1a2ed9dfe8b16af` as the read-only source reference. A
+sparse, detached checkout is now available outside this repository at
+`/Users/zhoujiaangyao/zhoujiangyao/AI/cindy-reference`. The historical audit path
+was `D:\atcs\cindy`; it is not used as a runtime dependency.
+
+The local reference checkout includes the source needed for the next import review:
+`apps/desktop` without large renderer assets/tests, `packages/maker-core` Pi/types
+paths, and `docs/dev-rules`. It is a reference checkout, not yet copied into this
+product.
 
 The following must be recorded before copying any Cindy code:
 
@@ -13,5 +20,6 @@ The following must be recorded before copying any Cindy code:
 - adaptation reason for every changed copied file;
 - excluded accounts, endpoints, telemetry, credentials, caches and private data.
 
-Until this manifest is completed, the Electron pages in this slice are explicit
-migration-boundary placeholders. They must not be described as Cindy UI parity.
+Until this manifest is completed and the copied-file diff is reviewed, the Electron
+pages in this slice remain explicit migration-boundary placeholders. They must not
+be described as Cindy UI parity.

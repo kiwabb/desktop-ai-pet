@@ -136,6 +136,7 @@ existing Rust loop remains available as the recoverable legacy path until the ne
 runtime passes its acceptance gates; it is not a second new executor.
 
 Implementation is now approved and the task is `in_progress`. The pinned Cindy
-checkout is not present in the current workspace, so source-copy work must stop at
-the provenance boundary rather than inventing a lookalike UI; independently valid
-Electron host and Pi protocol work may proceed while that source is supplied.
+source is available as a sparse detached reference checkout outside this repository
+at `/Users/zhoujiaangyao/zhoujiangyao/AI/cindy-reference`. Source-copy work still
+requires a file-level provenance manifest and review; until then, do not claim UI
+parity or replace the Electron placeholders with a lookalike implementation.

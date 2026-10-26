@@ -99,6 +99,14 @@ export class PiRpcClient {
     return () => this.events.off(event, listener)
   }
 
+  onRecord(listener: (record: PiRpcRecord) => void): () => void {
+    return this.on('record', listener)
+  }
+
+  onExit(listener: (code: number | null, signal: NodeJS.Signals | null) => void): () => void {
+    return this.on('exit', listener)
+  }
+
   start(): void {
     if (this.running) return
 

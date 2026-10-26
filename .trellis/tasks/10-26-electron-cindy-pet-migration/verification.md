@@ -70,8 +70,39 @@ placeholders, and a typed Pi RPC client. The existing Tauri path was not removed
 | `pnpm build` | Passed; existing Vite chunk-size warning remains |
 | Electron process smoke test | Not completed: Electron 45 arm64 binary download stalled around 4% and was stopped; no native startup claim |
 | Pi executable/model invocation | Not run: `pi` is not installed in this workspace |
-| Cindy source import/UI parity | Blocked: pinned `D:\atcs\cindy` checkout is unavailable here; no lookalike source was fabricated |
+| Cindy source import/UI parity | Not yet accepted: pinned source was not available during the first slice; it is now available as a detached sparse checkout outside this repo, but no source has been copied or claimed as parity |
 
 The passing checks establish source/type/test/build evidence only. They do not prove
 native Electron windows, real Pi execution, Cindy visual parity, data migration,
 credential transfer, or installed-package acceptance.
+
+## Source pull and Pi contract slice
+
+Date: 2026-10-26 (Asia/Shanghai).
+
+The pinned public source was located and fetched through GitHub SSH, with the user's
+local proxy used for lazy blob retrieval:
+
+- Repository: `https://github.com/makecindy/cindy`
+- Commit: `ae50e8e1afd9b95e51801085d1a2ed9dfe8b16af`
+- Local reference: `/Users/zhoujiaangyao/zhoujiangyao/AI/cindy-reference`
+- Checkout: detached, shallow/partial, sparse; large renderer assets and tests were excluded
+- Import status: not copied into this product; provenance/dependency review remains open
+
+The following P2 contract slice was then added in the product workspace:
+
+- stable session/run/request identity at the host boundary;
+- explicit `run.accepted`, ordered `run.record`, `run.cancel_requested`, and `run.settled` events;
+- duplicate request handling, late-settlement fencing, and injected transport tests;
+- no persistence, credential, migration, renderer, or Tauri changes.
+
+Focused validation after the slice:
+
+| Check | Result |
+|---|---|
+| `pnpm desktop:typecheck` | Passed |
+| `pnpm desktop:test` | Passed: 2 files, 9 tests |
+| `git diff --check` | Passed |
+
+These checks still do not prove that the real Pi executable is installed or that the
+copied Cindy renderer builds in this product's dependency graph.

@@ -79,6 +79,10 @@ export function isPiAgentSettled(value: unknown): value is PiAgentSettledEvent {
   return isRecord(value) && value.type === 'agent_settled' && typeof value.aborted === 'boolean'
 }
 
+export function isPiEventRecord(value: PiRpcRecord): value is PiEventRecord {
+  return value.type !== 'response' && value.type !== 'agent_settled'
+}
+
 export function parsePromptDisposition(response: PiRpcResponse): PiPromptDisposition {
   if (!response.success || !isRecord(response.data) || !['started', 'queued', 'handled'].includes(response.data.disposition as string)) {
     throw new Error('Pi prompt response did not contain a valid disposition')
